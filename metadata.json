@@ -1,0 +1,6 @@
+{
+  "name": "Digital Effect | ديجيتال إفكت للحلول الرقمية والتسويق",
+  "description": "وكالة حلول وتسويق رقمي بخبرة تفوق ٢٠ عاماً متخصصة في قطاعات B2B، B2C، والقطاع الطبي Medical مع دراسات حالة وباقات مخصصة ولوحة تحكم متكاملة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
