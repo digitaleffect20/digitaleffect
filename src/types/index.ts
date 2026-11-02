@@ -1,6 +1,6 @@
 export type SectorType = 'all' | 'b2b' | 'b2c' | 'medical';
 export type Language = 'ar' | 'en';
-export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'ipt-case-study' | 'penguin-case-study' | 'bsizia-case-study';
+export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'ipt-case-study' | 'penguin-case-study' | 'bsizia-case-study' | 'admin';
 
 export interface ProjectMetric {
   label: string;

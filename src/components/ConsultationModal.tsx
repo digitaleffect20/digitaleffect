@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { SectorType } from '../types';
-import { X, Send, CheckCircle2, MessageSquare, Phone, Building2, User } from 'lucide-react';
+import { X, Send, CheckCircle2, MessageSquare, Phone, Building2, User, Loader2, AlertCircle } from 'lucide-react';
+import { submitInquiry } from '../lib/supabase';
+import { InternationalPhoneInput } from './InternationalPhoneInput';
+import { CountryCode } from 'libphonenumber-js';
+import { fetchVisitorCountry, validateAndFormatPhone } from '../lib/phoneUtils';
 
 export const ConsultationModal: React.FC = () => {
   const { 
@@ -12,8 +16,7 @@ export const ConsultationModal: React.FC = () => {
     setSelectedPackageForInquiry,
     activeSector,
     language,
-    t,
-    addInquiry
+    t
   } = useAgencyData();
 
   const isAr = language === 'ar';
@@ -21,6 +24,12 @@ export const ConsultationModal: React.FC = () => {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneCountry, setPhoneCountry] = useState<CountryCode>('EG');
+  const [visitorCountry, setVisitorCountry] = useState<string>('Unknown');
+  const [isPhoneValid, setIsPhoneValid] = useState<boolean>(false);
+  const [phoneE164, setPhoneE164] = useState<string | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}`));
+
   const [company, setCompany] = useState('');
   const [sector, setSector] = useState<SectorType>(
     selectedPackageForInquiry ? selectedPackageForInquiry.sector : (activeSector !== 'all' ? activeSector : 'b2b')
@@ -28,8 +37,28 @@ export const ConsultationModal: React.FC = () => {
   const [budget, setBudget] = useState(isAr ? '20,000 - 40,000 ج.م' : '20,000 - 40,000 EGP');
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isCloudStored, setIsCloudStored] = useState(false);
 
-  React.useEffect(() => {
+  // Cloudflare GeoIP Auto-Detection on open
+  useEffect(() => {
+    let mounted = true;
+    if (isConsultationOpen) {
+      fetchVisitorCountry().then((detected) => {
+        if (mounted && detected && detected !== 'Unknown') {
+          setVisitorCountry(detected);
+          // Default phone country matches visitor country if detected
+          setPhoneCountry(detected as CountryCode);
+        }
+      });
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [isConsultationOpen]);
+
+  useEffect(() => {
     if (selectedPackageForInquiry) {
       setSector(selectedPackageForInquiry.sector);
     }
@@ -41,67 +70,108 @@ export const ConsultationModal: React.FC = () => {
     setIsConsultationOpen(false);
     setSelectedPackageForInquiry(null);
     setSubmitted(false);
+    setSubmitError(null);
+    // Refresh idempotency key for the next session
+    setIdempotencyKey(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}`);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const packageName = selectedPackageForInquiry ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn) : null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone) return;
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
 
-    const currentPkgName = selectedPackageForInquiry
-      ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn)
-      : undefined;
+    if (!cleanName || cleanName.length < 2) {
+      setSubmitError(isAr ? 'يرجى كتابة الاسم بالكامل (حرفان على الأقل).' : 'Please enter your full name.');
+      return;
+    }
 
-    addInquiry({
-      name,
-      phone,
-      company: company.trim() || undefined,
-      sector,
-      packageName: currentPkgName,
-      budget,
-      notes: notes.trim() || undefined,
-    });
+    // Comprehensive international phone validation via libphonenumber-js
+    const phoneVal = validateAndFormatPhone(cleanPhone, phoneCountry);
+    if (!phoneVal.isValid || !phoneVal.e164) {
+      setSubmitError(isAr ? phoneVal.errorMessageAr || 'رقم الهاتف غير صالح' : phoneVal.errorMessageEn || 'Invalid phone number');
+      return;
+    }
 
-    setSubmitted(true);
-  };
+    setSubmitError(null);
+    setIsSubmitting(true);
 
-  const handleWhatsAppDirect = () => {
-    const pkgLabel = selectedPackageForInquiry
-      ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn)
-      : (isAr ? 'استشارة استراتيجية عامة' : 'General Strategy Call');
-
-    if (name && phone && !submitted) {
-      addInquiry({
-        name,
-        phone,
+    try {
+      const res = await submitInquiry({
+        name: cleanName,
+        phone: cleanPhone,
+        phoneE164: phoneVal.e164,
+        phoneCountry: phoneCountry,
+        visitorCountry: visitorCountry || 'Unknown',
+        idempotencyKey,
         company: company.trim() || undefined,
         sector,
-        packageName: pkgLabel,
+        packageId: selectedPackageForInquiry?.id,
+        packageName: packageName || undefined,
         budget,
         notes: notes.trim() || undefined,
       });
+
+      // Strict enforcement: Never show success unless confirmed by database!
+      if (!res.success) {
+        setSubmitError(res.error || (isAr ? 'تعذر تسجيل الطلب في قاعدة البيانات المركزية. يرجى استخدام زر الواتساب للتواصل الفوري.' : 'Failed to save inquiry to database.'));
+        setIsSubmitting(false);
+        return;
+      }
+
+      setIsCloudStored(true);
       setSubmitted(true);
+    } catch (err: any) {
+      console.error('Submission error:', err);
+      setSubmitError(isAr ? 'حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة لاحقاً أو التواصل عبر الواتساب.' : 'Database connection error.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleWhatsAppDirect = () => {
+    const pkgLabel = packageName || (isAr ? 'استشارة استراتيجية عامة' : 'General Strategy Call');
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+    const phoneVal = validateAndFormatPhone(cleanPhone, phoneCountry);
+
+    if (cleanName && phoneVal.isValid && phoneVal.e164 && !submitted) {
+      // Fire-and-forget attempt to database without blocking WhatsApp opening
+      submitInquiry({
+        name: cleanName,
+        phone: cleanPhone,
+        phoneE164: phoneVal.e164,
+        phoneCountry: phoneCountry,
+        visitorCountry: visitorCountry || 'Unknown',
+        idempotencyKey,
+        company: company.trim() || undefined,
+        sector,
+        packageId: selectedPackageForInquiry?.id,
+        packageName: pkgLabel,
+        budget,
+        notes: notes.trim() || undefined,
+      }).catch(console.error);
     }
 
     const message = isAr
       ? `مرحباً فريق ديجيتال إفكت،
-أنا: ${name || 'مهتم'}
-النشاط / الشركة: ${company || 'غير محدد'}
+أنا: ${cleanName || 'مهتم'}
+النشاط / الشركة: ${company.trim() || 'غير محدد'}
 القطاع: ${sector.toUpperCase()}
-الباقة المستهدفة: ${packageName}
+الباقة المستهدفة: ${pkgLabel}
 الميزانية المقترحة: ${budget}
-ملاحظات: ${notes || 'أود مناقشة خطة العمل معكم'}`
+ملاحظات: ${notes.trim() || 'أود مناقشة خطة العمل معكم'}`
       : `Hello Digital Effect Team,
-Name: ${name || 'Interested Client'}
-Company: ${company || 'Not Specified'}
+Name: ${cleanName || 'Interested Client'}
+Company: ${company.trim() || 'Not Specified'}
 Sector: ${sector.toUpperCase()}
-Target Plan: ${packageName}
+Target Plan: ${pkgLabel}
 Budget: ${budget}
-Notes: ${notes || 'Looking forward to reviewing strategic growth options'}`;
+Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'}`;
 
     window.open(`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
   };
-
-  const packageName = selectedPackageForInquiry ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn) : null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
@@ -192,17 +262,28 @@ Notes: ${notes || 'Looking forward to reviewing strategic growth options'}`;
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                    <Phone className="w-3.5 h-3.5 text-sky-600" />
-                    <span>{m.phoneLabel}</span>
+                  <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5 text-sky-600" />
+                      <span>{m.phoneLabel}</span>
+                    </span>
+                    {visitorCountry && visitorCountry !== 'Unknown' && (
+                      <span className="text-[10px] text-slate-400 font-normal">
+                        {isAr ? `(تم تحديد الدولة: ${visitorCountry})` : `(Detected: ${visitorCountry})`}
+                      </span>
+                    )}
                   </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="+20 100 000 0000"
+                  <InternationalPhoneInput
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 bg-slate-50 focus:bg-white transition-colors font-mono tabular-nums"
+                    selectedCountry={phoneCountry}
+                    onChange={setPhone}
+                    onCountryChange={setPhoneCountry}
+                    onValidationChange={(valid, e164) => {
+                      setIsPhoneValid(valid);
+                      setPhoneE164(e164);
+                    }}
+                    isAr={isAr}
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -276,11 +357,19 @@ Notes: ${notes || 'Looking forward to reviewing strategic growth options'}`;
                 />
               </div>
 
+              {submitError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
               <div className="pt-2 flex items-center justify-between gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={handleWhatsAppDirect}
-                  className="px-4 py-3 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors border border-emerald-200 inline-flex items-center gap-1.5 cursor-pointer"
+                  disabled={isSubmitting}
+                  className="px-4 py-3 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors border border-emerald-200 inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <MessageSquare className="w-4 h-4 text-emerald-600" />
                   <span>{m.whatsAppDirect}</span>
@@ -288,10 +377,20 @@ Notes: ${notes || 'Looking forward to reviewing strategic growth options'}`;
 
                 <button
                   type="submit"
-                  className="px-6 py-3 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-all shadow-md inline-flex items-center gap-2 cursor-pointer ms-auto"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-all shadow-md inline-flex items-center gap-2 cursor-pointer ms-auto disabled:opacity-50"
                 >
-                  <span>{m.submitBtn}</span>
-                  <Send className="w-3.5 h-3.5" />
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{isAr ? 'جاري الحفظ الآمن...' : 'Saving...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{m.submitBtn}</span>
+                      <Send className="w-3.5 h-3.5" />
+                    </>
+                  )}
                 </button>
               </div>
             </form>

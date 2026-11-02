@@ -1,9 +1,9 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
-import { Phone, Mail, MapPin, MessageSquare, Settings, ArrowUpRight } from 'lucide-react';
+import { Phone, Mail, MapPin, MessageSquare, ArrowUpRight } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { data, language, t, setCurrentPage, setIsAdminOpen, setIsConsultationOpen } = useAgencyData();
+  const { data, language, t, setCurrentPage, setIsConsultationOpen } = useAgencyData();
   const isAr = language === 'ar';
   const info = data.agencyInfo;
   const f = t.footer;
@@ -160,15 +160,6 @@ export const Footer: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2">
-              <button
-                onClick={() => setIsAdminOpen(true)}
-                className="text-xs text-slate-400 hover:text-sky-300 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Settings className="w-3.5 h-3.5" />
-                <span>{t.nav.adminCms}</span>
-              </button>
-            </div>
           </div>
         </div>
 
@@ -179,13 +170,6 @@ export const Footer: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
             <span>B2B · B2C · Medical</span>
-            <span aria-hidden="true">·</span>
-            <button
-              onClick={() => setIsAdminOpen(true)}
-              className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-            >
-              {isAr ? 'دخول الإدارة' : 'Admin Login'}
-            </button>
           </div>
         </div>
       </div>

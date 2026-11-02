@@ -15,12 +15,17 @@ import { AboutPage } from './pages/AboutPage';
 import { IptCaseStudyPage } from './pages/IptCaseStudyPage';
 import { PenguinCaseStudyPage } from './pages/PenguinCaseStudyPage';
 import { BsiziaCaseStudyPage } from './pages/BsiziaCaseStudyPage';
+import { AdminPortalPage } from './pages/AdminPortalPage';
 import { Building2, ShoppingBag, Stethoscope, Home, MessageSquare, Briefcase } from 'lucide-react';
 import { PageRoute } from './types';
 
 const AppContent: React.FC = () => {
   const { currentPage, setCurrentPage, language, data } = useAgencyData();
   const isAr = language === 'ar';
+
+  if (currentPage === 'admin') {
+    return <AdminPortalPage />;
+  }
 
   // Render the requested standalone page
   const renderCurrentPage = () => {

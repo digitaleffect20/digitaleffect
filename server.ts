@@ -14,6 +14,15 @@ const port = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json());
 
+// Cloudflare GeoIP local development emulator
+app.get('/api/geo', (req, res) => {
+  const cfCountry = (req.headers['cf-ipcountry'] as string) || null;
+  res.json({
+    country: cfCountry ? cfCountry.toUpperCase() : null,
+    isDetected: Boolean(cfCountry),
+  });
+});
+
 // Initialize server-side Gemini client
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,

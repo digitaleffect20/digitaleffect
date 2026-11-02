@@ -48,14 +48,17 @@ const LANG_STORAGE_KEY = 'digital_effect_language_v2';
 
 const AgencyDataContext = createContext<AgencyContextType | undefined>(undefined);
 
-// Helper to parse page from URL hash
+// Helper to parse page from URL pathname or hash
 function getPageFromHash(): PageRoute {
+  const path = window.location.pathname.replace(/^\//, '').split('/')[0].toLowerCase();
   const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
-  if (hash === 'b2b') return 'b2b';
-  if (hash === 'b2c') return 'b2c';
-  if (hash === 'medical') return 'medical';
-  if (hash === 'case-studies' || hash === 'portfolio') return 'case-studies';
-  if (hash === 'about') return 'about';
+
+  if (path === 'admin' || hash === 'admin') return 'admin';
+  if (hash === 'b2b' || path === 'b2b') return 'b2b';
+  if (hash === 'b2c' || path === 'b2c') return 'b2c';
+  if (hash === 'medical' || path === 'medical') return 'medical';
+  if (hash === 'case-studies' || hash === 'portfolio' || path === 'case-studies') return 'case-studies';
+  if (hash === 'about' || path === 'about') return 'about';
   if (hash === 'ipt' || hash === 'ipt-case-study' || hash === 'case-study/cs-med-ipt' || hash === 'case-study/ipt') return 'ipt-case-study';
   if (hash === 'penguin' || hash === 'penguin-case-study' || hash === 'case-study/cs-b2c-penguin' || hash === 'case-study/penguin') return 'penguin-case-study';
   if (hash === 'bsizia' || hash === 'bsizia-case-study' || hash === 'case-study/cs-b2b-bsizia' || hash === 'case-study/bsizia') return 'bsizia-case-study';

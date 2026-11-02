@@ -8,12 +8,11 @@ import {
   ArrowLeft, 
   TrendingUp, 
   Briefcase,
-  Layers,
-  Edit3
+  Layers
 } from 'lucide-react';
 
 export const CaseStudiesSection: React.FC = () => {
-  const { data, activeSector, setActiveSector, setSelectedCaseStudy, setIsAdminOpen } = useAgencyData();
+  const { data, activeSector, setActiveSector, setSelectedCaseStudy } = useAgencyData();
 
   // Filter case studies by active sector
   const filteredStudies = data.caseStudies.filter((study) => {
@@ -174,17 +173,6 @@ export const CaseStudiesSection: React.FC = () => {
                       <span>عرض تفاصيل دراسة الحالة الكاملة</span>
                       <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
                     </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsAdminOpen(true);
-                      }}
-                      title="تعديل هذا المشروع في لوحة الإدارة"
-                      className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -204,12 +192,6 @@ export const CaseStudiesSection: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => setIsAdminOpen(true)}
-              className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
-            >
-              + إضافة مشروع جديد (لوحة الإدارة)
-            </button>
             <a
               href={`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(`مرحباً ديجيتال إفكت، أود الاطلاع على دراسات حالة إضافية لقطاع ${activeSector.toUpperCase()}`)}`}
               target="_blank"

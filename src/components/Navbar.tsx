@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { PageRoute } from '../types';
-import { Settings, Menu, X, ArrowUpRight, Globe } from 'lucide-react';
+import { Menu, X, ArrowUpRight, Globe } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { 
@@ -10,7 +10,6 @@ export const Navbar: React.FC = () => {
     currentPage, 
     setCurrentPage, 
     t, 
-    setIsAdminOpen, 
     setIsConsultationOpen
   } = useAgencyData();
 
@@ -92,15 +91,6 @@ export const Navbar: React.FC = () => {
           </button>
 
 
-          {/* Admin CMS Trigger */}
-          <button
-            onClick={() => setIsAdminOpen(true)}
-            title={t.nav.adminCms}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 hover:text-sky-600 bg-slate-100 hover:bg-sky-50 rounded-lg transition-colors border border-slate-200 whitespace-nowrap cursor-pointer"
-          >
-            <Settings className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden md:inline">{t.nav.adminCms}</span>
-          </button>
 
           {/* 1 Primary Action Button */}
           <button
@@ -160,16 +150,6 @@ export const Navbar: React.FC = () => {
               <span>{isAr ? 'Switch to English' : 'التحويل إلى العربية'}</span>
             </button>
 
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setIsAdminOpen(true);
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-slate-700 bg-slate-100 rounded-lg"
-            >
-              <Settings className="w-4 h-4 text-sky-600" />
-              <span>{t.nav.adminCms}</span>
-            </button>
           </div>
         </div>
       )}
