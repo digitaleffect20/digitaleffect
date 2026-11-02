@@ -5,13 +5,15 @@ import { X, Send, CheckCircle2, MessageSquare, Phone, Building2, User } from 'lu
 
 export const ConsultationModal: React.FC = () => {
   const { 
+    data,
     isConsultationOpen, 
     setIsConsultationOpen, 
     selectedPackageForInquiry, 
     setSelectedPackageForInquiry,
     activeSector,
     language,
-    t
+    t,
+    addInquiry
   } = useAgencyData();
 
   const isAr = language === 'ar';
@@ -44,13 +46,41 @@ export const ConsultationModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !phone) return;
+
+    const currentPkgName = selectedPackageForInquiry
+      ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn)
+      : undefined;
+
+    addInquiry({
+      name,
+      phone,
+      company: company.trim() || undefined,
+      sector,
+      packageName: currentPkgName,
+      budget,
+      notes: notes.trim() || undefined,
+    });
+
     setSubmitted(true);
   };
 
   const handleWhatsAppDirect = () => {
-    const packageName = selectedPackageForInquiry
+    const pkgLabel = selectedPackageForInquiry
       ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn)
       : (isAr ? 'استشارة استراتيجية عامة' : 'General Strategy Call');
+
+    if (name && phone && !submitted) {
+      addInquiry({
+        name,
+        phone,
+        company: company.trim() || undefined,
+        sector,
+        packageName: pkgLabel,
+        budget,
+        notes: notes.trim() || undefined,
+      });
+      setSubmitted(true);
+    }
 
     const message = isAr
       ? `مرحباً فريق ديجيتال إفكت،
@@ -68,7 +98,7 @@ Target Plan: ${packageName}
 Budget: ${budget}
 Notes: ${notes || 'Looking forward to reviewing strategic growth options'}`;
 
-    window.open(`https://wa.me/201002004567?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const packageName = selectedPackageForInquiry ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn) : null;

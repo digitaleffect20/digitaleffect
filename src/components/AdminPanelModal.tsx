@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
-import { CaseStudy, ServicePackage } from '../types';
+import { CaseStudy, ServicePackage, Inquiry } from '../types';
 import { 
   X, 
   Plus, 
@@ -13,7 +13,15 @@ import {
   Download, 
   Upload, 
   Check, 
-  Sparkles
+  Sparkles,
+  Inbox,
+  Phone,
+  MessageSquare,
+  Search,
+  CheckCircle2,
+  Calendar,
+  Building,
+  ExternalLink
 } from 'lucide-react';
 
 export const AdminPanelModal: React.FC = () => {
@@ -28,6 +36,9 @@ export const AdminPanelModal: React.FC = () => {
     addPackage, 
     updatePackage, 
     deletePackage,
+    updateInquiryStatus,
+    deleteInquiry,
+    clearAllInquiries,
     updateBanner,
     resetToDefaults,
     exportDataJson,
@@ -35,7 +46,9 @@ export const AdminPanelModal: React.FC = () => {
   } = useAgencyData();
 
   const isAr = language === 'ar';
-  const [activeTab, setActiveTab] = useState<'packages' | 'projects' | 'banner' | 'backup'>('packages');
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
+  const [inquiryStatusFilter, setInquiryStatusFilter] = useState<'all' | 'new' | 'contacted' | 'closed' | 'cancelled'>('all');
+  const [inquirySearch, setInquirySearch] = useState('');
 
   // Package Form States
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
@@ -313,6 +326,50 @@ export const AdminPanelModal: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const inquiries = data.inquiries || [];
+  const newInquiriesCount = inquiries.filter(i => i.status === 'new').length;
+
+  const filteredInquiries = inquiries.filter(item => {
+    if (inquiryStatusFilter !== 'all' && item.status !== inquiryStatusFilter) return false;
+    if (inquirySearch.trim()) {
+      const q = inquirySearch.toLowerCase();
+      const matchName = item.name.toLowerCase().includes(q);
+      const matchPhone = item.phone.toLowerCase().includes(q);
+      const matchCompany = (item.company || '').toLowerCase().includes(q);
+      const matchPkg = (item.packageName || '').toLowerCase().includes(q);
+      if (!matchName && !matchPhone && !matchCompany && !matchPkg) return false;
+    }
+    return true;
+  });
+
+  const exportInquiriesCsv = () => {
+    if (inquiries.length === 0) {
+      alert(isAr ? 'لا توجد طلبات لتصديرها حالياً.' : 'No inquiries to export.');
+      return;
+    }
+    const headers = ['التاريخ', 'اسم العميل', 'رقم الهاتف', 'الشركة', 'القطاع', 'الباقة المختارة', 'الميزانية', 'الحالة', 'ملاحظات'];
+    const rows = inquiries.map(inq => [
+      `"${new Date(inq.createdAt).toLocaleString(isAr ? 'ar-EG' : 'en-US')}"`,
+      `"${(inq.name || '').replace(/"/g, '""')}"`,
+      `"${(inq.phone || '').replace(/"/g, '""')}"`,
+      `"${(inq.company || '').replace(/"/g, '""')}"`,
+      inq.sector.toUpperCase(),
+      `"${(inq.packageName || '').replace(/"/g, '""')}"`,
+      `"${(inq.budget || '').replace(/"/g, '""')}"`,
+      inq.status,
+      `"${(inq.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `digital-effect-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    showNotice(isAr ? 'تم تصدير ملف الطلبات (Excel/CSV) بنجاح!' : 'Inquiries exported as CSV successfully!');
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
       <div 
@@ -352,6 +409,23 @@ export const AdminPanelModal: React.FC = () => {
 
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 px-6 pt-4 border-b border-slate-200 bg-slate-50 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('inquiries')}
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'inquiries'
+                ? 'border-sky-600 text-sky-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5" />
+            <span>{isAr ? `الطلبات والاستشارات (${inquiries.length})` : `Inquiries & Orders (${inquiries.length})`}</span>
+            {newInquiriesCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-white rounded-full font-bold animate-pulse">
+                {newInquiriesCount} {isAr ? 'جديد' : 'new'}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('packages')}
             className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
@@ -403,6 +477,244 @@ export const AdminPanelModal: React.FC = () => {
 
         {/* Tab Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* TAB 0: INQUIRIES & CLIENT ORDERS */}
+          {activeTab === 'inquiries' && (
+            <div className="space-y-6">
+              {/* Stats Overview */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                  <span className="text-[11px] font-bold text-slate-400 block">{isAr ? 'إجمالي الطلبات' : 'Total Leads'}</span>
+                  <span className="text-2xl font-black text-slate-900 mt-1 block">{inquiries.length}</span>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                  <span className="text-[11px] font-bold text-amber-600 block">{isAr ? 'طلبات جديدة' : 'New Leads'}</span>
+                  <span className="text-2xl font-black text-amber-700 mt-1 block">{newInquiriesCount}</span>
+                </div>
+                <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4">
+                  <span className="text-[11px] font-bold text-sky-600 block">{isAr ? 'قيد التواصل' : 'Contacted'}</span>
+                  <span className="text-2xl font-black text-sky-700 mt-1 block">
+                    {inquiries.filter(i => i.status === 'contacted').length}
+                  </span>
+                </div>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                  <span className="text-[11px] font-bold text-emerald-600 block">{isAr ? 'تم التعاقد' : 'Closed Deals'}</span>
+                  <span className="text-2xl font-black text-emerald-700 mt-1 block">
+                    {inquiries.filter(i => i.status === 'closed').length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Bar: Search, Status Filter & CSV Export */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="flex flex-wrap items-center gap-2 flex-1">
+                  <div className="relative flex-1 min-w-[180px]">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={inquirySearch}
+                      onChange={(e) => setInquirySearch(e.target.value)}
+                      placeholder={isAr ? 'بحث بالاسم، رقم الهاتف، الشركة...' : 'Search by name, phone, company...'}
+                      className="w-full ps-9 pe-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    />
+                  </div>
+
+                  <select
+                    value={inquiryStatusFilter}
+                    onChange={(e) => setInquiryStatusFilter(e.target.value as any)}
+                    className="py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium text-slate-700 cursor-pointer"
+                  >
+                    <option value="all">{isAr ? 'جميع الحالات' : 'All Statuses'}</option>
+                    <option value="new">{isAr ? 'جديد (لم يتم الرد)' : 'New'}</option>
+                    <option value="contacted">{isAr ? 'قيد التواصل' : 'Contacted'}</option>
+                    <option value="closed">{isAr ? 'تم التعاقد' : 'Closed Deal'}</option>
+                    <option value="cancelled">{isAr ? 'ملغي' : 'Cancelled'}</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={exportInquiriesCsv}
+                    className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                    title={isAr ? 'تصدير الطلبات إلى ملف Excel / CSV' : 'Export leads to Excel/CSV'}
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-600" />
+                    <span>{isAr ? 'تصدير Excel (CSV)' : 'Export CSV'}</span>
+                  </button>
+
+                  {inquiries.length > 0 && (
+                    <button
+                      onClick={() => {
+                        if (confirm(isAr ? 'هل أنت متأكد من مسح جميع الطلبات المسجلة؟' : 'Are you sure you want to clear all inquiries?')) {
+                          clearAllInquiries();
+                          showNotice(isAr ? 'تم مسح جميع الطلبات.' : 'All inquiries cleared.');
+                        }
+                      }}
+                      className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                      title={isAr ? 'مسح جميع الطلبات' : 'Clear all'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Inquiries Cards List */}
+              {filteredInquiries.length === 0 ? (
+                <div className="py-12 text-center bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-3">
+                  <Inbox className="w-10 h-10 text-slate-300 mx-auto" />
+                  <h5 className="text-sm font-bold text-slate-700">
+                    {inquiries.length === 0 
+                      ? (isAr ? 'لا توجد طلبات واردة حالياً' : 'No inquiries yet')
+                      : (isAr ? 'لا توجد نتائج مطابقة لبحثك' : 'No matching inquiries found')}
+                  </h5>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    {inquiries.length === 0
+                      ? (isAr ? 'عند قيام أي عميل باختيار باقة وإرسال نموذج الاستشارة، ستظهر بياناته هنا فوراً مع روابط التواصل الفوري.' : 'When any visitor selects a package and submits the consultation form, their details will appear here.')
+                      : (isAr ? 'جرّب تغيير كلمات البحث أو تصفية الحالات.' : 'Try adjusting your search query or status filter.')}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredInquiries.map((inq) => {
+                    const waPhone = inq.phone.replace(/^0/, '20').replace(/[^0-9]/g, '');
+                    const waText = encodeURIComponent(
+                      isAr 
+                        ? `مرحباً ${inq.name}، معك فريق ديجيتال إفكت بخصوص استفسارك عن باقة ${inq.packageName || 'التسويق'}.`
+                        : `Hello ${inq.name}, Digital Effect team reaching out regarding your inquiry.`
+                    );
+
+                    return (
+                      <div 
+                        key={inq.id}
+                        className={`p-4 sm:p-5 rounded-2xl border transition-all ${
+                          inq.status === 'new' 
+                            ? 'bg-amber-50/40 border-amber-200/80 shadow-2xs' 
+                            : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 font-black flex items-center justify-center text-sm shrink-0">
+                              {inq.name.slice(0, 1).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-sm font-bold text-slate-900">{inq.name}</h4>
+                                {inq.company && (
+                                  <span className="text-xs text-slate-500 flex items-center gap-1">
+                                    <Building className="w-3 h-3 text-slate-400" />
+                                    <span>{inq.company}</span>
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                                <Calendar className="w-3 h-3" />
+                                <span>{new Date(inq.createdAt).toLocaleString(isAr ? 'ar-EG' : 'en-US')}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg uppercase tracking-wider bg-slate-100 text-slate-700">
+                              {inq.sector.toUpperCase()}
+                            </span>
+
+                            <select
+                              value={inq.status}
+                              onChange={(e) => {
+                                updateInquiryStatus(inq.id, e.target.value as any);
+                                showNotice(isAr ? 'تم تحديث حالة الطلب!' : 'Inquiry status updated!');
+                              }}
+                              className={`text-[11px] font-bold py-1 px-2.5 rounded-lg border focus:outline-none cursor-pointer ${
+                                inq.status === 'new'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                  : inq.status === 'contacted'
+                                  ? 'bg-sky-100 text-sky-800 border-sky-300'
+                                  : inq.status === 'closed'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : 'bg-rose-100 text-rose-800 border-rose-300'
+                              }`}
+                            >
+                              <option value="new">{isAr ? 'جديد (لم يتم الرد)' : 'New'}</option>
+                              <option value="contacted">{isAr ? 'قيد التواصل' : 'Contacted'}</option>
+                              <option value="closed">{isAr ? 'تم التعاقد' : 'Closed Deal'}</option>
+                              <option value="cancelled">{isAr ? 'ملغي' : 'Cancelled'}</option>
+                            </select>
+
+                            <button
+                              onClick={() => {
+                                if (confirm(isAr ? 'حذف هذا الطلب؟' : 'Delete this inquiry?')) {
+                                  deleteInquiry(inq.id);
+                                  showNotice(isAr ? 'تم حذف الطلب.' : 'Inquiry deleted.');
+                                }
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                              title={isAr ? 'حذف الطلب' : 'Delete'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Order Details: Package, Budget, Notes */}
+                        <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-slate-400">{isAr ? 'الباقة المطلوبة:' : 'Target Plan:'}</span>
+                              <span className="font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-100">
+                                {inq.packageName || (isAr ? 'استشارة استراتيجية عامة' : 'General Strategy Call')}
+                              </span>
+                            </div>
+                            {inq.budget && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-400">{isAr ? 'الميزانية المقترحة:' : 'Budget:'}</span>
+                                <span className="font-semibold text-slate-800">{inq.budget}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {inq.notes && (
+                            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-slate-600 text-xs">
+                              <span className="font-bold text-slate-700 block mb-0.5">{isAr ? 'ملاحظات العميل:' : 'Client Notes:'}</span>
+                              <p className="line-clamp-3">{inq.notes}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Quick Direct Actions: WhatsApp & Call */}
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`https://wa.me/${waPhone}?text=${waText}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-2xs"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>{isAr ? 'محادثة واتساب مباشرة' : 'WhatsApp Client'}</span>
+                            </a>
+
+                            <a
+                              href={`tel:${inq.phone}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                            >
+                              <Phone className="w-3.5 h-3.5 text-slate-500" />
+                              <span className="font-mono">{inq.phone}</span>
+                            </a>
+                          </div>
+
+                          <div className="text-[11px] text-slate-400">
+                            ID: <span className="font-mono">{inq.id}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 1: PACKAGES & OFFERS */}
           {activeTab === 'packages' && (
             <div className="space-y-6">

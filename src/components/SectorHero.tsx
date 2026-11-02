@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export const SectorHero: React.FC = () => {
-  const { activeSector, setActiveSector, setIsConsultationOpen } = useAgencyData();
+  const { data, activeSector, setActiveSector, setIsConsultationOpen } = useAgencyData();
 
   // Sector specific narratives
   const sectorMeta: Record<
@@ -280,7 +280,7 @@ export const SectorHero: React.FC = () => {
               <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                 <span>تحدث مباشرة مع مستشار قطاعك:</span>
                 <a
-                  href={`https://wa.me/201002004567?text=${encodeURIComponent(`مرحباً ديجيتال إفكت، أود الاستفسار عن باقات وحلول قطاع ${activeSector.toUpperCase()}`)}`}
+                  href={`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(`مرحباً ديجيتال إفكت، أود الاستفسار عن باقات وحلول قطاع ${activeSector.toUpperCase()}`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="font-bold text-emerald-600 hover:text-emerald-700 inline-flex items-center gap-1"

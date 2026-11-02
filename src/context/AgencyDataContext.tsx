@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, Language, PageRoute } from '../types';
+import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, Language, PageRoute, Inquiry } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
 
@@ -31,13 +31,19 @@ interface AgencyContextType {
   updatePackage: (pkg: ServicePackage) => void;
   deletePackage: (id: string) => void;
 
+  // Leads & Inquiries Management
+  addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'>) => void;
+  updateInquiryStatus: (id: string, status: Inquiry['status']) => void;
+  deleteInquiry: (id: string) => void;
+  clearAllInquiries: () => void;
+
   updateBanner: (banner: PromoBanner) => void;
   resetToDefaults: () => void;
   exportDataJson: () => string;
   importDataJson: (jsonString: string) => boolean;
 }
 
-const STORAGE_KEY = 'digital_effect_agency_state_v7';
+const STORAGE_KEY = 'digital_effect_agency_state_v9';
 const LANG_STORAGE_KEY = 'digital_effect_language_v2';
 
 const AgencyDataContext = createContext<AgencyContextType | undefined>(undefined);
@@ -209,6 +215,40 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return false;
   };
 
+  const addInquiry = (inquiryData: Omit<Inquiry, 'id' | 'createdAt' | 'status'>) => {
+    const newInquiry: Inquiry = {
+      ...inquiryData,
+      id: `inq-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      status: 'new',
+    };
+    setData((prev) => ({
+      ...prev,
+      inquiries: [newInquiry, ...(prev.inquiries || [])],
+    }));
+  };
+
+  const updateInquiryStatus = (id: string, status: Inquiry['status']) => {
+    setData((prev) => ({
+      ...prev,
+      inquiries: (prev.inquiries || []).map((item) => (item.id === id ? { ...item, status } : item)),
+    }));
+  };
+
+  const deleteInquiry = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      inquiries: (prev.inquiries || []).filter((item) => item.id !== id),
+    }));
+  };
+
+  const clearAllInquiries = () => {
+    setData((prev) => ({
+      ...prev,
+      inquiries: [],
+    }));
+  };
+
   const t = TRANSLATIONS[language];
 
   return (
@@ -236,6 +276,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addPackage,
         updatePackage,
         deletePackage,
+        addInquiry,
+        updateInquiryStatus,
+        deleteInquiry,
+        clearAllInquiries,
         updateBanner,
         resetToDefaults,
         exportDataJson,

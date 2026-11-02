@@ -211,7 +211,7 @@ export const CaseStudiesSection: React.FC = () => {
               + إضافة مشروع جديد (لوحة الإدارة)
             </button>
             <a
-              href={`https://wa.me/201002004567?text=${encodeURIComponent(`مرحباً ديجيتال إفكت، أود الاطلاع على دراسات حالة إضافية لقطاع ${activeSector.toUpperCase()}`)}`}
+              href={`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(`مرحباً ديجيتال إفكت، أود الاطلاع على دراسات حالة إضافية لقطاع ${activeSector.toUpperCase()}`)}`}
               target="_blank"
               rel="noreferrer"
               className="px-5 py-2.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5"

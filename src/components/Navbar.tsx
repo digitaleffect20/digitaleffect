@@ -11,7 +11,7 @@ export const Navbar: React.FC = () => {
     setCurrentPage, 
     t, 
     setIsAdminOpen, 
-    setIsConsultationOpen 
+    setIsConsultationOpen
   } = useAgencyData();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -91,6 +91,7 @@ export const Navbar: React.FC = () => {
             <span>{isAr ? 'English' : 'العربية'}</span>
           </button>
 
+
           {/* Admin CMS Trigger */}
           <button
             onClick={() => setIsAdminOpen(true)}
@@ -147,6 +148,7 @@ export const Navbar: React.FC = () => {
           })}
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+
             <button
               onClick={() => {
                 toggleLanguage();

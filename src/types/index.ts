@@ -91,6 +91,19 @@ export interface PromoBanner {
   linkTextEn?: string;
 }
 
+export interface Inquiry {
+  id: string;
+  name: string;
+  phone: string;
+  company?: string;
+  sector: SectorType;
+  packageName?: string;
+  budget?: string;
+  notes?: string;
+  createdAt: string;
+  status: 'new' | 'contacted' | 'closed' | 'cancelled';
+}
+
 export interface AgencyDataState {
   caseStudies: CaseStudy[];
   packages: ServicePackage[];
@@ -106,4 +119,5 @@ export interface AgencyDataState {
     address: string;
     addressEn: string;
   };
+  inquiries?: Inquiry[];
 }
