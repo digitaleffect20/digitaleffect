@@ -34,8 +34,13 @@ import {
   Tag,
   Briefcase,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  TrendingUp,
+  DollarSign,
+  Eye,
+  BarChart3
 } from 'lucide-react';
+import { CrmAnalyticsHub } from '../components/CrmAnalyticsHub';
 
 export const AdminPortalPage: React.FC = () => {
   const { 
@@ -69,7 +74,8 @@ export const AdminPortalPage: React.FC = () => {
   const [localBypassAuth, setLocalBypassAuth] = useState(false);
 
   // Dashboard Active Tab
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'analytics' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
+  const [showAnalyticsInInquiriesTab, setShowAnalyticsInInquiriesTab] = useState(true);
 
   // Supabase Inquiries Data State
   const [cloudInquiries, setCloudInquiries] = useState<DbInquiry[]>([]);
@@ -642,6 +648,18 @@ export const AdminPortalPage: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('analytics')}
+              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'analytics'
+                  ? 'border-emerald-400 text-emerald-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isAr ? 'المبيعات والترافيك والجرافات' : 'Sales & Traffic Graphs'}</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('packages')}
               className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'packages'
@@ -733,6 +751,41 @@ export const AdminPortalPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Executive Analytics, Traffic & Sales Graphs */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowAnalyticsInInquiriesTab(prev => !prev)}
+                  className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-sky-600 cursor-pointer bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-colors"
+                >
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span>
+                    {showAnalyticsInInquiriesTab 
+                      ? (isAr ? 'إخفاء الرسوم البيانية ومؤشرات المبيعات' : 'Hide Graphs & Sales Analytics')
+                      : (isAr ? 'عرض الرسوم البيانية، الترافيك، والمبيعات' : 'Show Graphs, Traffic & Sales Analytics')}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('analytics')}
+                  className="text-xs font-bold text-sky-600 hover:text-sky-700 cursor-pointer flex items-center gap-1 hover:underline"
+                >
+                  <span>{isAr ? 'فتح لوحة التحليلات الموسعة' : 'Open Full Analytics View'}</span>
+                  <ArrowRight className={`w-3.5 h-3.5 ${isAr ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {showAnalyticsInInquiriesTab && (
+                <CrmAnalyticsHub
+                  inquiries={activeInquiriesList}
+                  packages={data.packages}
+                  isAr={isAr}
+                />
+              )}
+            </div>
 
             {/* Metrics Overview */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -998,6 +1051,19 @@ export const AdminPortalPage: React.FC = () => {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB: DEDICATED ANALYTICS, TRAFFIC & SALES HUB                      */}
+        {/* ================================================================== */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <CrmAnalyticsHub
+              inquiries={activeInquiriesList}
+              packages={data.packages}
+              isAr={isAr}
+            />
           </div>
         )}
 

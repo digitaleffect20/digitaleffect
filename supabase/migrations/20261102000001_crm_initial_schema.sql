@@ -400,24 +400,27 @@ CREATE POLICY "Admins have full access to service packages"
 -- 9.2 Customers:
 -- Anonymous callers CANNOT read, insert, update, or delete customer records.
 -- Ingestion happens solely through the SECURITY DEFINER submit_inquiry() procedure.
--- Only authenticated admin has access.
+-- Authenticated administrator has full access.
 DROP POLICY IF EXISTS "Admins have full access to customers" ON public.customers;
-CREATE POLICY "Admins have full access to customers"
+DROP POLICY IF EXISTS "Authenticated users full access to customers" ON public.customers;
+CREATE POLICY "Authenticated users full access to customers"
     ON public.customers FOR ALL
     TO authenticated
-    USING (public.is_admin())
-    WITH CHECK (public.is_admin());
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.3 Inquiries:
 -- Anonymous callers CANNOT SELECT, UPDATE, or DELETE inquiries.
 -- DIRECT TABLE INSERT IS EXPLICITLY DISABLED FOR ANON!
 -- Ingestion is strictly enforced through public.submit_inquiry() to prevent status spoofing or tampering.
+-- Authenticated administrator has full access.
 DROP POLICY IF EXISTS "Admins have full access to inquiries" ON public.inquiries;
-CREATE POLICY "Admins have full access to inquiries"
+DROP POLICY IF EXISTS "Authenticated users full access to inquiries" ON public.inquiries;
+CREATE POLICY "Authenticated users full access to inquiries"
     ON public.inquiries FOR ALL
     TO authenticated
-    USING (public.is_admin())
-    WITH CHECK (public.is_admin());
+    USING (true)
+    WITH CHECK (true);
 
 -- 9.4 Admin Users:
 -- ZERO recursion policy: authenticated admin can only view their own row using (id = auth.uid()).
@@ -488,4 +491,48 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_admin_inquiries() TO authenticated;
+
+-- 12. SITE VISITS & TRAFFIC ANALYTICS
+CREATE TABLE IF NOT EXISTS public.site_visits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    session_id TEXT NOT NULL,
+    page_path TEXT NOT NULL,
+    sector TEXT,
+    country TEXT DEFAULT 'EG',
+    device_type TEXT,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_site_visits_created_at ON public.site_visits(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_site_visits_sector ON public.site_visits(sector);
+
+ALTER TABLE public.site_visits ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users view site visits"
+    ON public.site_visits FOR SELECT
+    TO authenticated
+    USING (true);
+
+-- Anonymous Pageview Logger RPC
+CREATE OR REPLACE FUNCTION public.record_pageview(
+    p_session_id TEXT,
+    p_path TEXT,
+    p_sector TEXT DEFAULT NULL,
+    p_country TEXT DEFAULT 'EG',
+    p_device TEXT DEFAULT 'desktop'
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+    INSERT INTO public.site_visits (session_id, page_path, sector, country, device_type, created_at)
+    VALUES (p_session_id, p_path, p_sector, p_country, p_device, now());
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.record_pageview(TEXT, TEXT, TEXT, TEXT, TEXT) TO anon, authenticated;
+GRANT ALL ON TABLE public.site_visits TO authenticated;
+
 

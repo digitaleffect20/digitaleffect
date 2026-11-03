@@ -18,10 +18,18 @@ import { BsiziaCaseStudyPage } from './pages/BsiziaCaseStudyPage';
 import { AdminPortalPage } from './pages/AdminPortalPage';
 import { Building2, ShoppingBag, Stethoscope, Home, MessageSquare, Briefcase } from 'lucide-react';
 import { PageRoute } from './types';
+import { recordPageView } from './lib/analyticsTracker';
 
 const AppContent: React.FC = () => {
   const { currentPage, setCurrentPage, language, data } = useAgencyData();
   const isAr = language === 'ar';
+
+  // Automatically track visitor traffic per page
+  React.useEffect(() => {
+    if (currentPage !== 'admin') {
+      recordPageView(currentPage);
+    }
+  }, [currentPage]);
 
   if (currentPage === 'admin') {
     return <AdminPortalPage />;
