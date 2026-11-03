@@ -219,12 +219,19 @@ export async function fetchAdminInquiries(): Promise<{
   }
 
   try {
+    // 1. Primary: Direct Security Definer RPC (Zero permission issues)
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_admin_inquiries');
+    if (!rpcError && Array.isArray(rpcData)) {
+      return { data: rpcData as DbInquiry[] };
+    }
+
+    // 2. Secondary: Direct table query with customer join
     let { data, error } = await supabase
       .from('inquiries')
       .select('*, customer:customers(*)')
       .order('created_at', { ascending: false });
 
-    // Fallback: If joined query fails due to relation or customers RLS, fetch inquiries directly
+    // 3. Fallback: Direct table query without join
     if (error) {
       console.warn('Joined query with customers failed, trying direct select:', error.message);
       const fallback = await supabase

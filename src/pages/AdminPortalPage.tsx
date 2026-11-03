@@ -6,6 +6,7 @@ import {
   fetchAdminInquiries, 
   updateInquiryStatusInDb, 
   deleteInquiryFromDb, 
+  submitInquiry,
   DbInquiry 
 } from '../lib/supabase';
 import { 
@@ -15,7 +16,7 @@ import {
   ShieldCheck, 
   LogOut, 
   ArrowLeft, 
-  ArrowRight,
+  ArrowRight, 
   Inbox, 
   Search, 
   Calendar, 
@@ -50,7 +51,8 @@ export const AdminPortalPage: React.FC = () => {
     updateBanner,
     resetToDefaults,
     exportDataJson,
-    importDataJson
+    importDataJson,
+    clearAllInquiries
   } = useAgencyData();
 
   const isAr = language === 'ar';
@@ -247,7 +249,7 @@ export const AdminPortalPage: React.FC = () => {
     }
   };
 
-  // Safe Migration Tool: Migrate existing localStorage records into Supabase
+  // Safe Migration Tool: Migrate existing localStorage records into Supabase using Security Definer RPC
   const handleMigrateLocalInquiries = async () => {
     const localList = data.inquiries || [];
     if (localList.length === 0) {
@@ -265,30 +267,46 @@ export const AdminPortalPage: React.FC = () => {
 
     try {
       for (const item of localList) {
-        const { error } = await supabase.from('inquiries').insert({
-          raw_client_name: item.name,
-          raw_client_phone: item.phone,
-          raw_client_company: item.company || null,
-          raw_package_name: item.packageName || null,
+        const cleanPhone = item.phone.trim();
+        const digits = cleanPhone.replace(/\D/g, '');
+        const e164 = cleanPhone.startsWith('+') ? cleanPhone : (digits.startsWith('0') ? `+20${digits.slice(1)}` : `+20${digits}`);
+
+        const res = await submitInquiry({
+          name: item.name,
+          phone: cleanPhone,
+          phoneE164: e164,
+          phoneCountry: 'EG',
+          visitorCountry: 'Local Migration',
+          company: item.company || undefined,
           sector: item.sector,
-          budget: item.budget || null,
-          notes: item.notes || null,
-          status: item.status,
-          created_at: item.createdAt || new Date().toISOString(),
+          packageName: item.packageName || undefined,
+          budget: item.budget || undefined,
+          notes: item.notes || undefined,
         });
-        if (!error) successCount++;
+        if (res.success) successCount++;
       }
+
+      // Clear local storage inquiries so this banner never appears again!
+      clearAllInquiries();
 
       showNotice(
         isAr 
-          ? `تم ترحيل ${successCount} من ${localList.length} طلب إلى قاعدة البيانات السحابية بنجاح!` 
-          : `Migrated ${successCount} of ${localList.length} inquiries to Supabase!`
+          ? `تم نقل ${successCount} طلب إلى قاعدة البيانات السحابية المركزية بنجاح!` 
+          : `Migrated ${successCount} inquiries to cloud database successfully!`
       );
       loadInquiries();
     } catch (err: any) {
       alert(err?.message || 'Migration error');
     } finally {
       setIsMigratingLocal(false);
+    }
+  };
+
+  // Dismiss local temporary inquiries from localStorage without uploading
+  const handleDismissLocalInquiries = () => {
+    if (confirm(isAr ? 'هل تريد إخفاء وحذف هذه الطلبات التجريبية المحلية من المتصفح؟' : 'Dismiss and remove local temporary inquiries?')) {
+      clearAllInquiries();
+      showNotice(isAr ? 'تم إخفاء الطلبات المحلية.' : 'Local inquiries dismissed.');
     }
   };
 
@@ -695,14 +713,24 @@ export const AdminPortalPage: React.FC = () => {
                       : `Found ${(data.inquiries || []).length} local inquiries. Migrate them to Supabase to access them from any device.`}
                   </p>
                 </div>
-                <button
-                  onClick={handleMigrateLocalInquiries}
-                  disabled={isMigratingLocal}
-                  className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shrink-0 cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
-                >
-                  {isMigratingLocal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                  <span>{isAr ? 'ترحيل الطلبات السابقة إلى Supabase' : 'Migrate to Cloud'}</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={handleDismissLocalInquiries}
+                    disabled={isMigratingLocal}
+                    className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 rounded-xl transition-colors border border-slate-200 cursor-pointer disabled:opacity-50"
+                  >
+                    <span>{isAr ? 'حذف وتجاهل' : 'Dismiss'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleMigrateLocalInquiries}
+                    disabled={isMigratingLocal}
+                    className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5 shadow-xs"
+                  >
+                    {isMigratingLocal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    <span>{isAr ? 'ترحيل الطلبات السابقة إلى Supabase' : 'Migrate to Cloud'}</span>
+                  </button>
+                </div>
               </div>
             )}
 

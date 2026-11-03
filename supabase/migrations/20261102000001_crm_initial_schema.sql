@@ -431,8 +431,61 @@ CREATE POLICY "Admin view self"
     USING (id = auth.uid());
 
 -- 10. TABLE PRIVILEGES (GRANT)
--- Grant necessary table privileges to authenticated admin and anon
-GRANT SELECT ON public.service_packages TO anon, authenticated;
-GRANT ALL ON public.inquiries TO authenticated;
-GRANT ALL ON public.customers TO authenticated;
-GRANT SELECT ON public.admin_users TO authenticated;
+-- Grant necessary schema and table privileges to authenticated and anon
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
+
+-- 11. SECURITY DEFINER RPC: GET ADMIN INQUIRIES
+-- Bypasses table-level PostgREST grant issues while strictly enforcing admin authorization
+CREATE OR REPLACE FUNCTION public.get_admin_inquiries()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_result JSONB;
+BEGIN
+    -- Check if authenticated user is registered admin
+    IF NOT EXISTS (SELECT 1 FROM public.admin_users WHERE id = auth.uid()) THEN
+        RAISE EXCEPTION 'Unauthorized: User % is not a registered administrator', auth.uid();
+    END IF;
+
+    SELECT coalesce(jsonb_agg(
+        jsonb_build_object(
+            'id', i.id,
+            'customer_id', i.customer_id,
+            'package_id', i.package_id,
+            'raw_client_name', i.raw_client_name,
+            'raw_client_phone', i.raw_client_phone,
+            'client_phone_e164', i.client_phone_e164,
+            'phone_country', i.phone_country,
+            'visitor_country', i.visitor_country,
+            'idempotency_key', i.idempotency_key,
+            'raw_client_company', i.raw_client_company,
+            'raw_package_name', i.raw_package_name,
+            'sector', i.sector,
+            'budget', i.budget,
+            'notes', i.notes,
+            'internal_notes', i.internal_notes,
+            'status', i.status,
+            'source', i.source,
+            'created_at', i.created_at,
+            'updated_at', i.updated_at
+        ) ORDER BY i.created_at DESC
+    ), '[]'::jsonb)
+    INTO v_result
+    FROM public.inquiries i;
+
+    RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_admin_inquiries() TO authenticated;
+
