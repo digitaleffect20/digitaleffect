@@ -69,7 +69,7 @@ const AppContent: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-sky-500 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-sky-500 selection:text-white flex flex-col justify-between overflow-x-hidden">
       {/* Top Global Promotional Offer Banner */}
       <OfferBanner />
 

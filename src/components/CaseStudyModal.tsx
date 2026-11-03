@@ -42,13 +42,16 @@ export const CaseStudyModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-6 animate-in fade-in duration-200"
+      onClick={() => setSelectedCaseStudy(null)}
+    >
       <div 
-        className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden relative text-start flex flex-col max-h-[90vh]"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200/90 overflow-hidden relative text-start flex flex-col my-auto max-h-[calc(100dvh-1.25rem)] sm:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-6 sm:p-8 bg-slate-50 border-b border-slate-200 flex items-start justify-between gap-4">
+        <div className="sticky top-0 z-20 shrink-0 p-4 sm:p-6 bg-slate-50/95 backdrop-blur-md border-b border-slate-200 flex items-start justify-between gap-3 shadow-2xs">
           <div className="space-y-2 flex-1">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
               <span className="flex items-center gap-1 text-sky-700 font-bold">

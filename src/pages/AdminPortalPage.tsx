@@ -1660,13 +1660,16 @@ export const AdminPortalPage: React.FC = () => {
       {/* MODAL 1: PACKAGE EDITOR & SPECIFICATIONS MODAL                     */}
       {/* ================================================================== */}
       {editingPackage && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+        <div 
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setEditingPackage(null)}
+        >
           <div 
-            className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden relative text-start flex flex-col max-h-[90vh]"
+            className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200/90 overflow-hidden relative text-start flex flex-col my-auto max-h-[calc(100dvh-1.25rem)] sm:max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+            <div className="sticky top-0 z-30 shrink-0 p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between shadow-xs">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-4 h-4 text-sky-400" />
@@ -2030,13 +2033,16 @@ export const AdminPortalPage: React.FC = () => {
       {/* MODAL 2: PROMO CODE CREATE / EDIT MODAL                            */}
       {/* ================================================================== */}
       {isPromoModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+        <div 
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-6 animate-in fade-in duration-200"
+          onClick={() => setIsPromoModalOpen(false)}
+        >
           <div 
-            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden relative text-start flex flex-col"
+            className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200/90 overflow-hidden relative text-start flex flex-col my-auto max-h-[calc(100dvh-1.25rem)] sm:max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-5 bg-purple-900 text-white flex items-center justify-between">
+            <div className="sticky top-0 z-30 shrink-0 p-4 sm:p-5 bg-purple-900 text-white flex items-center justify-between shadow-xs">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <Tag className="w-4 h-4 text-purple-300" />

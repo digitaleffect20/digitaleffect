@@ -78,6 +78,26 @@ export const ConsultationModal: React.FC = () => {
     }
   }, [selectedPackageForInquiry]);
 
+  // Lock body scroll and listen for Escape key when modal is open
+  useEffect(() => {
+    if (!isConsultationOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isConsultationOpen]);
+
   if (!isConsultationOpen) return null;
 
   const handleClose = () => {
@@ -114,7 +134,12 @@ export const ConsultationModal: React.FC = () => {
         finalPrice: result.finalPrice,
         promo: result.promo,
       });
-      setPromoMessage(result.message);
+      const successMsg = selectedPackageForInquiry
+        ? result.message
+        : (isAr
+            ? `تم تفعيل كود الخصم (${clean}) بنجاح! سيتم تطبيق خصم ${result.promo?.discountType === 'percentage' ? `${result.promo.discountValue}%` : `${result.promo?.discountValue.toLocaleString('ar-EG')} ج.م`} على خطتك وتعاقدك.`
+            : `Promo code (${clean}) applied successfully!`);
+      setPromoMessage(successMsg);
       setPromoError(null);
     }
   };
@@ -246,36 +271,41 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-6 animate-in fade-in duration-200"
+      onClick={handleClose}
+    >
       <div 
-        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden relative text-start flex flex-col"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200/90 overflow-hidden relative text-start flex flex-col my-auto max-h-[calc(100dvh-1.25rem)] sm:max-h-[90vh] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
-        <div className="p-6 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div className="space-y-1">
+        {/* Modal Header - Sticky at the top so it never disappears on mobile */}
+        <div className="sticky top-0 z-30 px-4 py-3 sm:px-6 sm:py-4 bg-slate-50/95 backdrop-blur-md border-b border-slate-200/90 flex items-center justify-between gap-3 shrink-0 shadow-2xs">
+          <div className="space-y-0.5 min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
-              <h3 className="text-base sm:text-lg font-bold text-slate-900">
+              <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0" />
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 truncate">
                 {packageName ? `${m.selectedPkg} ${packageName}` : m.consultationTitle}
               </h3>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-[11px] sm:text-xs text-slate-500 truncate sm:whitespace-normal">
               {m.consultationDesc}
             </p>
           </div>
 
           <button
+            type="button"
             onClick={handleClose}
-            className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-200/60 transition-colors cursor-pointer"
-            aria-label="Close"
+            className="p-2 sm:p-2.5 text-slate-500 hover:text-slate-900 bg-white sm:bg-slate-100/80 rounded-full border border-slate-200 hover:bg-slate-200/80 transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
+            aria-label={isAr ? 'إغلاق النافذة' : 'Close modal'}
+            title={isAr ? 'إغلاق' : 'Close'}
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-slate-700" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 sm:p-8">
+        {/* Content - Scrollable on mobile and desktop */}
+        <div className="p-4 sm:p-7 overflow-y-auto overscroll-contain flex-1">
           {submitted ? (
             <div className="py-8 text-center space-y-4">
               <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
@@ -305,97 +335,45 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Package Summary & Promo Code Box */}
+              {/* Package Summary Header (Clean) */}
               {selectedPackageForInquiry && (
-                <div className="bg-gradient-to-br from-sky-50 via-white to-slate-50 rounded-2xl border border-sky-100 p-3.5 space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-bold text-sky-900">{m.selectedPkg} </span>
-                      <span className="text-sky-700 font-semibold">{packageName}</span>
+                <div className="bg-gradient-to-r from-sky-50 via-sky-50/60 to-indigo-50/50 rounded-2xl border border-sky-100 p-3.5 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
+                      ★
                     </div>
                     <div>
+                      <div className="text-[11px] font-bold text-sky-800 uppercase tracking-wider">{m.selectedPkg}</div>
+                      <div className="text-xs font-bold text-slate-800">{packageName}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-end">
                       {appliedPromo ? (
-                        <div className="text-end">
-                          <div className="text-xs text-slate-400 line-through">
+                        <>
+                          <div className="text-[11px] text-slate-400 line-through">
                             {selectedPackageForInquiry.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? selectedPackageForInquiry.currency : selectedPackageForInquiry.currencyEn}
                           </div>
                           <div className="text-sm font-black text-emerald-600 tabular-nums">
                             {appliedPromo.finalPrice.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? selectedPackageForInquiry.currency : selectedPackageForInquiry.currencyEn}
                           </div>
-                        </div>
+                        </>
                       ) : (
-                        <span className="font-black text-sky-900 tabular-nums text-sm">
+                        <div className="text-sm font-black text-sky-900 tabular-nums">
                           {selectedPackageForInquiry.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? selectedPackageForInquiry.currency : selectedPackageForInquiry.currencyEn}
-                        </span>
+                        </div>
                       )}
                     </div>
-                  </div>
-
-                  {/* Promo Code Input / Applied Badge */}
-                  <div className="pt-2.5 border-t border-sky-100/80">
-                    {appliedPromo ? (
-                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs animate-in fade-in">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] shrink-0">✓</span>
-                          <div>
-                            <span className="font-bold text-emerald-900">{appliedPromo.code}</span>
-                            <span className="text-emerald-700 mx-1.5">•</span>
-                            <span className="text-emerald-700 font-semibold">
-                              {isAr ? `وفرت ${appliedPromo.discountAmount.toLocaleString('ar-EG')} ج.م` : `Saved ${appliedPromo.discountAmount.toLocaleString('en-US')} EGP`}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleRemovePromo}
-                          className="text-emerald-700 hover:text-rose-600 text-[11px] font-bold underline cursor-pointer shrink-0"
-                        >
-                          {isAr ? 'إلغاء الكود' : 'Remove'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <div className="relative flex-1">
-                            <Tag className="w-3.5 h-3.5 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
-                            <input
-                              type="text"
-                              value={promoCodeInput}
-                              onChange={(e) => {
-                                setPromoCodeInput(e.target.value.toUpperCase());
-                                if (promoError) setPromoError(null);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleApplyPromo();
-                                }
-                              }}
-                              placeholder={isAr ? 'هل لديك كود خصم؟ (مثال: EFFECT20)' : 'Have a promo code? (e.g. EFFECT20)'}
-                              className="w-full text-xs ps-8 pe-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-sky-500 font-mono uppercase tracking-wider placeholder:normal-case placeholder:font-sans placeholder:tracking-normal"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleApplyPromo}
-                            className="px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shrink-0"
-                          >
-                            {isAr ? 'تطبيق' : 'Apply'}
-                          </button>
-                        </div>
-
-                        {promoError && (
-                          <p className="text-[11px] font-semibold text-rose-600 ps-1 animate-in fade-in">
-                            {promoError}
-                          </p>
-                        )}
-                        {promoMessage && !promoError && (
-                          <p className="text-[11px] font-semibold text-emerald-600 ps-1 animate-in fade-in">
-                            {promoMessage}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPackageForInquiry(null);
+                        handleRemovePromo();
+                      }}
+                      className="text-[11px] text-slate-400 hover:text-rose-600 underline font-semibold transition-colors cursor-pointer shrink-0"
+                    >
+                      {isAr ? 'تغيير' : 'Change'}
+                    </button>
                   </div>
                 </div>
               )}
@@ -499,6 +477,35 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
                 </select>
               </div>
 
+              {/* Target Package Selector for General Registration */}
+              {!selectedPackageForInquiry && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span>{isAr ? 'الباقة المستهدفة (اختياري)' : 'Target Package (Optional)'}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      {isAr ? '(يمكنك اختيار باقة محددة أو استشارة مخصصة)' : '(Select a specific package or custom plan)'}
+                    </span>
+                  </label>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const found = data.packages.find((p) => p.id === e.target.value);
+                      if (found) {
+                        setSelectedPackageForInquiry(found);
+                      }
+                    }}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 bg-slate-50 focus:bg-white transition-colors cursor-pointer"
+                  >
+                    <option value="">{isAr ? 'استشارة استراتيجية عامة وخطة عمل مخصصة' : 'General Custom Strategy Consultation'}</option>
+                    {data.packages.map((pkg) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {isAr ? pkg.name : pkg.nameEn} — ({pkg.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? pkg.currency : pkg.currencyEn} / {pkg.sector.toUpperCase()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">
                   {m.notesLabel}
@@ -512,6 +519,99 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
                 />
               </div>
 
+              {/* Bottom Promo Code Section (كود الخصم في أسفل النموذج) */}
+              <div className="bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50 rounded-2xl border border-purple-100/90 p-3.5 space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-purple-600" />
+                    <span>{isAr ? 'هل لديك كود خصم / برومو كود؟' : 'Have a Promo Code?'}</span>
+                  </label>
+                  {appliedPromo && (
+                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      <span>{isAr ? 'تم تفعيل الكود بنجاح' : 'Promo Active'}</span>
+                    </span>
+                  )}
+                </div>
+
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 text-xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] shrink-0 font-bold">✓</span>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-emerald-900 font-mono tracking-wider">{appliedPromo.code}</span>
+                          <span className="text-emerald-700">•</span>
+                          <span className="text-emerald-700 font-semibold">
+                            {selectedPackageForInquiry
+                              ? (isAr ? `وفرت ${appliedPromo.discountAmount.toLocaleString('ar-EG')} ج.م` : `Saved ${appliedPromo.discountAmount.toLocaleString('en-US')} EGP`)
+                              : (appliedPromo.promo?.discountType === 'percentage'
+                                  ? (isAr ? `خصم معتمد ${appliedPromo.promo.discountValue}%` : `${appliedPromo.promo.discountValue}% discount approved`)
+                                  : (isAr ? `قسيمة خصم بقيمة ${appliedPromo.promo?.discountValue.toLocaleString('ar-EG')} ج.م` : `${appliedPromo.promo?.discountValue.toLocaleString('en-US')} EGP voucher approved`))}
+                          </span>
+                        </div>
+                        {selectedPackageForInquiry && (
+                          <div className="text-[11px] text-emerald-800 font-medium mt-0.5">
+                            {isAr ? `السعر النهائي: ${appliedPromo.finalPrice.toLocaleString('ar-EG')} ج.م (بدلاً من ${selectedPackageForInquiry.price.toLocaleString('ar-EG')} ج.م)` : `Final price: ${appliedPromo.finalPrice.toLocaleString('en-US')} EGP instead of ${selectedPackageForInquiry.price.toLocaleString('en-US')} EGP`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="text-emerald-700 hover:text-rose-600 text-[11px] font-bold underline cursor-pointer shrink-0 transition-colors"
+                    >
+                      {isAr ? 'إلغاء الكود' : 'Remove'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="w-3.5 h-3.5 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={promoCodeInput}
+                          onChange={(e) => {
+                            setPromoCodeInput(e.target.value.toUpperCase());
+                            if (promoError) setPromoError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleApplyPromo();
+                            }
+                          }}
+                          placeholder={isAr ? 'اكتب كود الخصم (مثال: EFFECT20)' : 'Enter promo code (e.g. EFFECT20)'}
+                          className="w-full text-xs ps-8 pe-3 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-purple-500 font-mono uppercase tracking-wider placeholder:normal-case placeholder:font-sans placeholder:tracking-normal placeholder:text-slate-400"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleApplyPromo}
+                        className="px-4 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950 rounded-xl transition-colors cursor-pointer shrink-0 shadow-2xs"
+                      >
+                        {isAr ? 'تطبيق الكود' : 'Apply'}
+                      </button>
+                    </div>
+
+                    {promoError && (
+                      <p className="text-[11px] font-semibold text-rose-600 ps-1 animate-in fade-in flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{promoError}</span>
+                      </p>
+                    )}
+                    {promoMessage && !promoError && (
+                      <p className="text-[11px] font-semibold text-emerald-600 ps-1 animate-in fade-in flex items-center gap-1">
+                        <Check className="w-3 h-3 shrink-0" />
+                        <span>{promoMessage}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {submitError && (
                 <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
@@ -519,34 +619,45 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
                 </div>
               )}
 
-              <div className="pt-2 flex items-center justify-between gap-3 flex-wrap">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2.5 flex-wrap">
                 <button
                   type="button"
                   onClick={handleWhatsAppDirect}
                   disabled={isSubmitting}
-                  className="px-4 py-3 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors border border-emerald-200 inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors border border-emerald-200 inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <MessageSquare className="w-4 h-4 text-emerald-600" />
                   <span>{m.whatsAppDirect}</span>
                 </button>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-all shadow-md inline-flex items-center gap-2 cursor-pointer ms-auto disabled:opacity-50"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{isAr ? 'جاري الحفظ الآمن...' : 'Saving...'}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{m.submitBtn}</span>
-                      <Send className="w-3.5 h-3.5" />
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2 ms-auto">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                    className="px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-semibold text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  >
+                    {isAr ? 'إلغاء وإغلاق' : 'Cancel'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-all shadow-md inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{isAr ? 'جاري الحفظ...' : 'Saving...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{m.submitBtn}</span>
+                        <Send className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           )}
