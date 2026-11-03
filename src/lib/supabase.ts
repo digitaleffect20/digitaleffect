@@ -72,6 +72,9 @@ export interface InquirySubmissionPayload {
   packageName?: string;
   budget?: string;
   notes?: string;
+  promoCode?: string;
+  discountAmount?: number;
+  finalPrice?: number;
 }
 
 /**
@@ -146,6 +149,12 @@ export async function submitInquiry(payload: InquirySubmissionPayload): Promise<
     lastSubmissionTimestamp = now;
     lastSubmissionPhone = cleanPhone;
 
+    let finalNotes = cleanNotes;
+    if (payload.promoCode) {
+      const promoTag = `[كود الخصم: ${payload.promoCode}${payload.discountAmount ? ` | وفر: ${payload.discountAmount.toLocaleString()} ج.م` : ''}${payload.finalPrice ? ` | السعر بعد الخصم: ${payload.finalPrice.toLocaleString()} ج.م` : ''}]`;
+      finalNotes = finalNotes ? `${finalNotes}\n${promoTag}` : promoTag;
+    }
+
     // Hardened RPC call with international phone, country tracking, and idempotency key
     const { data: rpcInquiryId, error: rpcError } = await supabase.rpc('submit_inquiry', {
       p_name: cleanName,
@@ -158,7 +167,7 @@ export async function submitInquiry(payload: InquirySubmissionPayload): Promise<
       p_package_id: cleanPackageId,
       p_package_name: cleanPackageName,
       p_budget: cleanBudget,
-      p_notes: cleanNotes,
+      p_notes: finalNotes,
       p_email: payload.email?.trim() || null,
       p_idempotency_key: payload.idempotencyKey || null,
     });

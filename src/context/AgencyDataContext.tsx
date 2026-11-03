@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, Language, PageRoute, Inquiry } from '../types';
+import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, Language, PageRoute, Inquiry, PromoCode } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
 
@@ -30,6 +30,24 @@ interface AgencyContextType {
   addPackage: (pkg: Omit<ServicePackage, 'id'>) => void;
   updatePackage: (pkg: ServicePackage) => void;
   deletePackage: (id: string) => void;
+
+  // Promo Codes System
+  addPromoCode: (promo: Omit<PromoCode, 'id' | 'createdAt' | 'usageCount'>) => void;
+  updatePromoCode: (promo: PromoCode) => void;
+  deletePromoCode: (id: string) => void;
+  togglePromoCodeStatus: (id: string) => void;
+  recordPromoUsage: (codeStr: string) => void;
+  validatePromoCode: (
+    codeStr: string,
+    price: number,
+    sector?: SectorType
+  ) => {
+    isValid: boolean;
+    discountAmount: number;
+    finalPrice: number;
+    message: string;
+    promo?: PromoCode;
+  };
 
   // Leads & Inquiries Management
   addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'>) => void;
@@ -84,6 +102,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.caseStudies && parsed.packages) {
+          if (!parsed.promoCodes || parsed.promoCodes.length === 0) {
+            parsed.promoCodes = INITIAL_AGENCY_DATA.promoCodes || [];
+          }
           return parsed;
         }
       }
@@ -189,6 +210,160 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
   };
 
+  // Promo Codes CRUD
+  const addPromoCode = (promoData: Omit<PromoCode, 'id' | 'createdAt' | 'usageCount'>) => {
+    const cleanCode = promoData.code.trim().toUpperCase();
+    const newPromo: PromoCode = {
+      ...promoData,
+      code: cleanCode,
+      id: `promo-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      usageCount: 0,
+    };
+    setData((prev) => ({
+      ...prev,
+      promoCodes: [newPromo, ...(prev.promoCodes || [])],
+    }));
+  };
+
+  const updatePromoCode = (promo: PromoCode) => {
+    const cleanPromo: PromoCode = {
+      ...promo,
+      code: promo.code.trim().toUpperCase(),
+    };
+    setData((prev) => ({
+      ...prev,
+      promoCodes: (prev.promoCodes || []).map((p) => (p.id === promo.id ? cleanPromo : p)),
+    }));
+  };
+
+  const deletePromoCode = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      promoCodes: (prev.promoCodes || []).filter((p) => p.id !== id),
+    }));
+  };
+
+  const togglePromoCodeStatus = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      promoCodes: (prev.promoCodes || []).map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p)),
+    }));
+  };
+
+  const recordPromoUsage = (codeStr: string) => {
+    const clean = codeStr.trim().toUpperCase();
+    setData((prev) => ({
+      ...prev,
+      promoCodes: (prev.promoCodes || []).map((p) =>
+        p.code.toUpperCase() === clean ? { ...p, usageCount: (p.usageCount || 0) + 1 } : p
+      ),
+    }));
+  };
+
+  const validatePromoCode = (
+    codeStr: string,
+    price: number,
+    sector?: SectorType
+  ): {
+    isValid: boolean;
+    discountAmount: number;
+    finalPrice: number;
+    message: string;
+    promo?: PromoCode;
+  } => {
+    const clean = codeStr.trim().toUpperCase();
+    if (!clean) {
+      return {
+        isValid: false,
+        discountAmount: 0,
+        finalPrice: price,
+        message: language === 'ar' ? 'يرجى إدخال كود الخصم.' : 'Please enter a promo code.',
+      };
+    }
+
+    const promoList = data.promoCodes || [];
+    const found = promoList.find((p) => p.code.toUpperCase() === clean);
+
+    if (!found) {
+      return {
+        isValid: false,
+        discountAmount: 0,
+        finalPrice: price,
+        message: language === 'ar' ? 'كود الخصم غير صحيح أو غير موجود.' : 'Invalid promo code.',
+      };
+    }
+
+    if (!found.isActive) {
+      return {
+        isValid: false,
+        discountAmount: 0,
+        finalPrice: price,
+        message: language === 'ar' ? 'عفواً، تم إيقاف هذا الكود حالياً.' : 'This promo code is currently disabled.',
+      };
+    }
+
+    if (found.expiresAt) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (today > found.expiresAt) {
+        return {
+          isValid: false,
+          discountAmount: 0,
+          finalPrice: price,
+          message: language === 'ar' ? 'عفواً، لقد انتهت صلاحية هذا الكود.' : 'This promo code has expired.',
+        };
+      }
+    }
+
+    if (found.maxUsage && found.usageCount >= found.maxUsage) {
+      return {
+        isValid: false,
+        discountAmount: 0,
+        finalPrice: price,
+        message: language === 'ar' ? 'عفواً، تم استنفاد الحد الأقصى لاستخدام هذا الكود.' : 'Promo code maximum usage reached.',
+      };
+    }
+
+    if (found.applicableSector && found.applicableSector !== 'all' && sector && sector !== 'all' && found.applicableSector !== sector) {
+      return {
+        isValid: false,
+        discountAmount: 0,
+        finalPrice: price,
+        message: language === 'ar' ? `هذا الكود مخصص لقطاع (${found.applicableSector.toUpperCase()}) فقط.` : `Only valid for ${found.applicableSector.toUpperCase()} sector.`,
+      };
+    }
+
+    if (found.minSpend && price < found.minSpend) {
+      return {
+        isValid: false,
+        discountAmount: 0,
+        finalPrice: price,
+        message: language === 'ar'
+          ? `الحد الأدنى لقيمة الباقة للاستفادة من هذا الكود هو ${found.minSpend.toLocaleString('ar-EG')} ج.م.`
+          : `Minimum package price for this promo code is ${found.minSpend.toLocaleString('en-US')} EGP.`,
+      };
+    }
+
+    let discountAmount = 0;
+    if (found.discountType === 'percentage') {
+      discountAmount = Math.round((price * found.discountValue) / 100);
+    } else {
+      discountAmount = Math.min(price, found.discountValue);
+    }
+
+    const finalPrice = Math.max(0, price - discountAmount);
+
+    return {
+      isValid: true,
+      discountAmount,
+      finalPrice,
+      message: language === 'ar'
+        ? `تم تطبيق الخصم بنجاح! وفرت ${discountAmount.toLocaleString('ar-EG')} ج.م.`
+        : `Promo code applied! You saved ${discountAmount.toLocaleString('en-US')} EGP.`,
+      promo: found,
+    };
+  };
+
   const updateBanner = (banner: PromoBanner) => {
     setData((prev) => ({
       ...prev,
@@ -279,6 +454,12 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addPackage,
         updatePackage,
         deletePackage,
+        addPromoCode,
+        updatePromoCode,
+        deletePromoCode,
+        togglePromoCodeStatus,
+        recordPromoUsage,
+        validatePromoCode,
         addInquiry,
         updateInquiryStatus,
         deleteInquiry,

@@ -66,6 +66,8 @@ export interface ServicePackage {
   hasOffer?: boolean;
   offerNote?: string;
   offerNoteEn?: string;
+  offerExpiryDate?: string; // ISO date / YYYY-MM-DD for limited-time offers
+  discountPercentage?: number; // e.g. 15, 20
   tagline: string;
   taglineEn: string;
   idealFor: string;
@@ -79,6 +81,22 @@ export interface ServicePackage {
   frequency?: string;
   frequencyEn?: string;
   hasMonthlyPlan?: boolean;
+}
+
+export interface PromoCode {
+  id: string;
+  code: string; // e.g. 'EFFECT20' (uppercase)
+  title: string;
+  titleEn: string;
+  discountType: 'percentage' | 'fixed'; // percentage or fixed EGP
+  discountValue: number; // e.g. 20 (for 20%) or 3000 (for 3000 EGP)
+  minSpend?: number; // minimum package price required, e.g. 15000
+  expiresAt?: string; // YYYY-MM-DD
+  isActive: boolean;
+  usageCount: number;
+  maxUsage?: number; // optional limit
+  applicableSector?: SectorType; // 'all' | 'b2b' | 'b2c' | 'medical'
+  createdAt: string;
 }
 
 export interface PromoBanner {
@@ -95,11 +113,18 @@ export interface Inquiry {
   id: string;
   name: string;
   phone: string;
+  phoneE164?: string;
+  phoneCountry?: string;
+  visitorCountry?: string;
   company?: string;
   sector: SectorType;
+  packageId?: string;
   packageName?: string;
   budget?: string;
   notes?: string;
+  promoCode?: string;
+  discountAmount?: number;
+  finalPrice?: number;
   createdAt: string;
   status: 'new' | 'contacted' | 'closed' | 'cancelled';
 }
@@ -107,6 +132,7 @@ export interface Inquiry {
 export interface AgencyDataState {
   caseStudies: CaseStudy[];
   packages: ServicePackage[];
+  promoCodes?: PromoCode[];
   banner: PromoBanner;
   agencyInfo: {
     name: string;
@@ -121,3 +147,4 @@ export interface AgencyDataState {
   };
   inquiries?: Inquiry[];
 }
+

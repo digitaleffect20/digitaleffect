@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
-import { SectorType } from '../types';
-import { X, Send, CheckCircle2, MessageSquare, Phone, Building2, User, Loader2, AlertCircle } from 'lucide-react';
+import { SectorType, PromoCode } from '../types';
+import { X, Send, CheckCircle2, MessageSquare, Phone, Building2, User, Loader2, AlertCircle, Tag, Check, Sparkles } from 'lucide-react';
 import { submitInquiry } from '../lib/supabase';
 import { InternationalPhoneInput } from './InternationalPhoneInput';
 import { CountryCode } from 'libphonenumber-js';
@@ -16,7 +16,9 @@ export const ConsultationModal: React.FC = () => {
     setSelectedPackageForInquiry,
     activeSector,
     language,
-    t
+    t,
+    validatePromoCode,
+    recordPromoUsage,
   } = useAgencyData();
 
   const isAr = language === 'ar';
@@ -40,6 +42,18 @@ export const ConsultationModal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isCloudStored, setIsCloudStored] = useState(false);
+
+  // Promo Code States
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discountAmount: number;
+    finalPrice: number;
+    promo?: PromoCode;
+  } | null>(null);
+  const [promoMessage, setPromoMessage] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
 
   // Cloudflare GeoIP Auto-Detection on open
   useEffect(() => {
@@ -71,8 +85,45 @@ export const ConsultationModal: React.FC = () => {
     setSelectedPackageForInquiry(null);
     setSubmitted(false);
     setSubmitError(null);
+    setAppliedPromo(null);
+    setPromoMessage(null);
+    setPromoError(null);
+    setPromoCodeInput('');
     // Refresh idempotency key for the next session
     setIdempotencyKey(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}`);
+  };
+
+  const handleApplyPromo = () => {
+    const clean = promoCodeInput.trim().toUpperCase();
+    if (!clean) {
+      setPromoError(isAr ? 'يرجى إدخال كود الخصم أولاً.' : 'Please enter a promo code.');
+      return;
+    }
+
+    const basePrice = selectedPackageForInquiry ? selectedPackageForInquiry.price : 20000;
+    const result = validatePromoCode(clean, basePrice, sector);
+
+    if (!result.isValid) {
+      setPromoError(result.message);
+      setAppliedPromo(null);
+      setPromoMessage(null);
+    } else {
+      setAppliedPromo({
+        code: clean,
+        discountAmount: result.discountAmount,
+        finalPrice: result.finalPrice,
+        promo: result.promo,
+      });
+      setPromoMessage(result.message);
+      setPromoError(null);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoMessage(null);
+    setPromoError(null);
+    setPromoCodeInput('');
   };
 
   const packageName = selectedPackageForInquiry ? (isAr ? selectedPackageForInquiry.name : selectedPackageForInquiry.nameEn) : null;
@@ -111,6 +162,9 @@ export const ConsultationModal: React.FC = () => {
         packageName: packageName || undefined,
         budget,
         notes: notes.trim() || undefined,
+        promoCode: appliedPromo?.code,
+        discountAmount: appliedPromo?.discountAmount,
+        finalPrice: appliedPromo?.finalPrice,
       });
 
       // Strict enforcement: Never show success unless confirmed by database!
@@ -118,6 +172,10 @@ export const ConsultationModal: React.FC = () => {
         setSubmitError(res.error || (isAr ? 'تعذر تسجيل الطلب في قاعدة البيانات المركزية. يرجى استخدام زر الواتساب للتواصل الفوري.' : 'Failed to save inquiry to database.'));
         setIsSubmitting(false);
         return;
+      }
+
+      if (appliedPromo) {
+        recordPromoUsage(appliedPromo.code);
       }
 
       setIsCloudStored(true);
@@ -151,8 +209,22 @@ export const ConsultationModal: React.FC = () => {
         packageName: pkgLabel,
         budget,
         notes: notes.trim() || undefined,
+        promoCode: appliedPromo?.code,
+        discountAmount: appliedPromo?.discountAmount,
+        finalPrice: appliedPromo?.finalPrice,
       }).catch(console.error);
+
+      if (appliedPromo) {
+        recordPromoUsage(appliedPromo.code);
+      }
     }
+
+    const promoInfoAr = appliedPromo 
+      ? `\nكود الخصم المطبق: ${appliedPromo.code}\nقيمة الخصم: ${appliedPromo.discountAmount.toLocaleString('ar-EG')} ج.م\nالسعر بعد الخصم: ${appliedPromo.finalPrice.toLocaleString('ar-EG')} ج.م`
+      : '';
+    const promoInfoEn = appliedPromo 
+      ? `\nPromo Code Applied: ${appliedPromo.code}\nDiscount: ${appliedPromo.discountAmount.toLocaleString('en-US')} EGP\nFinal Price: ${appliedPromo.finalPrice.toLocaleString('en-US')} EGP`
+      : '';
 
     const message = isAr
       ? `مرحباً فريق ديجيتال إفكت،
@@ -160,14 +232,14 @@ export const ConsultationModal: React.FC = () => {
 النشاط / الشركة: ${company.trim() || 'غير محدد'}
 القطاع: ${sector.toUpperCase()}
 الباقة المستهدفة: ${pkgLabel}
-الميزانية المقترحة: ${budget}
+الميزانية المقترحة: ${budget}${promoInfoAr}
 ملاحظات: ${notes.trim() || 'أود مناقشة خطة العمل معكم'}`
       : `Hello Digital Effect Team,
 Name: ${cleanName || 'Interested Client'}
 Company: ${company.trim() || 'Not Specified'}
 Sector: ${sector.toUpperCase()}
 Target Plan: ${pkgLabel}
-Budget: ${budget}
+Budget: ${budget}${promoInfoEn}
 Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'}`;
 
     window.open(`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
@@ -233,15 +305,98 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Package Summary & Promo Code Box */}
               {selectedPackageForInquiry && (
-                <div className="p-3 bg-sky-50 rounded-xl border border-sky-100 text-xs flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-sky-900">{m.selectedPkg} </span>
-                    <span className="text-sky-700">{packageName}</span>
+                <div className="bg-gradient-to-br from-sky-50 via-white to-slate-50 rounded-2xl border border-sky-100 p-3.5 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-sky-900">{m.selectedPkg} </span>
+                      <span className="text-sky-700 font-semibold">{packageName}</span>
+                    </div>
+                    <div>
+                      {appliedPromo ? (
+                        <div className="text-end">
+                          <div className="text-xs text-slate-400 line-through">
+                            {selectedPackageForInquiry.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? selectedPackageForInquiry.currency : selectedPackageForInquiry.currencyEn}
+                          </div>
+                          <div className="text-sm font-black text-emerald-600 tabular-nums">
+                            {appliedPromo.finalPrice.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? selectedPackageForInquiry.currency : selectedPackageForInquiry.currencyEn}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-black text-sky-900 tabular-nums text-sm">
+                          {selectedPackageForInquiry.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? selectedPackageForInquiry.currency : selectedPackageForInquiry.currencyEn}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="font-black text-sky-900 tabular-nums">
-                    {selectedPackageForInquiry.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? selectedPackageForInquiry.currency : selectedPackageForInquiry.currencyEn}
-                  </span>
+
+                  {/* Promo Code Input / Applied Badge */}
+                  <div className="pt-2.5 border-t border-sky-100/80">
+                    {appliedPromo ? (
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 text-xs animate-in fade-in">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] shrink-0">✓</span>
+                          <div>
+                            <span className="font-bold text-emerald-900">{appliedPromo.code}</span>
+                            <span className="text-emerald-700 mx-1.5">•</span>
+                            <span className="text-emerald-700 font-semibold">
+                              {isAr ? `وفرت ${appliedPromo.discountAmount.toLocaleString('ar-EG')} ج.م` : `Saved ${appliedPromo.discountAmount.toLocaleString('en-US')} EGP`}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemovePromo}
+                          className="text-emerald-700 hover:text-rose-600 text-[11px] font-bold underline cursor-pointer shrink-0"
+                        >
+                          {isAr ? 'إلغاء الكود' : 'Remove'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <div className="relative flex-1">
+                            <Tag className="w-3.5 h-3.5 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={promoCodeInput}
+                              onChange={(e) => {
+                                setPromoCodeInput(e.target.value.toUpperCase());
+                                if (promoError) setPromoError(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleApplyPromo();
+                                }
+                              }}
+                              placeholder={isAr ? 'هل لديك كود خصم؟ (مثال: EFFECT20)' : 'Have a promo code? (e.g. EFFECT20)'}
+                              className="w-full text-xs ps-8 pe-3 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:border-sky-500 font-mono uppercase tracking-wider placeholder:normal-case placeholder:font-sans placeholder:tracking-normal"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleApplyPromo}
+                            className="px-3.5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shrink-0"
+                          >
+                            {isAr ? 'تطبيق' : 'Apply'}
+                          </button>
+                        </div>
+
+                        {promoError && (
+                          <p className="text-[11px] font-semibold text-rose-600 ps-1 animate-in fade-in">
+                            {promoError}
+                          </p>
+                        )}
+                        {promoMessage && !promoError && (
+                          <p className="text-[11px] font-semibold text-emerald-600 ps-1 animate-in fade-in">
+                            {promoMessage}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

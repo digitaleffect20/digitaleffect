@@ -91,10 +91,24 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
         ) : <div />}
 
         {hasOffer && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200/80 shadow-xs">
-            <Tag className="w-3 h-3 text-rose-600" />
-            <span>{offerNote || t.common.specialOffer}</span>
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200/80 shadow-xs">
+              <Tag className="w-3 h-3 text-rose-600" />
+              <span>{offerNote || t.common.specialOffer}</span>
+            </span>
+            {pkg.offerExpiryDate && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                <Clock className="w-3 h-3 text-amber-600" />
+                <span>
+                  {(() => {
+                    const diffDays = Math.ceil((new Date(pkg.offerExpiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    if (diffDays <= 0) return isAr ? 'ينتهي اليوم' : 'Ends today';
+                    return isAr ? `متبقي ${diffDays} يوم` : `${diffDays}d left`;
+                  })()}
+                </span>
+              </span>
+            )}
+          </div>
         )}
       </div>
 

@@ -9,6 +9,7 @@ import {
   submitInquiry,
   DbInquiry 
 } from '../lib/supabase';
+import { ServicePackage, PromoCode, SectorType } from '../types';
 import { 
   Lock, 
   Mail, 
@@ -38,7 +39,19 @@ import {
   TrendingUp,
   DollarSign,
   Eye,
-  BarChart3
+  BarChart3,
+  Edit3,
+  Plus,
+  X,
+  Percent,
+  Check,
+  Copy,
+  Clock,
+  Layers,
+  Film,
+  FileText,
+  CheckCheck,
+  Sparkle
 } from 'lucide-react';
 import { CrmAnalyticsHub } from '../components/CrmAnalyticsHub';
 
@@ -53,6 +66,10 @@ export const AdminPortalPage: React.FC = () => {
     addPackage, 
     updatePackage, 
     deletePackage,
+    addPromoCode,
+    updatePromoCode,
+    deletePromoCode,
+    togglePromoCodeStatus,
     updateBanner,
     resetToDefaults,
     exportDataJson,
@@ -77,6 +94,30 @@ export const AdminPortalPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'inquiries' | 'analytics' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
   const [showAnalyticsInInquiriesTab, setShowAnalyticsInInquiriesTab] = useState(true);
 
+  // Commercial & Packages Tab States
+  const [commercialSubTab, setCommercialSubTab] = useState<'packages' | 'promos'>('packages');
+  const [packageFilterSector, setPackageFilterSector] = useState<'all' | 'b2b' | 'b2c' | 'medical'>('all');
+
+  // Package Edit Modal State
+  const [editingPackage, setEditingPackage] = useState<ServicePackage | null>(null);
+  const [newFeatureTextAr, setNewFeatureTextAr] = useState('');
+  const [newFeatureTextEn, setNewFeatureTextEn] = useState('');
+
+  // Promo Code Modal & Form State
+  const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
+  const [editingPromoId, setEditingPromoId] = useState<string | null>(null);
+  const [promoFormCode, setPromoFormCode] = useState('');
+  const [promoFormTitle, setPromoFormTitle] = useState('');
+  const [promoFormTitleEn, setPromoFormTitleEn] = useState('');
+  const [promoFormType, setPromoFormType] = useState<'percentage' | 'fixed'>('percentage');
+  const [promoFormValue, setPromoFormValue] = useState<number>(20);
+  const [promoFormMinSpend, setPromoFormMinSpend] = useState<string>('');
+  const [promoFormExpiry, setPromoFormExpiry] = useState<string>('');
+  const [promoFormSector, setPromoFormSector] = useState<SectorType>('all');
+  const [promoFormMaxUsage, setPromoFormMaxUsage] = useState<string>('');
+  const [promoFormActive, setPromoFormActive] = useState<boolean>(true);
+  const [copiedPromoId, setCopiedPromoId] = useState<string | null>(null);
+
   // Supabase Inquiries Data State
   const [cloudInquiries, setCloudInquiries] = useState<DbInquiry[]>([]);
   const [loadingInquiries, setLoadingInquiries] = useState(false);
@@ -88,6 +129,117 @@ export const AdminPortalPage: React.FC = () => {
   const showNotice = (msg: string) => {
     setNotice(msg);
     setTimeout(() => setNotice(null), 4000);
+  };
+
+  const handleOpenEditPackage = (pkg: ServicePackage) => {
+    setEditingPackage(JSON.parse(JSON.stringify(pkg)));
+    setNewFeatureTextAr('');
+    setNewFeatureTextEn('');
+  };
+
+  const handleSavePackage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPackage) return;
+    updatePackage(editingPackage);
+    showNotice(isAr ? 'تم حفظ وتحديث بيانات الباقة والأسعار والمواصفات بنجاح!' : 'Package updated successfully!');
+    setEditingPackage(null);
+  };
+
+  const handleAddFeatureToEditingPackage = () => {
+    if (!editingPackage || !newFeatureTextAr.trim()) return;
+    setEditingPackage({
+      ...editingPackage,
+      features: [...editingPackage.features, newFeatureTextAr.trim()],
+      featuresEn: [...(editingPackage.featuresEn || []), newFeatureTextEn.trim() || newFeatureTextAr.trim()],
+    });
+    setNewFeatureTextAr('');
+    setNewFeatureTextEn('');
+  };
+
+  const handleRemoveFeatureFromEditingPackage = (index: number) => {
+    if (!editingPackage) return;
+    setEditingPackage({
+      ...editingPackage,
+      features: editingPackage.features.filter((_, i) => i !== index),
+      featuresEn: (editingPackage.featuresEn || []).filter((_, i) => i !== index),
+    });
+  };
+
+  const handleOpenCreatePromo = () => {
+    setEditingPromoId(null);
+    setPromoFormCode('');
+    setPromoFormTitle('');
+    setPromoFormTitleEn('');
+    setPromoFormType('percentage');
+    setPromoFormValue(15);
+    setPromoFormMinSpend('');
+    setPromoFormExpiry('');
+    setPromoFormSector('all');
+    setPromoFormMaxUsage('');
+    setPromoFormActive(true);
+    setIsPromoModalOpen(true);
+  };
+
+  const handleOpenEditPromo = (promo: PromoCode) => {
+    setEditingPromoId(promo.id);
+    setPromoFormCode(promo.code);
+    setPromoFormTitle(promo.title);
+    setPromoFormTitleEn(promo.titleEn || '');
+    setPromoFormType(promo.discountType);
+    setPromoFormValue(promo.discountValue);
+    setPromoFormMinSpend(promo.minSpend ? String(promo.minSpend) : '');
+    setPromoFormExpiry(promo.expiresAt || '');
+    setPromoFormSector(promo.applicableSector || 'all');
+    setPromoFormMaxUsage(promo.maxUsage ? String(promo.maxUsage) : '');
+    setPromoFormActive(promo.isActive);
+    setIsPromoModalOpen(true);
+  };
+
+  const handleSavePromo = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanCode = promoFormCode.trim().toUpperCase();
+    if (!cleanCode) return;
+
+    if (editingPromoId) {
+      updatePromoCode({
+        id: editingPromoId,
+        code: cleanCode,
+        title: promoFormTitle.trim() || cleanCode,
+        titleEn: promoFormTitleEn.trim() || promoFormTitle.trim() || cleanCode,
+        discountType: promoFormType,
+        discountValue: Number(promoFormValue) || 10,
+        minSpend: promoFormMinSpend ? Number(promoFormMinSpend) : undefined,
+        expiresAt: promoFormExpiry || undefined,
+        applicableSector: promoFormSector,
+        maxUsage: promoFormMaxUsage ? Number(promoFormMaxUsage) : undefined,
+        isActive: promoFormActive,
+        usageCount: (data.promoCodes || []).find((p) => p.id === editingPromoId)?.usageCount || 0,
+        createdAt: (data.promoCodes || []).find((p) => p.id === editingPromoId)?.createdAt || new Date().toISOString(),
+      });
+      showNotice(isAr ? 'تم تحديث كود الخصم بنجاح!' : 'Promo code updated!');
+    } else {
+      addPromoCode({
+        code: cleanCode,
+        title: promoFormTitle.trim() || cleanCode,
+        titleEn: promoFormTitleEn.trim() || promoFormTitle.trim() || cleanCode,
+        discountType: promoFormType,
+        discountValue: Number(promoFormValue) || 10,
+        minSpend: promoFormMinSpend ? Number(promoFormMinSpend) : undefined,
+        expiresAt: promoFormExpiry || undefined,
+        applicableSector: promoFormSector,
+        maxUsage: promoFormMaxUsage ? Number(promoFormMaxUsage) : undefined,
+        isActive: promoFormActive,
+      });
+      showNotice(isAr ? 'تم إنشاء كود الخصم الجديد بنجاح!' : 'New promo code created!');
+    }
+
+    setIsPromoModalOpen(false);
+  };
+
+  const handleCopyPromoCode = (code: string, id: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedPromoId(id);
+    setTimeout(() => setCopiedPromoId(null), 2000);
   };
 
   // 1. Check existing Supabase session on mount
@@ -1070,29 +1222,363 @@ export const AdminPortalPage: React.FC = () => {
         {/* ================================================================== */}
         {/* TAB 2: PACKAGES & OFFERS (Protected Admin View)                    */}
         {/* ================================================================== */}
+        {/* ================================================================== */}
+        {/* TAB 2: PACKAGES, PRICING & PROMO CODES HUB                         */}
+        {/* ================================================================== */}
         {activeTab === 'packages' && (
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">{isAr ? 'قائمة باقات الوكالة والأسعار الرسمية' : 'Service Packages Catalog'}</h3>
-                <p className="text-xs text-slate-500">{isAr ? 'الباقات المعتمدة المعروضة على الموقع لقطاعات B2B و B2C و Medical' : 'Active packages displayed on the public site'}</p>
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Top Sub-Navigation Tabs */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+              <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-xl w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setCommercialSubTab('packages')}
+                  className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    commercialSubTab === 'packages'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5 text-sky-600" />
+                  <span>{isAr ? 'باقات الخدمات والأسعار والمواصفات' : 'Service Packages & Specs'}</span>
+                  <span className="px-1.5 py-0.2 text-[10px] bg-sky-100 text-sky-800 rounded-full font-black">
+                    {data.packages.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCommercialSubTab('promos')}
+                  className={`flex-1 sm:flex-initial px-4 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    commercialSubTab === 'promos'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <Tag className="w-3.5 h-3.5 text-purple-600" />
+                  <span>{isAr ? 'نظام أكواد الخصم والبرومو كود' : 'Promo Codes Hub'}</span>
+                  <span className="px-1.5 py-0.2 text-[10px] bg-purple-100 text-purple-800 rounded-full font-black">
+                    {(data.promoCodes || []).length}
+                  </span>
+                </button>
               </div>
+
+              {commercialSubTab === 'packages' && (
+                <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+                  <span className="text-[11px] font-bold text-slate-400 me-1">{isAr ? 'القطاع:' : 'Sector:'}</span>
+                  {(['all', 'b2c', 'b2b', 'medical'] as const).map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setPackageFilterSector(sec)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer uppercase ${
+                        packageFilterSector === sec
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {sec === 'all' ? (isAr ? 'الكل' : 'All') : sec}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {commercialSubTab === 'promos' && (
+                <button
+                  type="button"
+                  onClick={handleOpenCreatePromo}
+                  className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors shadow-xs inline-flex items-center justify-center gap-1.5 cursor-pointer ms-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isAr ? 'إنشاء كود خصم جديد' : 'New Promo Code'}</span>
+                </button>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.packages.map((pkg) => (
-                <div key={pkg.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded uppercase bg-sky-100 text-sky-800">{pkg.sector}</span>
-                    <span className="font-black text-slate-900 text-sm">{pkg.price.toLocaleString()} {pkg.currency}</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-800">{isAr ? pkg.name : pkg.nameEn}</h4>
-                  <p className="text-[11px] text-slate-500 line-clamp-2">{isAr ? pkg.tagline : pkg.taglineEn}</p>
+            {/* ========================================================== */}
+            {/* SUB-VIEW 1: PACKAGES & SPECIFICATIONS EDITING              */}
+            {/* ========================================================== */}
+            {commercialSubTab === 'packages' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {data.packages
+                    .filter((pkg) => packageFilterSector === 'all' || pkg.sector === packageFilterSector)
+                    .map((pkg) => {
+                      const isPopular = !!pkg.isPopular;
+                      const hasOffer = !!pkg.hasOffer;
+                      const hasQuarterly = !!pkg.quarterlyPrice;
+
+                      return (
+                        <div
+                          key={pkg.id}
+                          className={`bg-white rounded-2xl border p-5 flex flex-col justify-between transition-all relative ${
+                            isPopular ? 'border-sky-400 shadow-md ring-2 ring-sky-400/10' : 'border-slate-200 shadow-2xs'
+                          }`}
+                        >
+                          {/* Badges strip */}
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-2 py-0.5 text-[10px] font-bold rounded uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                                {pkg.sector}
+                              </span>
+                              {pkg.badge && (
+                                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-sky-50 text-sky-700 border border-sky-100">
+                                  {pkg.badge}
+                                </span>
+                              )}
+                            </div>
+
+                            {isPopular && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                                <Sparkles className="w-3 h-3 text-amber-600" />
+                                <span>{isAr ? 'الأكثر طلباً' : 'Popular'}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Title & Tagline */}
+                          <div className="space-y-1 mb-4">
+                            <h4 className="text-base font-black text-slate-900">{isAr ? pkg.name : pkg.nameEn}</h4>
+                            <p className="text-xs text-slate-500 line-clamp-2">{isAr ? pkg.tagline : pkg.taglineEn}</p>
+                          </div>
+
+                          {/* Price & Offer Highlight */}
+                          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 mb-4 space-y-2">
+                            <div className="flex items-baseline justify-between">
+                              <span className="text-xs font-bold text-slate-400">{isAr ? 'السعر الشهري:' : 'Monthly:'}</span>
+                              <div className="text-end">
+                                <div className="text-lg font-black text-slate-900 tabular-nums">
+                                  {pkg.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {pkg.currency}
+                                </div>
+                                {pkg.originalPrice && pkg.originalPrice > pkg.price && (
+                                  <div className="text-[11px] text-slate-400 line-through tabular-nums">
+                                    {pkg.originalPrice.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {pkg.currency}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {hasQuarterly && (
+                              <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/60">
+                                <span className="text-slate-500">{isAr ? 'الاشتراك الربع سنوي:' : 'Quarterly:'}</span>
+                                <span className="font-bold text-emerald-700 tabular-nums">
+                                  {pkg.quarterlyPrice?.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {pkg.currency}
+                                </span>
+                              </div>
+                            )}
+
+                            {hasOffer && (
+                              <div className="pt-1.5 border-t border-rose-100 flex items-center justify-between text-xs">
+                                <span className="inline-flex items-center gap-1 font-bold text-rose-700">
+                                  <Tag className="w-3 h-3" />
+                                  <span>{pkg.offerNote || (isAr ? 'عرض لفترة محدودة' : 'Limited Offer')}</span>
+                                </span>
+                                {pkg.offerExpiryDate && (
+                                  <span className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                    {isAr ? `ينتهي: ${pkg.offerExpiryDate}` : `Exp: ${pkg.offerExpiryDate}`}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Deliverables Matrix */}
+                          <div className="grid grid-cols-3 gap-1.5 mb-4 text-center">
+                            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                              <span className="font-black text-sky-700 text-xs block tabular-nums">{pkg.postsCount ?? 0}</span>
+                              <span className="text-[10px] text-slate-500 font-semibold">{isAr ? 'منشور' : 'Posts'}</span>
+                            </div>
+                            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                              <span className="font-black text-purple-700 text-xs block tabular-nums">{pkg.reelsCount ?? 0}</span>
+                              <span className="text-[10px] text-slate-500 font-semibold">{isAr ? 'ريلز' : 'Reels'}</span>
+                            </div>
+                            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                              <span className="font-black text-amber-700 text-xs block tabular-nums">{pkg.storiesCount ?? 0}</span>
+                              <span className="text-[10px] text-slate-500 font-semibold">{isAr ? 'ستوريز' : 'Stories'}</span>
+                            </div>
+                          </div>
+
+                          {/* Features Summary */}
+                          <div className="text-[11px] text-slate-500 mb-4 pb-3 border-b border-slate-100 flex items-center justify-between">
+                            <span>{isAr ? 'المزايا التنافسية:' : 'Features list:'}</span>
+                            <span className="font-bold text-slate-800">
+                              {pkg.features.length} {isAr ? 'مزايا معتمدة' : 'items'}
+                            </span>
+                          </div>
+
+                          {/* Card Action */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditPackage(pkg)}
+                            className="w-full py-2.5 px-3 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>{isAr ? 'تعديل الباقة والأسعار والمواصفات' : 'Edit Package & Pricing'}</span>
+                          </button>
+                        </div>
+                      );
+                    })}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* ========================================================== */}
+            {/* SUB-VIEW 2: PROMO CODES & COUPONS MANAGEMENT               */}
+            {/* ========================================================== */}
+            {commercialSubTab === 'promos' && (
+              <div className="space-y-6">
+                {/* Stats ribbon for promo codes */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-1 shadow-2xs">
+                    <span className="text-xs text-slate-500 font-bold">{isAr ? 'إجمالي أكواد الخصم' : 'Total Promo Codes'}</span>
+                    <div className="text-2xl font-black text-slate-900 tabular-nums">
+                      {(data.promoCodes || []).length}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-1 shadow-2xs">
+                    <span className="text-xs text-emerald-600 font-bold">{isAr ? 'الأكواد الفعالة حالياً' : 'Active Coupons'}</span>
+                    <div className="text-2xl font-black text-emerald-600 tabular-nums">
+                      {(data.promoCodes || []).filter((p) => p.isActive).length}
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-1 shadow-2xs">
+                    <span className="text-xs text-purple-600 font-bold">{isAr ? 'إجمالي مرات الاستخدام' : 'Total Times Redeemed'}</span>
+                    <div className="text-2xl font-black text-purple-600 tabular-nums">
+                      {(data.promoCodes || []).reduce((acc, curr) => acc + (curr.usageCount || 0), 0)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Promo Codes List */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">{isAr ? 'قائمة أكواد الخصم الترويجية' : 'Active Promo Codes List'}</h4>
+                      <p className="text-xs text-slate-500">{isAr ? 'الأكواد المتاحة للعملاء في نافذة طلب الاستشارة لحساب الخصم الفوري' : 'Available coupon codes redeemable at consultation checkout'}</p>
+                    </div>
+                  </div>
+
+                  {(!data.promoCodes || data.promoCodes.length === 0) ? (
+                    <div className="py-12 text-center text-slate-400 space-y-2">
+                      <Tag className="w-10 h-10 mx-auto text-slate-300" />
+                      <p className="text-xs">{isAr ? 'لا توجد أكواد خصم حالياً. اضغط "إنشاء كود خصم جديد" لإضافة أول كود.' : 'No promo codes found.'}</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {data.promoCodes.map((promo) => {
+                        const isExpired = promo.expiresAt && new Date().toISOString().slice(0, 10) > promo.expiresAt;
+                        const isCopied = copiedPromoId === promo.id;
+
+                        return (
+                          <div key={promo.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyPromoCode(promo.code, promo.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-mono font-bold text-xs tracking-wider inline-flex items-center gap-1.5 hover:bg-slate-800 transition-colors cursor-pointer"
+                                  title={isAr ? 'اضغط لنسخ الكود' : 'Click to copy code'}
+                                >
+                                  <span>{promo.code}</span>
+                                  {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                                </button>
+
+                                <span className={`px-2 py-0.5 text-[11px] font-black rounded-md ${
+                                  promo.discountType === 'percentage'
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-emerald-100 text-emerald-800'
+                                }`}>
+                                  {promo.discountType === 'percentage' ? `${promo.discountValue}% خصم` : `${promo.discountValue.toLocaleString()} ج.م خصم ثابت`}
+                                </span>
+
+                                <span className="px-2 py-0.5 text-[10px] font-bold rounded uppercase bg-slate-100 text-slate-600">
+                                  {promo.applicableSector === 'all' ? (isAr ? 'كافة القطاعات' : 'All Sectors') : promo.applicableSector?.toUpperCase()}
+                                </span>
+
+                                {isExpired ? (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-100 text-rose-700">
+                                    {isAr ? 'منتهي الصلاحية' : 'Expired'}
+                                  </span>
+                                ) : promo.isActive ? (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-700">
+                                    {isAr ? 'نشط وفعال' : 'Active'}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-200 text-slate-600">
+                                    {isAr ? 'معطل' : 'Disabled'}
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="text-xs font-semibold text-slate-800">
+                                {isAr ? promo.title : (promo.titleEn || promo.title)}
+                              </p>
+
+                              <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+                                <span>{isAr ? `مرات الاستخدام: ${promo.usageCount || 0}` : `Redeemed: ${promo.usageCount || 0}`}</span>
+                                {promo.maxUsage && (
+                                  <span>• {isAr ? `الحد الأقصى: ${promo.maxUsage}` : `Limit: ${promo.maxUsage}`}</span>
+                                )}
+                                {promo.minSpend && (
+                                  <span>• {isAr ? `الحد الأدنى للباقة: ${promo.minSpend.toLocaleString()} ج.م` : `Min spend: ${promo.minSpend} EGP`}</span>
+                                )}
+                                {promo.expiresAt && (
+                                  <span>• {isAr ? `ينتهي بتاريخ: ${promo.expiresAt}` : `Expires: ${promo.expiresAt}`}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Actions strip */}
+                            <div className="flex items-center gap-2 self-end sm:self-center">
+                              {/* Toggle active button */}
+                              <button
+                                type="button"
+                                onClick={() => togglePromoCodeStatus(promo.id)}
+                                className={`px-2.5 py-1.5 text-xs font-bold rounded-xl transition-colors cursor-pointer border ${
+                                  promo.isActive
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                }`}
+                              >
+                                {promo.isActive ? (isAr ? 'إيقاف مؤقت' : 'Disable') : (isAr ? 'تفعيل الكود' : 'Enable')}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditPromo(promo)}
+                                className="p-2 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                                title={isAr ? 'تعديل الكود' : 'Edit Code'}
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm(isAr ? `هل أنت متأكد من حذف كود الخصم (${promo.code})؟` : `Delete promo code ${promo.code}?`)) {
+                                    deletePromoCode(promo.id);
+                                    showNotice(isAr ? 'تم حذف كود الخصم بنجاح.' : 'Promo code deleted.');
+                                  }
+                                }}
+                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-slate-200"
+                                title={isAr ? 'حذف الكود' : 'Delete Code'}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
+
 
         {/* ================================================================== */}
         {/* TAB 3: CASE STUDIES & PORTFOLIO                                    */}
@@ -1169,6 +1655,571 @@ export const AdminPortalPage: React.FC = () => {
       <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
         Digital Effect Enterprise Administration Portal • Phase 1 PostgreSQL Integration
       </footer>
+
+      {/* ================================================================== */}
+      {/* MODAL 1: PACKAGE EDITOR & SPECIFICATIONS MODAL                     */}
+      {/* ================================================================== */}
+      {editingPackage && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+          <div 
+            className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden relative text-start flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-sky-400" />
+                  <h3 className="text-sm sm:text-base font-bold text-white">
+                    {isAr ? `تعديل باقة: ${editingPackage.name}` : `Edit Package: ${editingPackage.nameEn || editingPackage.name}`}
+                  </h3>
+                </div>
+                <p className="text-[11px] text-slate-400 font-mono">
+                  ID: {editingPackage.id} • {editingPackage.sector.toUpperCase()}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditingPackage(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSavePackage} className="overflow-y-auto p-5 sm:p-6 space-y-6">
+              {/* SECTION 1: PRICING */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                  <DollarSign className="w-4 h-4 text-sky-600" />
+                  <span>{isAr ? 'الأسعار والاشتراكات الرسمية' : 'Pricing & Retainers'}</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'السعر الشهري (ج.م) *' : 'Monthly Price *'}
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={1000}
+                      step={500}
+                      value={editingPackage.price}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, price: Number(e.target.value) })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 font-bold tabular-nums"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'السعر الأصلي قبل الخصم' : 'Original Price (Strikethrough)'}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={500}
+                      placeholder={isAr ? 'اختياري' : 'Optional'}
+                      value={editingPackage.originalPrice || ''}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, originalPrice: e.target.value ? Number(e.target.value) : undefined })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 tabular-nums"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'الاشتراك الربع سنوي (٣ أشهر)' : 'Quarterly Price'}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={500}
+                      placeholder={isAr ? 'اختياري' : 'Optional'}
+                      value={editingPackage.quarterlyPrice || ''}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, quarterlyPrice: e.target.value ? Number(e.target.value) : undefined })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 tabular-nums"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: LIMITED-TIME OFFER */}
+              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-amber-700" />
+                    <div>
+                      <span className="text-xs font-black text-amber-900 block">
+                        {isAr ? 'عرض ترويجي لفترة محدودة' : 'Limited-Time Promotional Offer'}
+                      </span>
+                      <span className="text-[11px] text-amber-700">
+                        {isAr ? 'تفعيل بادج العرض الترويجي والعد التنازلي على كارت الباقة' : 'Activate promo badge and deadline on card'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!editingPackage.hasOffer}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, hasOffer: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                  </label>
+                </div>
+
+                {editingPackage.hasOffer && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-amber-200/60 animate-in fade-in">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-amber-900">
+                        {isAr ? 'نص العرض الترويجي (مثال: خصم حصري ٢٠٪)' : 'Offer Tag Note'}
+                      </label>
+                      <input
+                        type="text"
+                        value={editingPackage.offerNote || ''}
+                        onChange={(e) => setEditingPackage({ ...editingPackage, offerNote: e.target.value })}
+                        placeholder={isAr ? 'خصم حصري لفترة محدودة' : 'Limited time exclusive deal'}
+                        className="w-full text-xs p-2 rounded-xl border border-amber-200 bg-white focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-amber-900">
+                        {isAr ? 'تاريخ انتهاء العرض (Expiry Date)' : 'Offer Expiry Date'}
+                      </label>
+                      <input
+                        type="date"
+                        value={editingPackage.offerExpiryDate || ''}
+                        onChange={(e) => setEditingPackage({ ...editingPackage, offerExpiryDate: e.target.value })}
+                        className="w-full text-xs p-2 rounded-xl border border-amber-200 bg-white focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 3: DELIVERABLES & SPECS MATRIX */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                  <Layers className="w-4 h-4 text-purple-600" />
+                  <span>{isAr ? 'مواصفات ومخرجات المحتوى الشهرية' : 'Monthly Deliverables & Velocity'}</span>
+                </h4>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'عدد المنشورات' : 'Posts Count'}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editingPackage.postsCount ?? 0}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, postsCount: Number(e.target.value) })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 font-bold tabular-nums"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'عدد الريلز (AI/فيديو)' : 'Reels Count'}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editingPackage.reelsCount ?? 0}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, reelsCount: Number(e.target.value) })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 font-bold tabular-nums"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'عدد الستوريز' : 'Stories Count'}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={editingPackage.storiesCount ?? 0}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, storiesCount: Number(e.target.value) })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 font-bold tabular-nums"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'الجدولة والتردد' : 'Frequency'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={isAr ? 'مثال: ٣ منشورات/أسبوع' : 'e.g. 3 posts/week'}
+                      value={editingPackage.frequency || ''}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, frequency: e.target.value })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="hasMonthlyPlanCheckbox"
+                    checked={!!editingPackage.hasMonthlyPlan}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, hasMonthlyPlan: e.target.checked })}
+                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 cursor-pointer"
+                  />
+                  <label htmlFor="hasMonthlyPlanCheckbox" className="text-xs text-slate-700 font-bold cursor-pointer">
+                    {isAr ? 'تتضمن الباقة خطة شهرية استراتيجية معتمدة' : 'Full strategic monthly plan included'}
+                  </label>
+                </div>
+              </div>
+
+              {/* SECTION 4: FEATURES LIST MANAGER */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span>{isAr ? 'قائمة المزايا التنافسية للباقة' : 'Package Features List'}</span>
+                  </h4>
+                  <span className="text-[11px] text-slate-500 font-bold">
+                    {editingPackage.features.length} {isAr ? 'مزايا' : 'features'}
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pe-1">
+                  {editingPackage.features.map((feat, idx) => (
+                    <div key={idx} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                      <span className="flex-1 text-slate-800 leading-snug">{feat}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFeatureFromEditingPackage(idx)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                        title={isAr ? 'حذف الميزة' : 'Remove feature'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add new feature input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    value={newFeatureTextAr}
+                    onChange={(e) => setNewFeatureTextAr(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddFeatureToEditingPackage();
+                      }
+                    }}
+                    placeholder={isAr ? 'اكتب ميزة جديدة لإضافتها للباقة...' : 'Add a new feature...'}
+                    className="flex-1 text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddFeatureToEditingPackage}
+                    className="px-3.5 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shrink-0 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isAr ? 'إضافة' : 'Add'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 5: COPYWRITING & PRESENTATION */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                  <Sparkle className="w-4 h-4 text-sky-600" />
+                  <span>{isAr ? 'العناوين والجمهور المستهدف' : 'Copywriting & Presentation'}</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'اسم الباقة (عربي) *' : 'Package Name (Arabic) *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingPackage.name}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, name: e.target.value })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 font-bold"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'البادج الترويجي' : 'Badge Tag'}
+                    </label>
+                    <input
+                      type="text"
+                      value={editingPackage.badge || ''}
+                      onChange={(e) => setEditingPackage({ ...editingPackage, badge: e.target.value })}
+                      placeholder={isAr ? 'مثال: الأكثر طلباً' : 'e.g. Most Popular'}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'الشعار التسويقي (Tagline)' : 'Tagline'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editingPackage.tagline}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, tagline: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'الفئة والنشاط المستهدف (Ideal For)' : 'Ideal For Target'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editingPackage.idealFor}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, idealFor: e.target.value })}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="isPopularCheckbox"
+                    checked={!!editingPackage.isPopular}
+                    onChange={(e) => setEditingPackage({ ...editingPackage, isPopular: e.target.checked })}
+                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 cursor-pointer"
+                  />
+                  <label htmlFor="isPopularCheckbox" className="text-xs text-slate-700 font-bold cursor-pointer">
+                    {isAr ? 'تمييز الباقة كـ "الأكثر طلباً" وإبرازها بتصميم لافت على الموقع' : 'Highlight as Most Popular on website'}
+                  </label>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3 sticky bottom-0 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setEditingPackage(null)}
+                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isAr ? 'حفظ وتحديث الباقة' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================== */}
+      {/* MODAL 2: PROMO CODE CREATE / EDIT MODAL                            */}
+      {/* ================================================================== */}
+      {isPromoModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200">
+          <div 
+            className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden relative text-start flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 bg-purple-900 text-white flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-purple-300" />
+                  <h3 className="text-sm sm:text-base font-bold text-white">
+                    {editingPromoId ? (isAr ? 'تعديل كود الخصم' : 'Edit Promo Code') : (isAr ? 'إنشاء كود خصم ترويجي جديد' : 'Create New Promo Code')}
+                  </h3>
+                </div>
+                <p className="text-[11px] text-purple-200">
+                  {isAr ? 'إتاحة كود خصم للعملاء عند طلب الاستشارة وحساب التخفيض الفوري' : 'Configure coupon parameters and expiration'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsPromoModalOpen(false)}
+                className="p-1.5 text-purple-300 hover:text-white rounded-full hover:bg-purple-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleSavePromo} className="p-5 sm:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'كود الخصم (Promo Code) *' : 'Promo Code *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="EFFECT20"
+                    value={promoFormCode}
+                    onChange={(e) => setPromoFormCode(e.target.value.toUpperCase())}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500 font-mono font-bold uppercase tracking-wider"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'نوع الخصم *' : 'Discount Type *'}
+                  </label>
+                  <select
+                    value={promoFormType}
+                    onChange={(e) => setPromoFormType(e.target.value as any)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500 bg-white"
+                  >
+                    <option value="percentage">{isAr ? 'نسبة مئوية (%)' : 'Percentage (%)'}</option>
+                    <option value="fixed">{isAr ? 'مبلغ ثابت (ج.م)' : 'Fixed Amount (EGP)'}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {promoFormType === 'percentage' 
+                      ? (isAr ? 'نسبة الخصم المئوية (%) *' : 'Discount Percentage (%) *') 
+                      : (isAr ? 'مبلغ الخصم (ج.م) *' : 'Discount Amount (EGP) *')}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={promoFormType === 'percentage' ? 90 : 100000}
+                    value={promoFormValue}
+                    onChange={(e) => setPromoFormValue(Number(e.target.value))}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500 font-bold tabular-nums"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'الحد الأدنى لقيمة الباقة' : 'Minimum Package Price'}
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    placeholder={isAr ? 'بدون حد أدنى' : 'No min spend'}
+                    value={promoFormMinSpend}
+                    onChange={(e) => setPromoFormMinSpend(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500 tabular-nums"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  {isAr ? 'اسم أو وصف الكود (يظهر للعميل) *' : 'Coupon Title / Description *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={isAr ? 'مثال: خصم التدشين والانطلاق الحصري ٢٠٪' : 'e.g. Launch 20% Discount'}
+                  value={promoFormTitle}
+                  onChange={(e) => setPromoFormTitle(e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'تاريخ انتهاء الصلاحية' : 'Expiry Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={promoFormExpiry}
+                    onChange={(e) => setPromoFormExpiry(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'القطاع المخصص له' : 'Applicable Sector'}
+                  </label>
+                  <select
+                    value={promoFormSector}
+                    onChange={(e) => setPromoFormSector(e.target.value as any)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500 bg-white"
+                  >
+                    <option value="all">{isAr ? 'كافة القطاعات (B2B, B2C, Medical)' : 'All Sectors'}</option>
+                    <option value="b2c">{isAr ? 'قطاع B2C فقط' : 'B2C Only'}</option>
+                    <option value="b2b">{isAr ? 'قطاع B2B فقط' : 'B2B Only'}</option>
+                    <option value="medical">{isAr ? 'القطاع الطبي فقط' : 'Medical Only'}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-1">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'الحد الأقصى لمرات الاستخدام' : 'Max Redemptions'}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder={isAr ? 'غير محدود' : 'Unlimited'}
+                    value={promoFormMaxUsage}
+                    onChange={(e) => setPromoFormMaxUsage(e.target.value)}
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-5">
+                  <input
+                    type="checkbox"
+                    id="promoActiveCheckbox"
+                    checked={promoFormActive}
+                    onChange={(e) => setPromoFormActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                  />
+                  <label htmlFor="promoActiveCheckbox" className="text-xs font-bold text-slate-700 cursor-pointer">
+                    {isAr ? 'الكود نشط ومتاح للاستخدام فوراً' : 'Active and redeemable immediately'}
+                  </label>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPromoModalOpen(false)}
+                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                >
+                  {isAr ? 'إلغاء' : 'Cancel'}
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{editingPromoId ? (isAr ? 'تحديث كود الخصم' : 'Update Code') : (isAr ? 'إنشاء كود الخصم' : 'Create Code')}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
