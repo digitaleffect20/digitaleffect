@@ -429,3 +429,10 @@ CREATE POLICY "Admin view self"
     ON public.admin_users FOR SELECT
     TO authenticated
     USING (id = auth.uid());
+
+-- 10. TABLE PRIVILEGES (GRANT)
+-- Grant necessary table privileges to authenticated admin and anon
+GRANT SELECT ON public.service_packages TO anon, authenticated;
+GRANT ALL ON public.inquiries TO authenticated;
+GRANT ALL ON public.customers TO authenticated;
+GRANT SELECT ON public.admin_users TO authenticated;

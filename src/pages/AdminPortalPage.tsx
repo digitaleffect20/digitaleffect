@@ -125,19 +125,24 @@ export const AdminPortalPage: React.FC = () => {
     };
   }, []);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   // 2. Fetch inquiries when user is authenticated
   const loadInquiries = async () => {
     if (!isSupabaseConfigured || !supabase) return;
     setLoadingInquiries(true);
+    setLoadError(null);
     try {
       const res = await fetchAdminInquiries();
       if (!res.error) {
         setCloudInquiries(res.data);
       } else {
         console.warn('Could not fetch cloud inquiries:', res.error);
+        setLoadError(res.error);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching inquiries:', err);
+      setLoadError(err?.message || 'Error fetching inquiries');
     } finally {
       setLoadingInquiries(false);
     }
@@ -774,6 +779,25 @@ export const AdminPortalPage: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {/* Load Error Alert */}
+            {loadError && (
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <div>
+                    <span className="font-bold block">{isAr ? 'تعذر جلب الطلبات من قاعدة البيانات:' : 'Failed to fetch inquiries:'}</span>
+                    <span className="font-mono text-[11px] text-rose-600">{loadError}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={loadInquiries}
+                  className="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-xl font-bold cursor-pointer transition-colors shrink-0"
+                >
+                  {isAr ? 'إعادة المحاولة' : 'Retry'}
+                </button>
+              </div>
+            )}
 
             {/* Inquiries Cards List */}
             {loadingInquiries ? (

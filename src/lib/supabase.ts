@@ -219,10 +219,24 @@ export async function fetchAdminInquiries(): Promise<{
   }
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('inquiries')
       .select('*, customer:customers(*)')
       .order('created_at', { ascending: false });
+
+    // Fallback: If joined query fails due to relation or customers RLS, fetch inquiries directly
+    if (error) {
+      console.warn('Joined query with customers failed, trying direct select:', error.message);
+      const fallback = await supabase
+        .from('inquiries')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!fallback.error) {
+        data = fallback.data as any;
+        error = null;
+      }
+    }
 
     if (error) {
       return { data: [], error: error.message };
