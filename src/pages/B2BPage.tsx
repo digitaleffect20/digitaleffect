@@ -31,15 +31,20 @@ export const B2BPage: React.FC = () => {
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">
-      {/* Dedicated B2B Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-800 to-sky-950 text-white pt-14 pb-20 border-b border-slate-800">
-        <div 
-          className="absolute inset-0 opacity-[0.05] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(#38bdf8 1px, transparent 1px)`,
-            backgroundSize: '28px 28px',
-          }}
-        />
+      {/* Dedicated B2B Hero with Custom Background Banner */}
+      <section className="relative overflow-hidden bg-slate-950 text-white pt-14 sm:pt-20 pb-20 sm:pb-28 border-b border-slate-800">
+        {/* Banner Graphic Background Layer */}
+        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+          <img 
+            src="/assets/aistudio/b2b_35422994.png" 
+            alt="B2B Enterprise Hero Background"
+            className="w-full h-full object-cover object-center"
+          />
+          {/* Directional & subtle spotlight overlays for contrast and readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-900/35 rtl:bg-gradient-to-l" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(14,165,233,0.15)_0%,transparent_60%)] pointer-events-none" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
+        </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl space-y-6 text-start">

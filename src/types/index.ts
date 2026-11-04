@@ -40,6 +40,7 @@ export interface CaseStudy {
   };
   featured?: boolean;
   image?: string;
+  thumbnailUrl?: string;
   logoUrl?: string;
   gallery?: string[];
   clientUrl?: string;

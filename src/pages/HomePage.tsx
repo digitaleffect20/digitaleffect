@@ -67,38 +67,42 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-16">
-      {/* Master Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-sky-50/80 via-white to-slate-50 pt-12 pb-16 border-b border-slate-200">
-        <div 
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(#0077D4 1px, transparent 1px)`,
-            backgroundSize: '24px 24px',
-          }}
-        />
+      {/* Master Hero Section with Glass Banner Background */}
+      <section className="relative overflow-hidden bg-slate-900/5 pt-14 sm:pt-20 pb-20 sm:pb-28 border-b border-slate-200">
+        {/* Banner Graphic Background Layer */}
+        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+          <img 
+            src="/assets/aistudio/Glass_banner_2138c06f.png" 
+            alt="Digital Effect Hero Background"
+            className="w-full h-full object-cover object-center"
+          />
+          {/* Soft center spotlight to preserve 3D glass icons while keeping headline perfectly readable */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.82)_0%,rgba(255,255,255,0.48)_50%,rgba(255,255,255,0.1)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-50 via-slate-50/80 to-transparent" />
+        </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <div className="max-w-4xl mx-auto space-y-6">
-            <div className="inline-flex items-center gap-2 text-xs font-bold text-sky-700 bg-sky-100/90 px-3.5 py-1.5 rounded-full border border-sky-200">
+            <div className="inline-flex items-center gap-2 text-xs font-bold text-sky-800 bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full border border-sky-200/90 shadow-2xs">
               <Sparkles className="w-3.5 h-3.5 text-sky-600" />
               <span>{t.home.heroKicker}</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.2] text-balance">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.2] text-balance drop-shadow-2xs">
               {t.home.heroTitle}{' '}
               <span className="text-sky-600 underline decoration-sky-300 decoration-wavy underline-offset-8">
                 {t.home.heroHighlight}
               </span>
             </h1>
 
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed max-w-3xl mx-auto font-normal">
+            <p className="text-base sm:text-lg text-slate-700 leading-relaxed max-w-3xl mx-auto font-medium">
               {t.home.heroDesc}
             </p>
 
             <div className="pt-4 flex flex-wrap items-center justify-center gap-4">
               <button
                 onClick={() => setIsConsultationOpen(true)}
-                className="inline-flex items-center gap-2 px-7 py-4 text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-2 px-7 py-4 text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl transition-all shadow-md hover:shadow-xl hover:shadow-sky-600/25 cursor-pointer whitespace-nowrap"
               >
                 <span>{t.nav.bookCall}</span>
                 <CalendarCheck className="w-4 h-4" />
@@ -106,7 +110,7 @@ export const HomePage: React.FC = () => {
 
               <button
                 onClick={() => setCurrentPage('case-studies')}
-                className="inline-flex items-center gap-2 px-6 py-4 text-sm font-bold text-slate-800 bg-white hover:bg-slate-100 rounded-xl transition-all border border-slate-300 shadow-sm cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-2 px-6 py-4 text-sm font-bold text-slate-800 bg-white/90 backdrop-blur-md hover:bg-white rounded-xl transition-all border border-slate-300/90 shadow-sm hover:shadow-md cursor-pointer whitespace-nowrap"
               >
                 <span>{t.home.allCaseStudiesLink}</span>
                 {isAr ? <ArrowLeft className="w-4 h-4 text-sky-600" /> : <ArrowRight className="w-4 h-4 text-sky-600" />}
@@ -227,7 +231,7 @@ export const HomePage: React.FC = () => {
                     setSelectedCaseStudy(study);
                   }
                 }}
-                className={`bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all p-6 flex flex-col justify-between text-start cursor-pointer group ${
+                className={`bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col justify-between text-start cursor-pointer group ${
                   isIpt 
                     ? 'border-emerald-300 ring-1 ring-emerald-400/20 hover:border-emerald-500' 
                     : isPenguin
@@ -237,41 +241,43 @@ export const HomePage: React.FC = () => {
                     : 'border-slate-200/90 hover:border-sky-300'
                 }`}
               >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <div className="flex items-center gap-2">
-                      {study.logoUrl && (
-                        <div className="w-6 h-6 rounded-md bg-white p-0.5 border border-slate-200 shrink-0 flex items-center justify-center shadow-2xs">
-                          <img src={study.logoUrl} alt={client} className="max-h-full max-w-full object-contain" />
-                        </div>
-                      )}
-                      <span className="font-bold text-sky-600 uppercase tracking-wider">
-                        {study.sector.toUpperCase()}
-                      </span>
-                    </div>
-                    <span>{isAr ? `المدة: ${study.duration}` : `Duration: ${study.durationEn}`}</span>
+                {/* Visual Thumbnail */}
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                  <img
+                    src={study.thumbnailUrl || study.image}
+                    alt={title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                  
+                  <div className="absolute top-3 start-3">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900/80 text-white backdrop-blur-md border border-white/20">
+                      {study.sector.toUpperCase()}
+                    </span>
                   </div>
 
-                  <div className="p-4 bg-sky-50 rounded-2xl border border-sky-100/80">
-                    <div className="text-3xl font-black text-sky-600 tabular-nums">
+                  <div className="absolute bottom-3 start-3 end-3 flex items-end justify-between text-white">
+                    <div className="text-xl font-black text-emerald-400 tabular-nums">
                       {metricVal}
                     </div>
-                    <div className="text-xs font-bold text-slate-700 mt-0.5">
+                    <span className="text-[11px] font-medium text-slate-300 truncate max-w-[150px]">
                       {metricLabel}
-                    </div>
+                    </span>
                   </div>
+                </div>
 
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
                   <div className="space-y-1">
                     <div className="text-xs text-slate-500">{client} · {industry}</div>
                     <h3 className="text-base font-bold text-slate-900 group-hover:text-sky-600 transition-colors line-clamp-2">
                       {title}
                     </h3>
                   </div>
-                </div>
 
-                <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between text-xs font-bold text-sky-600">
-                  <span>{t.common.viewDetails}</span>
-                  {isAr ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-sky-600">
+                    <span>{t.common.viewDetails}</span>
+                    {isAr ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  </div>
                 </div>
               </div>
             );

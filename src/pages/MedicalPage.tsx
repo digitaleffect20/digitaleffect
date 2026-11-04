@@ -30,15 +30,20 @@ export const MedicalPage: React.FC = () => {
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">
-      {/* Dedicated Medical Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-800 to-emerald-950/80 text-white pt-14 pb-20 border-b border-slate-800">
-        <div 
-          className="absolute inset-0 opacity-[0.05] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(#10b981 1px, transparent 1px)`,
-            backgroundSize: '28px 28px',
-          }}
-        />
+      {/* Dedicated Medical Hero with Custom Background Banner */}
+      <section className="relative overflow-hidden bg-slate-950 text-white pt-14 sm:pt-20 pb-20 sm:pb-28 border-b border-slate-800">
+        {/* Banner Graphic Background Layer */}
+        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+          <img 
+            src="/assets/aistudio/Med_bd512f27.png" 
+            alt="Medical & Healthcare Sector Hero Background"
+            className="w-full h-full object-cover object-center"
+          />
+          {/* Directional & subtle spotlight overlays for contrast and readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-900/35 rtl:bg-gradient-to-l" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.15)_0%,transparent_60%)] pointer-events-none" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent" />
+        </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl space-y-6 text-start">
@@ -191,8 +196,8 @@ export const MedicalPage: React.FC = () => {
           </h2>
           <p className="text-xs sm:text-sm text-slate-600">
             {isAr 
-              ? 'نماذج واقعية من شركائنا في قطاع العلاج الطبيعي والمراكز الجراحية ومجمعات العيادات التخصصية.' 
-              : 'Verifiable growth models from our partner physiotherapy centers, surgical hospitals, and specialized clinics.'}
+              ? 'نموذج موثق بالأرقام والنتائج من شراكتنا مع مركز IPT للعلاج الطبيعي والتأهيل الحركي.' 
+              : 'Audited results and real patient inquiry figures from our partnership with IPT Physiotherapy Center.'}
           </p>
         </div>
 
@@ -382,75 +387,77 @@ export const MedicalPage: React.FC = () => {
           );
         })()}
 
-        {/* Other Medical Case Studies Grid */}
-        <div className="pt-6">
-          <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-6 text-start">
-            {isAr ? 'دراسات حالة إضافية في القطاع الطبي' : 'Additional Healthcare Case Studies'}
-          </h3>
+        {/* Other Medical Case Studies Grid (only if extra studies exist) */}
+        {medicalCaseStudies.filter((study) => study.id !== 'cs-med-ipt').length > 0 && (
+          <div className="pt-6">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-6 text-start">
+              {isAr ? 'دراسات حالة إضافية في القطاع الطبي' : 'Additional Healthcare Case Studies'}
+            </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {medicalCaseStudies
-              .filter((study) => study.id !== 'cs-med-ipt')
-              .map((study) => {
-                const title = isAr ? study.title : study.titleEn;
-                const client = isAr ? study.client : study.clientEn;
-                const industry = isAr ? study.industry : study.industryEn;
-                const solution = isAr ? study.solution : study.solutionEn;
-                const mainMetric = study.metrics[0];
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {medicalCaseStudies
+                .filter((study) => study.id !== 'cs-med-ipt')
+                .map((study) => {
+                  const title = isAr ? study.title : study.titleEn;
+                  const client = isAr ? study.client : study.clientEn;
+                  const industry = isAr ? study.industry : study.industryEn;
+                  const solution = isAr ? study.solution : study.solutionEn;
+                  const mainMetric = study.metrics[0];
 
-                return (
-                  <div
-                    key={study.id}
-                    onClick={() => setSelectedCaseStudy(study)}
-                    className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all p-6 sm:p-8 flex flex-col justify-between text-start cursor-pointer group"
-                  >
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span className="font-bold text-emerald-600">{industry}</span>
-                        <span>{isAr ? `المدة: ${study.duration}` : `Duration: ${study.durationEn}`}</span>
-                      </div>
-
-                      <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-100 flex items-center justify-between">
-                        <div>
-                          <div className="text-3xl sm:text-4xl font-black text-emerald-600 tabular-nums">
-                            {mainMetric?.value}
-                          </div>
-                          <div className="text-xs font-bold text-slate-800 mt-0.5">
-                            {isAr ? mainMetric?.label : mainMetric?.labelEn}
-                          </div>
+                  return (
+                    <div
+                      key={study.id}
+                      onClick={() => setSelectedCaseStudy(study)}
+                      className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all p-6 sm:p-8 flex flex-col justify-between text-start cursor-pointer group"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span className="font-bold text-emerald-600">{industry}</span>
+                          <span>{isAr ? `المدة: ${study.duration}` : `Duration: ${study.durationEn}`}</span>
                         </div>
-                        {study.metrics[1] && (
-                          <div className="text-end">
-                            <div className="text-2xl font-black text-slate-900 tabular-nums">
-                              {study.metrics[1].value}
+
+                        <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-100 flex items-center justify-between">
+                          <div>
+                            <div className="text-3xl sm:text-4xl font-black text-emerald-600 tabular-nums">
+                              {mainMetric?.value}
                             </div>
-                            <div className="text-[11px] text-slate-500">
-                              {isAr ? study.metrics[1].label : study.metrics[1].labelEn}
+                            <div className="text-xs font-bold text-slate-800 mt-0.5">
+                              {isAr ? mainMetric?.label : mainMetric?.labelEn}
                             </div>
                           </div>
-                        )}
+                          {study.metrics[1] && (
+                            <div className="text-end">
+                              <div className="text-2xl font-black text-slate-900 tabular-nums">
+                                {study.metrics[1].value}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                {isAr ? study.metrics[1].label : study.metrics[1].labelEn}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-xs font-bold text-slate-600">{client}</div>
+                          <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors leading-snug">
+                            {title}
+                          </h3>
+                          <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
+                            {solution}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="text-xs font-bold text-slate-600">{client}</div>
-                        <h3 className="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors leading-snug">
-                          {title}
-                        </h3>
-                        <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
-                          {solution}
-                        </p>
+                      <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-xs font-bold text-emerald-600">
+                        <span>{t.common.viewDetails}</span>
+                        {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                       </div>
                     </div>
-
-                    <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-xs font-bold text-emerald-600">
-                      <span>{t.common.viewDetails}</span>
-                      {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* Medical Call To Action Box */}

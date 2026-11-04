@@ -61,7 +61,7 @@ interface AgencyContextType {
   importDataJson: (jsonString: string) => boolean;
 }
 
-const STORAGE_KEY = 'digital_effect_agency_state_v9';
+const STORAGE_KEY = 'digital_effect_agency_state_v10';
 const LANG_STORAGE_KEY = 'digital_effect_language_v2';
 
 const AgencyDataContext = createContext<AgencyContextType | undefined>(undefined);
@@ -98,10 +98,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [data, setData] = useState<AgencyDataState>(() => {
     try {
+      // Clear legacy state keys to avoid stale case studies
+      localStorage.removeItem('digital_effect_agency_state_v9');
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.caseStudies && parsed.packages) {
+          // Ensure non-IPT medical case studies are pruned
+          parsed.caseStudies = parsed.caseStudies.filter(
+            (c: any) => c.id !== 'cs-med-1' && c.id !== 'cs-med-2'
+          );
           if (!parsed.promoCodes || parsed.promoCodes.length === 0) {
             parsed.promoCodes = INITIAL_AGENCY_DATA.promoCodes || [];
           }

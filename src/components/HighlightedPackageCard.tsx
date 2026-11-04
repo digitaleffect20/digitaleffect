@@ -7,7 +7,6 @@ import {
   ArrowLeft, 
   ArrowRight, 
   Tag, 
-  Edit3, 
   ShieldCheck,
   Film,
   Layers,
@@ -21,7 +20,7 @@ interface Props {
 }
 
 export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
-  const { language, t, setSelectedPackageForInquiry, setIsConsultationOpen, setIsAdminOpen } = useAgencyData();
+  const { language, t, setSelectedPackageForInquiry, setIsConsultationOpen } = useAgencyData();
   const isAr = language === 'ar';
 
   // For packages that support quarterly pricing (e.g., Medical packages)
@@ -275,7 +274,7 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
       </div>
 
       {/* Action Buttons */}
-      <div className="space-y-2 pt-3 border-t border-slate-100">
+      <div className="pt-3 border-t border-slate-100">
         <button
           onClick={handleInquire}
           className={`w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 ${
@@ -286,14 +285,6 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
         >
           <span>{t.common.bookThisPackage}</span>
           {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-        </button>
-
-        <button
-          onClick={() => setIsAdminOpen(true)}
-          className="w-full py-1.5 px-3 text-[11px] font-semibold text-slate-400 hover:text-sky-600 hover:bg-slate-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-        >
-          <Edit3 className="w-3 h-3" />
-          <span>{isAr ? 'تعديل السعر أو عمل عرض على هذه الباقة (CMS)' : 'Edit pricing or offer note (CMS)'}</span>
         </button>
       </div>
     </div>
