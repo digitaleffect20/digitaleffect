@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
+import { SeoHead } from '../components/SeoHead';
 import { 
   ArrowLeft, 
   ArrowRight, 
+  Share2,
   ExternalLink, 
   Eye, 
   TrendingUp, 
@@ -20,65 +22,54 @@ import {
   Briefcase,
   Layers,
   Compass,
-  Cpu
+  Cpu,
+  Check
 } from 'lucide-react';
+
+import { getCaseStudyCreatives, getCaseStudyVideos } from '../utils/caseStudyMedia';
+import { CaseStudyVideoSection } from '../components/CaseStudyVideoSection';
 
 export const BsiziaCaseStudyPage: React.FC = () => {
   const { data, language, setCurrentPage, setIsConsultationOpen } = useAgencyData();
   const isAr = language === 'ar';
 
-  const [activeLightboxImg, setActiveLightboxImg] = useState<{ url: string; title: string; desc?: string } | null>(null);
+  const currentCaseStudy = data.caseStudies.find((c) => c.id === 'cs-b2b-bsizia');
+  const creatives = getCaseStudyCreatives('cs-b2b-bsizia', currentCaseStudy);
+  const videos = getCaseStudyVideos(currentCaseStudy);
 
-  const creatives = [
-    {
-      url: '/assets/bsizia/bsizia_img_8.jpg',
-      title: isAr ? 'كيان متكامل لنمو يدوم — استراتيجية قوة التكتل' : 'Integrated Entity for Lasting Growth — Alliance Strategy',
-      desc: isAr ? 'تجسيد محاور الجمعية الأربعة: قوة التكتل، رؤية واضحة، التمثيل، وسرعة الحل لربط المصانع والمستثمرين.' : 'Articulating the 4 pillars: collective leverage, crystal vision, authoritative representation, and agile problem solving.',
-      tag: isAr ? 'قوة التكتل' : 'Industrial Alliance',
-    },
-    {
-      url: '/assets/bsizia/bsizia_img_9.jpg',
-      title: isAr ? 'كل نجاح صناعي خلفه قرار استثماري صح' : 'Behind Every Industrial Success is a Smart Investment',
-      desc: isAr ? 'إبراز خطوط الإنتاج والنمو التصاعدي للمصانع في بني سويف كبيئة استثمارية خصبة ومربحة.' : 'Visualizing manufacturing pipelines and upward growth curves, driving enterprise expansion decisions.',
-      tag: isAr ? 'قرار استثماري' : 'Strategic Investment',
-    },
-    {
-      url: '/assets/bsizia/bsizia_img_10.jpg',
-      title: isAr ? 'ثقة المستثمر تبدأ من وضوح الرؤية — دور الجمعية' : 'Investor Confidence Begins with Vision Clarity',
-      desc: isAr ? 'استعراض رؤية الجمعية في دعم الصناعة والاستثمار وتهيئة المناخ الإداري لرجال الأعمال.' : 'Presenting the association roadmap to empower industry, mitigate operational risks, and streamline permits.',
-      tag: isAr ? 'وضوح الرؤية' : 'Investor Clarity',
-    },
-    {
-      url: '/assets/bsizia/bsizia_img_12.jpg',
-      title: isAr ? 'الصناعة مستقبلنا والتعاون طريق النجاح' : 'Industry is Our Future & Collaboration is the Path',
-      desc: isAr ? 'مشهد ميداني يجمع الإدارة الهندسية وأطقم التشغيل على أرض المصنع لمراجعة المخططات.' : 'On-the-ground executive leadership and factory technicians reviewing engineering master blueprints.',
-      tag: isAr ? 'التعاون الصناعي' : 'Factory Floor',
-    },
-    {
-      url: '/assets/bsizia/bsizia_img_13.jpg',
-      title: isAr ? 'خريطة مناطق بني سويف الصناعية — استثمر في موقع يخدمك' : 'Beni Suef Industrial Zones Map — Prime Logistical Hub',
-      desc: isAr ? 'خريطة تفصيلية تغطي مراكز الواسطى، ناصر، بني سويف، إهناسيا، ببا، سمسطا، الفشن، ومنطقة جبل وادي غراب مع مميزات سلاسل الإمداد.' : 'Detailed territorial zoning map showcasing supply chain proximity, export corridors, and industrial parcel readiness.',
-      tag: isAr ? 'خريطة الاستثمار' : 'Zoning Map',
-    },
-    {
-      url: '/assets/bsizia/bsizia_img_14.jpg',
-      title: isAr ? 'العضوية قوة — استثمار أقوى، وأمان أكبر' : 'Membership is Strength — Stronger Investment & Security',
-      desc: isAr ? 'تسليط الضوء على مزايا العضوية المؤسسية في مجالس القرار وحماية حقوق المصانع والتمثيل الحكومي الموحد.' : 'Highlighting board-level advocacy, investor safeguards, and collaborative policy representation.',
-      tag: isAr ? 'قوة العضوية' : 'Advocacy & Security',
-    },
-    {
-      url: '/assets/bsizia/bsizia_img_15.jpg',
-      title: isAr ? 'داعم حقيقي للمصانع — معك لحل التحديات' : 'A Real Backbone for Factories — Overcoming Challenges',
-      desc: isAr ? 'تروس الإنتاج والحلول العملية المباشرة لمواجهة تحديات الطاقة، التراخيص، وسلاسل التوريد للمصانع القائمة.' : 'Practical hands-on support addressing utilities, regulatory licensing, and industrial supply bottlenecks.',
-      tag: isAr ? 'دعم المصانع' : 'Operational Support',
-    },
-    {
-      url: '/assets/bsizia/bsizia_img_16.jpg',
-      title: isAr ? 'جمعية تقود النمو الصناعي — شريك المستثمر في بني سويف' : 'Driving Industrial Growth — Your Investment Partner',
-      desc: isAr ? 'التصويب الدقيق نحو أهداف التنمية وتمكين المصانع الوطنية من مضاعفة الإنتاجية والتصدير.' : 'Precision targeting towards industrial excellence, empowering domestic and international manufacturers.',
-      tag: isAr ? 'شريك المستثمر' : 'Strategic Partner',
-    },
-  ];
+  const [activeLightboxImg, setActiveLightboxImg] = useState<{ url: string; title: string; desc?: string } | null>(null);
+  const [shareToast, setShareToast] = useState(false);
+
+  const pageTitle = isAr 
+    ? 'دراسة حالة جمعية مستثمري بني سويف BSIZIA | ديجيتال إفكت' 
+    : 'BSIZIA Industrial Investors Association Case Study | Digital Effect';
+
+  const pageDescription = isAr
+    ? 'بناء الهوية والمنظومة الرقمية لجمعية مستثمري مناطق بني سويف الصناعية BSIZIA لترويج الاستثمار الصناعي وتمثيل المصانع وجذب رؤوس الأموال مع ديجيتال إفكت.'
+    : 'Digital ecosystem & corporate branding for BSIZIA Industrial Investors Association by Digital Effect: representing factories and scaling industrial investments.';
+
+  const handleShare = async () => {
+    const shareData = {
+      title: pageTitle,
+      text: pageDescription,
+      url: window.location.href,
+    };
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User dismissed
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareToast(true);
+        setTimeout(() => setShareToast(false), 2500);
+      } catch {
+        // Fallback
+      }
+    }
+  };
 
   const auditedMetrics = [
     {
@@ -132,6 +123,46 @@ export const BsiziaCaseStudyPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-sky-500 selection:text-white">
+      {/* Dynamic OpenGraph, Twitter Cards & Structured Data */}
+      <SeoHead
+        title={pageTitle}
+        description={pageDescription}
+        image="/assets/portfolio_crops/card_bsizia.png"
+        imageAlt={isAr ? 'دراسة حالة جمعية مستثمري مناطق بني سويف الصناعية BSIZIA - ديجيتال إفكت' : 'BSIZIA Industrial Zones Association Case Study - Digital Effect'}
+        urlPath="#bsizia-case-study"
+        type="article"
+        publishedTime="2024-03-01T08:00:00Z"
+        author="Digital Effect | ديجيتال إفكت للحلول الرقمية"
+        section={isAr ? 'قطاع الشركات والمؤسسات الصناعية (B2B Enterprise)' : 'Industrial B2B Enterprise & Manufacturing'}
+        tags={['جمعية مستثمري بني سويف', 'BSIZIA', 'تسويق B2B', 'استثمار صناعي', 'مصانع مصر', 'الهوية المؤسسية', 'ديجيتال إفكت', 'Digital Effect Industrial']}
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: pageTitle,
+          description: pageDescription,
+          image: typeof window !== 'undefined' ? `${window.location.origin}/assets/portfolio_crops/card_bsizia.png` : 'https://digitaleffect.net/assets/portfolio_crops/card_bsizia.png',
+          datePublished: '2024-03-01T08:00:00Z',
+          inLanguage: isAr ? 'ar' : 'en',
+          author: {
+            '@type': 'Organization',
+            name: 'Digital Effect',
+            alternateName: 'ديجيتال إفكت للحلول الرقمية والتسويق',
+            url: 'https://digitaleffect.net'
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Digital Effect',
+            url: 'https://digitaleffect.net'
+          },
+          about: {
+            '@type': 'Organization',
+            name: 'BSIZIA Industrial Zones Association',
+            alternateName: 'جمعية مستثمري مناطق بني سويف الصناعية',
+            areaServed: 'Beni Suef Industrial Zones'
+          }
+        }}
+      />
+
       {/* Top Breadcrumb Navigation */}
       <div className="bg-slate-900/80 border-b border-slate-800/80 sticky top-16 z-30 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
@@ -156,6 +187,16 @@ export const BsiziaCaseStudyPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Social Share Button with Toast */}
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all cursor-pointer"
+              title={isAr ? 'مشاركة رابط دراسة الحالة عبر السوشيال ميديا' : 'Share case study link'}
+            >
+              {shareToast ? <Check className="w-3.5 h-3.5 text-sky-400" /> : <Share2 className="w-3.5 h-3.5 text-sky-400" />}
+              <span>{shareToast ? (isAr ? 'تم نسخ الرابط!' : 'Copied!') : (isAr ? 'مشاركة' : 'Share')}</span>
+            </button>
+
             <button
               onClick={() => setCurrentPage('b2b')}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all"
@@ -177,155 +218,248 @@ export const BsiziaCaseStudyPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-20 border-b border-slate-800/80 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950">
-        <div className="absolute inset-0 pointer-events-none opacity-20">
-          <div className="absolute -top-32 -right-32 w-96 h-96 bg-sky-500/30 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 -left-32 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-cyan-500/20 rounded-full blur-3xl"></div>
+      {/* Hero Section with Cinematic Industrial Background */}
+      <section className="relative overflow-hidden pt-14 pb-20 sm:pb-28 border-b border-slate-800/80 bg-slate-950">
+        {/* Cinematic Industrial Complex Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/assets/bsizia/bsizia_hero_bg.jpg" 
+            alt="Beni Suef Industrial Zones Complex" 
+            className="w-full h-full object-cover object-center filter brightness-90 contrast-105"
+          />
+          {/* Heavy Gradient Overlays for Maximum Contrast & Negative Space behind Text */}
+          <div className="absolute inset-0 bg-slate-950/75 mix-blend-multiply"></div>
+          {/* Directional gradient: Deep dark slate on the text side (right in RTL, left in LTR) */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/85 to-slate-950 rtl:from-slate-950/30 rtl:via-slate-950/90 rtl:to-slate-950"></div>
+          {/* Top and Bottom Fades */}
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-transparent to-slate-950"></div>
+        </div>
+
+        {/* Ambient Glows */}
+        <div className="absolute inset-0 pointer-events-none opacity-30 z-0">
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-sky-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            {/* Text & Meta Column */}
-            <div className="lg:col-span-7 space-y-6">
-              {/* Category Badges */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30">
-                  <Factory className="w-3.5 h-3.5" />
-                  {isAr ? 'دراسة حالة B2B صناعية متقدمة' : 'Industrial B2B Flagship Case Study'}
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {isAr ? 'نتائج موثقة رسمياً' : 'Audited Growth Record'}
-                </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
-                  <MapPin className="w-3 h-3 text-sky-400" />
-                  {isAr ? 'محافظة بني سويف — مصر' : 'Beni Suef Governorate — Egypt'}
-                </span>
-              </div>
+          <div className="max-w-3xl lg:max-w-4xl space-y-7 text-start">
+            {/* Category Badges */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-400/30 backdrop-blur-md shadow-lg">
+                <Factory className="w-3.5 h-3.5 text-sky-400" />
+                {isAr ? 'دراسة حالة B2B صناعية متقدمة' : 'Industrial B2B Flagship Case Study'}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 backdrop-blur-md">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                {isAr ? 'نتائج موثقة رسمياً' : 'Audited Growth Record'}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-900/80 text-slate-300 border border-slate-700/80 backdrop-blur-md">
+                <MapPin className="w-3 h-3 text-sky-400" />
+                {isAr ? 'محافظة بني سويف — مصر' : 'Beni Suef Governorate — Egypt'}
+              </span>
+            </div>
 
-              {/* Client Logo & Identity Banner */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800/90 border border-slate-700/80 shadow-xl flex flex-col sm:flex-row items-center gap-5">
-                <div className="p-3 bg-white rounded-xl shadow-md flex items-center justify-center shrink-0">
-                  <img 
-                    src="/assets/bsizia/bsizia_img_1.png" 
-                    alt="ACTON BLUE ICE / BSIZIA Logo" 
-                    className="h-10 sm:h-12 w-auto object-contain"
-                  />
-                </div>
-                <div className="text-center sm:text-start">
-                  <div className="text-xs uppercase tracking-wider text-sky-400 font-bold">
-                    {isAr ? 'العميل الصناعي' : 'Industrial Client'}
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white">
-                    {isAr ? 'جمعية مستثمري مناطق بني سويف الصناعية (BSIZIA)' : 'Beni Suef Industrial Zones Investors Association'}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {isAr ? 'الكيان الممثل للمصانع والترويج الاستثماري بالمحافظة | شراكة استراتيجية' : 'Official Industrial Representative & Regional Investment Promotion Hub'}
-                  </p>
-                </div>
+            {/* Client Logo & Identity Banner */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/85 backdrop-blur-md border border-slate-700/80 shadow-2xl flex flex-col sm:flex-row items-center gap-5 inline-flex max-w-full">
+              <div className="p-3 bg-white rounded-xl shadow-md flex items-center justify-center shrink-0 max-w-[280px]">
+                <img 
+                  src="/assets/bsizia/bsizia_img_1.png" 
+                  alt={isAr ? 'شعار جمعية مستثمري مناطق بني سويف الصناعية' : 'Beni Suef Industrial Zones (BSIZIA) Logo'} 
+                  className="h-10 sm:h-12 w-auto max-w-full object-contain"
+                />
               </div>
-
-              {/* Title & Headline */}
-              <div>
-                <h1 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
-                  {isAr 
-                    ? 'بناء الهوية والمنظومة الرقمية للترويج الصناعي وجذب الاستثمار'
-                    : 'Institutional Digital Authority & Industrial Investment Promotion Ecosystem'}
-                </h1>
-                <p className="text-base sm:text-lg text-slate-300 mt-4 leading-relaxed font-light">
-                  {isAr 
-                    ? 'كيف طوّرت ديجيتال إفكت منصة رقمية رصينة وهوية بصرية موحدة لجمعية مستثمري بني سويف؛ تمكّن المصانع القائمة، توحد صوت المستثمرين، وتروّج للمناطق الصناعية لجذب كبرى رؤوس الأموال المحلية والدولية.'
-                    : 'How Digital Effect engineered an authoritative B2B digital footprint and visual identity for BSIZIA, empowering existing manufacturers, unifying investor representation, and promoting prime industrial zones to regional conglomerates.'}
+              <div className="text-center sm:text-start">
+                <div className="text-xs uppercase tracking-wider text-sky-400 font-bold">
+                  {isAr ? 'العميل الصناعي' : 'Industrial Client'}
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-white">
+                  {isAr ? 'جمعية مستثمري مناطق بني سويف الصناعية (BSIZIA)' : 'Beni Suef Industrial Zones Investors Association'}
+                </h3>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {isAr ? 'الكيان الممثل للمصانع والترويج الاستثماري بالمحافظة | شراكة استراتيجية' : 'Official Industrial Representative & Regional Investment Promotion Hub'}
                 </p>
-              </div>
-
-              {/* Quick Services Pill Grid */}
-              <div className="pt-2">
-                <div className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2">
-                  {isAr ? 'الخدمات المنفذة في المشروع:' : 'Services Executed:'}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {(isAr ? [
-                    'إدارة التواجد الرقمي المؤسسي B2B',
-                    'تصميم الهوية والحملات الترويجية للمناطق الصناعية',
-                    'صناعة المحتوى الترويجي والخرائط التفاعلية',
-                    'إعلانات الاستهداف الدقيق لرجال الأعمال (Meta Ads)',
-                    'تغطية الفعاليات ومبادرات دعم المستثمرين والمصانع'
-                  ] : [
-                    'B2B Social Media & Presence',
-                    'Industrial Visual Identity & Campaigns',
-                    'Zoning Content & Investment Maps',
-                    'Targeted Executive Advertising (Meta Ads)',
-                    'Investor Advocacy & Operational Support'
-                  ]).map((srv, idx) => (
-                    <span 
-                      key={idx}
-                      className="px-3 py-1 rounded-lg text-xs bg-slate-900 border border-slate-800 text-slate-300 font-medium"
-                    >
-                      ✓ {srv}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* CTA Action Bar */}
-              <div className="flex flex-wrap items-center gap-3 pt-3">
-                <button
-                  onClick={() => setIsConsultationOpen(true)}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 transition-all flex items-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  {isAr ? 'احجز استشارة B2B لمؤسستك أو مصنعك' : 'Book a B2B Consultation for Your Enterprise'}
-                </button>
-
-                <button
-                  onClick={() => setCurrentPage('b2b')}
-                  className="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 transition-all"
-                >
-                  {isAr ? 'استعراض باقات قطاع B2B' : 'View B2B Retainer Packages'}
-                </button>
               </div>
             </div>
 
-            {/* Hero Visual Column (Full Size Hero Image) */}
-            <div className="lg:col-span-5">
-              <div className="relative rounded-3xl overflow-hidden bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700/80 shadow-2xl group">
-                <div className="relative aspect-[4/5] sm:aspect-square lg:aspect-[4/5] w-full overflow-hidden flex items-center justify-center p-4 bg-slate-950/40">
+            {/* Title & Headline */}
+            <div className="space-y-4">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-[1.18] tracking-tight drop-shadow-md">
+                {isAr 
+                  ? 'بناء الهوية والمنظومة الرقمية للترويج الصناعي وجذب الاستثمار'
+                  : 'Institutional Digital Authority & Industrial Investment Promotion Ecosystem'}
+              </h1>
+              <p className="text-base sm:text-xl text-slate-200/90 leading-relaxed font-light max-w-3xl drop-shadow-sm">
+                {isAr 
+                  ? 'كيف طوّرت ديجيتال إفكت منصة رقمية رصينة وهوية بصرية موحدة لجمعية مستثمري بني سويف؛ تمكّن المصانع القائمة، توحد صوت المستثمرين، وتروّج للمناطق الصناعية لجذب كبرى رؤوس الأموال المحلية والدولية.'
+                  : 'How Digital Effect engineered an authoritative B2B digital footprint and visual identity for BSIZIA, empowering existing manufacturers, unifying investor representation, and promoting prime industrial zones to regional conglomerates.'}
+              </p>
+            </div>
+
+            {/* Quick Services Pill Grid */}
+            <div className="pt-1">
+              <div className="text-xs font-semibold uppercase text-slate-300 tracking-wider mb-2">
+                {isAr ? 'الخدمات المنفذة في المشروع:' : 'Services Executed:'}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(isAr ? [
+                  'إدارة التواجد الرقمي المؤسسي B2B',
+                  'تصميم الهوية والحملات الترويجية للمناطق الصناعية',
+                  'صناعة المحتوى الترويجي والخرائط التفاعلية',
+                  'إعلانات الاستهداف الدقيق لرجال الأعمال (Meta Ads)',
+                  'تغطية الفعاليات ومبادرات دعم المستثمرين والمصانع'
+                ] : [
+                  'B2B Social Media & Presence',
+                  'Industrial Visual Identity & Campaigns',
+                  'Zoning Content & Investment Maps',
+                  'Targeted Executive Advertising (Meta Ads)',
+                  'Investor Advocacy & Operational Support'
+                ]).map((srv, idx) => (
+                  <span 
+                    key={idx}
+                    className="px-3 py-1.5 rounded-lg text-xs bg-slate-900/80 backdrop-blur-sm border border-slate-700/80 text-slate-200 font-medium shadow-xs"
+                  >
+                    ✓ {srv}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Key Live KPI Chips right inside the banner */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              {[
+                { val: '+380%', label: isAr ? 'نمو التفاعل الصناعي' : 'B2B Engagement' },
+                { val: '1.8M+', label: isAr ? 'وصول الحملات للمستثمرين' : 'Executive Reach' },
+                { val: '8 مناطق', label: isAr ? 'مناطق صناعية مشمولة' : 'Industrial Zones' },
+                { val: '+145%', label: isAr ? 'طلبات الاستثمار والعضوية' : 'Inward Enquiries' },
+              ].map((kpi, idx) => (
+                <div key={idx} className="p-3 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700/70">
+                  <div className="text-xl sm:text-2xl font-black text-sky-400 tabular-nums">
+                    {kpi.val}
+                  </div>
+                  <div className="text-[11px] text-slate-300 font-medium mt-0.5">
+                    {kpi.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA Action Bar */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <button
+                onClick={() => setIsConsultationOpen(true)}
+                className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-sm shadow-xl shadow-sky-500/25 hover:shadow-sky-500/40 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                {isAr ? 'احجز استشارة B2B لمؤسستك أو مصنعك' : 'Book a B2B Consultation for Your Enterprise'}
+              </button>
+
+              <button
+                onClick={() => setCurrentPage('b2b')}
+                className="px-5 py-3.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-200 font-semibold text-sm border border-slate-700 backdrop-blur-sm transition-all cursor-pointer"
+              >
+                {isAr ? 'استعراض باقات قطاع B2B' : 'View B2B Retainer Packages'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Full-Size Creatives Gallery (Main Showcase - Moved immediately after Hero) */}
+      <section className="py-20 bg-slate-950 border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+          {/* Campaign Videos Showcase if available */}
+          {videos && videos.length > 0 && (
+            <CaseStudyVideoSection
+              videos={videos}
+              isAr={isAr}
+              clientName={isAr ? 'جمعية مستثمري بني سويف BSIZIA' : 'BSIZIA Industrial Investors Association'}
+            />
+          )}
+
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30 mb-3">
+                <Sparkles className="w-3.5 h-3.5" />
+                {isAr ? 'معرض الأعمال والحملات الإعلانية' : 'Creative Campaign Portfolio'}
+              </div>
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-white">
+                {isAr ? 'تصاميم الحملات بالحجم الكامل والوضوح الفائق' : 'Full-Resolution Creative Campaign Showcase'}
+              </h2>
+              <p className="text-sm sm:text-base text-slate-400 mt-2 max-w-2xl font-light">
+                {isAr 
+                  ? 'استعرض كافة تصاميم الحملة المعتمدة بجودتها الأصلية بدون اقتصاص أو ضغط، مع تفاصيل الخطاب التسويقي لكل محور.'
+                  : 'Explore all certified campaign visuals in uncompressed high resolution, showcasing the precise messaging hierarchy for each industrial pillar.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 self-start md:self-auto">
+              <Eye className="w-4 h-4 text-sky-400" />
+              <span>{isAr ? 'اضغط على أي تصميم لتكبيره واستعراضه بجودة كاملة' : 'Click any visual to enlarge and inspect in full detail'}</span>
+            </div>
+          </div>
+
+          {/* Grid of Creatives (2 columns on tablet, 3 on desktop for optimal large visual display) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {creatives.map((creative, idx) => (
+              <div 
+                key={idx}
+                className="rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-sky-500/50 transition-all duration-300 shadow-xl group flex flex-col"
+              >
+                {/* Visual Image Container - Generous size so user can inspect clearly */}
+                <div 
+                  className="relative aspect-[3/4] w-full bg-slate-950 overflow-hidden cursor-pointer"
+                  onClick={() => setActiveLightboxImg({ url: creative.url, title: creative.title, desc: creative.desc })}
+                >
                   <img 
-                    src="/assets/bsizia/bsizia_img_6.png" 
-                    alt="BSIZIA Industrial Hero Visual" 
-                    className="w-full h-full object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-700"
+                    src={creative.url} 
+                    alt={creative.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60"></div>
+                  
+                  {/* Subtle Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-40 group-hover:opacity-20 transition-opacity"></div>
+
+                  {/* Category Pill on Image */}
+                  <div className="absolute top-4 start-4">
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-900/90 text-sky-400 border border-slate-700/80 backdrop-blur-md shadow-lg">
+                      {creative.tag}
+                    </span>
+                  </div>
+
+                  {/* Expand Overlay Button */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/40 backdrop-blur-[2px]">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-xs shadow-2xl scale-95 group-hover:scale-100 transition-transform">
+                      <Maximize2 className="w-4 h-4" />
+                      {isAr ? 'تكبير بالحجم الكامل' : 'View Full Size'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="p-5 bg-slate-900/95 border-t border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs font-semibold text-sky-400">
-                        {isAr ? 'الهوية البصرية الصناعية' : 'Industrial Visual Identity'}
-                      </div>
-                      <div className="text-sm font-bold text-white">
-                        {isAr ? 'رمزية التنمية البشرية والتكامل الصناعي' : 'Human Capital & Industrial Fusion'}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setActiveLightboxImg({
-                        url: '/assets/bsizia/bsizia_img_6.png',
-                        title: isAr ? 'الهوية البصرية الصناعية — جمعية مستثمري بني سويف' : 'Industrial Visual Identity — BSIZIA',
-                        desc: isAr ? 'التصميم الرمزي الذي يجمع المهندس وصانع القرار بخطوط الإنتاج والمصانع المتطورة.' : 'Symbolic artwork blending industrial leadership with modern manufacturing infrastructure.'
-                      })}
-                      className="p-2.5 rounded-xl bg-slate-800 hover:bg-sky-500 text-slate-300 hover:text-white transition-colors"
-                      title={isAr ? 'تكبير الصورة' : 'Enlarge Image'}
+                {/* Content Card Info */}
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-sky-300 transition-colors leading-snug">
+                      {creative.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-400 mt-2.5 leading-relaxed font-light">
+                      {creative.desc}
+                    </p>
+                  </div>
+
+                  <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-mono text-slate-400">#0{idx + 1} / BSIZIA B2B</span>
+                    <button 
+                      onClick={() => setActiveLightboxImg({ url: creative.url, title: creative.title, desc: creative.desc })}
+                      className="text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1"
                     >
-                      <Maximize2 className="w-4 h-4" />
+                      {isAr ? 'تفاصيل التصميم' : 'Enlarge'}
+                      <ExternalLink className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -498,96 +632,6 @@ export const BsiziaCaseStudyPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Full-Size Creatives Gallery (Main Showcase) */}
-      <section className="py-20 bg-slate-950">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30 mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                {isAr ? 'معرض الأعمال والحملات الإعلانية' : 'Creative Campaign Portfolio'}
-              </div>
-              <h2 className="text-2xl sm:text-4xl font-extrabold text-white">
-                {isAr ? 'تصاميم الحملات بالحجم الكامل والوضوح الفائق' : 'Full-Resolution Creative Campaign Showcase'}
-              </h2>
-              <p className="text-sm sm:text-base text-slate-400 mt-2 max-w-2xl font-light">
-                {isAr 
-                  ? 'استعرض كافة تصاميم الحملة المعتمدة بجودتها الأصلية بدون اقتصاص أو ضغط، مع تفاصيل الخطاب التسويقي لكل محور.'
-                  : 'Explore all certified campaign visuals in uncompressed high resolution, showcasing the precise messaging hierarchy for each industrial pillar.'}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 self-start md:self-auto">
-              <Eye className="w-4 h-4 text-sky-400" />
-              <span>{isAr ? 'اضغط على أي تصميم لتكبيره واستعراضه بجودة كاملة' : 'Click any visual to enlarge and inspect in full detail'}</span>
-            </div>
-          </div>
-
-          {/* Grid of Creatives (2 columns on tablet, 3 on desktop for optimal large visual display) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {creatives.map((creative, idx) => (
-              <div 
-                key={idx}
-                className="rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-sky-500/50 transition-all duration-300 shadow-xl group flex flex-col"
-              >
-                {/* Visual Image Container - Generous size so user can inspect clearly */}
-                <div 
-                  className="relative aspect-[3/4] w-full bg-slate-950 overflow-hidden cursor-pointer"
-                  onClick={() => setActiveLightboxImg({ url: creative.url, title: creative.title, desc: creative.desc })}
-                >
-                  <img 
-                    src={creative.url} 
-                    alt={creative.title}
-                    loading="lazy"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  
-                  {/* Subtle Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-40 group-hover:opacity-20 transition-opacity"></div>
-
-                  {/* Category Pill on Image */}
-                  <div className="absolute top-4 start-4">
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-900/90 text-sky-400 border border-slate-700/80 backdrop-blur-md shadow-lg">
-                      {creative.tag}
-                    </span>
-                  </div>
-
-                  {/* Expand Overlay Button */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/40 backdrop-blur-[2px]">
-                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500 text-white font-bold text-xs shadow-2xl scale-95 group-hover:scale-100 transition-transform">
-                      <Maximize2 className="w-4 h-4" />
-                      {isAr ? 'تكبير بالحجم الكامل' : 'View Full Size'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Content Card Info */}
-                <div className="p-6 flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-sky-300 transition-colors leading-snug">
-                      {creative.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-slate-400 mt-2.5 leading-relaxed font-light">
-                      {creative.desc}
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
-                    <span className="font-mono text-slate-400">#0{idx + 1} / BSIZIA B2B</span>
-                    <button 
-                      onClick={() => setActiveLightboxImg({ url: creative.url, title: creative.title, desc: creative.desc })}
-                      className="text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1"
-                    >
-                      {isAr ? 'تفاصيل التصميم' : 'Enlarge'}
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Client Testimonial Quote */}
       <section className="py-16 bg-gradient-to-b from-slate-900 to-slate-950 border-t border-b border-slate-800">

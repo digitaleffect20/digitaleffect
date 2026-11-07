@@ -15,6 +15,16 @@ import { AboutPage } from './pages/AboutPage';
 import { IptCaseStudyPage } from './pages/IptCaseStudyPage';
 import { PenguinCaseStudyPage } from './pages/PenguinCaseStudyPage';
 import { BsiziaCaseStudyPage } from './pages/BsiziaCaseStudyPage';
+import { BinaryracksCaseStudyPage } from './pages/BinaryracksCaseStudyPage';
+import { GimokaCaseStudyPage } from './pages/GimokaCaseStudyPage';
+import { LashinCaseStudyPage } from './pages/LashinCaseStudyPage';
+import { ConcreteCaseStudyPage } from './pages/ConcreteCaseStudyPage';
+import { HamburgCaseStudyPage } from './pages/HamburgCaseStudyPage';
+import { ActonCaseStudyPage } from './pages/ActonCaseStudyPage';
+import { YokenCaseStudyPage } from './pages/YokenCaseStudyPage';
+import { SiltalCaseStudyPage } from './pages/SiltalCaseStudyPage';
+import { PassapCaseStudyPage } from './pages/PassapCaseStudyPage';
+import { AlwaadCaseStudyPage } from './pages/AlwaadCaseStudyPage';
 import { AdminPortalPage } from './pages/AdminPortalPage';
 import { Building2, ShoppingBag, Stethoscope, Home, MessageSquare, Briefcase } from 'lucide-react';
 import { PageRoute } from './types';
@@ -24,12 +34,26 @@ const AppContent: React.FC = () => {
   const { currentPage, setCurrentPage, language, data } = useAgencyData();
   const isAr = language === 'ar';
 
-  // Automatically track visitor traffic per page
+  // Automatically track visitor traffic and update title for top-level pages
   React.useEffect(() => {
     if (currentPage !== 'admin') {
       recordPageView(currentPage);
     }
-  }, [currentPage]);
+
+    if (currentPage === 'home') {
+      document.title = isAr ? 'Digital Effect | ديجيتال إفكت للحلول الرقمية والتسويق المتكامل' : 'Digital Effect | Full-Service Digital Marketing Agency';
+    } else if (currentPage === 'b2b') {
+      document.title = isAr ? 'حلول التسويق الرقمي للشركات والمصانع B2B | ديجيتال إفكت' : 'B2B Enterprise & Industrial Marketing Solutions | Digital Effect';
+    } else if (currentPage === 'b2c') {
+      document.title = isAr ? 'حلول التسويق الرقمي لقطاع التجارة والتجزئة B2C | ديجيتال إفكت' : 'B2C E-Commerce & Retail Marketing Solutions | Digital Effect';
+    } else if (currentPage === 'medical') {
+      document.title = isAr ? 'حلول التسويق الطبي للمراكز والعيادات Medical | ديجيتال إفكت' : 'Specialized Medical & Healthcare Marketing | Digital Effect';
+    } else if (currentPage === 'case-studies') {
+      document.title = isAr ? 'سابقة الأعمال ودراسات الحالة وقصص النجاح | ديجيتال إفكت' : 'Case Studies & Success Stories Portfolio | Digital Effect';
+    } else if (currentPage === 'about') {
+      document.title = isAr ? 'من نحن — خبرة ٢٠ عاماً في التسويق والحلول الرقمية | ديجيتال إفكت' : 'About Us — 20+ Years of Digital Marketing Excellence | Digital Effect';
+    }
+  }, [currentPage, isAr]);
 
   if (currentPage === 'admin') {
     return <AdminPortalPage />;
@@ -54,6 +78,26 @@ const AppContent: React.FC = () => {
         return <PenguinCaseStudyPage />;
       case 'bsizia-case-study':
         return <BsiziaCaseStudyPage />;
+      case 'binaryracks-case-study':
+        return <BinaryracksCaseStudyPage />;
+      case 'gimoka-case-study':
+        return <GimokaCaseStudyPage />;
+      case 'lashin-case-study':
+        return <LashinCaseStudyPage />;
+      case 'concrete-case-study':
+        return <ConcreteCaseStudyPage />;
+      case 'hamburg-case-study':
+        return <HamburgCaseStudyPage />;
+      case 'acton-case-study':
+        return <ActonCaseStudyPage />;
+      case 'yoken-case-study':
+        return <YokenCaseStudyPage />;
+      case 'siltal-case-study':
+        return <SiltalCaseStudyPage />;
+      case 'passap-case-study':
+        return <PassapCaseStudyPage />;
+      case 'alwaad-case-study':
+        return <AlwaadCaseStudyPage />;
       case 'home':
       default:
         return <HomePage />;

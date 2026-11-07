@@ -58,7 +58,17 @@ export const Navbar: React.FC = () => {
               currentPage === link.page || 
               (currentPage === 'ipt-case-study' && (link.page === 'medical' || link.page === 'case-studies')) ||
               (currentPage === 'penguin-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
-              (currentPage === 'bsizia-case-study' && (link.page === 'b2b' || link.page === 'case-studies'));
+              (currentPage === 'bsizia-case-study' && (link.page === 'b2b' || link.page === 'case-studies')) ||
+              (currentPage === 'binaryracks-case-study' && (link.page === 'b2b' || link.page === 'case-studies')) ||
+              (currentPage === 'gimoka-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'lashin-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'concrete-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'hamburg-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'acton-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'yoken-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'siltal-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'passap-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+              (currentPage === 'alwaad-case-study' && (link.page === 'b2c' || link.page === 'case-studies'));
             return (
               <button
                 key={link.page}
@@ -135,7 +145,17 @@ export const Navbar: React.FC = () => {
                 currentPage === link.page || 
                 (currentPage === 'ipt-case-study' && (link.page === 'medical' || link.page === 'case-studies')) ||
                 (currentPage === 'penguin-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
-                (currentPage === 'bsizia-case-study' && (link.page === 'b2b' || link.page === 'case-studies'));
+                (currentPage === 'bsizia-case-study' && (link.page === 'b2b' || link.page === 'case-studies')) ||
+                (currentPage === 'binaryracks-case-study' && (link.page === 'b2b' || link.page === 'case-studies')) ||
+                (currentPage === 'gimoka-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'lashin-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'concrete-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'hamburg-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'acton-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'yoken-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'siltal-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'passap-case-study' && (link.page === 'b2c' || link.page === 'case-studies')) ||
+                (currentPage === 'alwaad-case-study' && (link.page === 'b2c' || link.page === 'case-studies'));
               return (
                 <button
                   key={link.page}

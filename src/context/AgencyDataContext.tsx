@@ -61,7 +61,7 @@ interface AgencyContextType {
   importDataJson: (jsonString: string) => boolean;
 }
 
-const STORAGE_KEY = 'digital_effect_agency_state_v10';
+const STORAGE_KEY = 'digital_effect_agency_state_v12';
 const LANG_STORAGE_KEY = 'digital_effect_language_v2';
 
 const AgencyDataContext = createContext<AgencyContextType | undefined>(undefined);
@@ -80,6 +80,16 @@ function getPageFromHash(): PageRoute {
   if (hash === 'ipt' || hash === 'ipt-case-study' || hash === 'case-study/cs-med-ipt' || hash === 'case-study/ipt') return 'ipt-case-study';
   if (hash === 'penguin' || hash === 'penguin-case-study' || hash === 'case-study/cs-b2c-penguin' || hash === 'case-study/penguin') return 'penguin-case-study';
   if (hash === 'bsizia' || hash === 'bsizia-case-study' || hash === 'case-study/cs-b2b-bsizia' || hash === 'case-study/bsizia') return 'bsizia-case-study';
+  if (hash === 'binaryracks' || hash === 'binaryracks-case-study' || hash === 'case-study/cs-b2c-binaryracks' || hash === 'case-study/binaryracks') return 'binaryracks-case-study';
+  if (hash === 'gimoka' || hash === 'gimoka-case-study' || hash === 'case-study/cs-b2c-gimoka' || hash === 'case-study/gimoka') return 'gimoka-case-study';
+  if (hash === 'lashin' || hash === 'memar-lashin' || hash === 'lashin-case-study' || hash === 'memar-lashin-case-study' || hash === 'case-study/cs-b2c-memar-lashin' || hash === 'case-study/lashin') return 'lashin-case-study';
+  if (hash === 'concrete' || hash === 'concrete-case-study' || hash === 'case-study/cs-b2c-concrete' || hash === 'case-study/concrete') return 'concrete-case-study';
+  if (hash === 'hamburg' || hash === 'hamburg-case-study' || hash === 'case-study/cs-b2c-hamburg' || hash === 'case-study/hamburg') return 'hamburg-case-study';
+  if (hash === 'acton' || hash === 'acton-case-study' || hash === 'case-study/cs-b2c-acton' || hash === 'case-study/acton') return 'acton-case-study';
+  if (hash === 'yoken' || hash === 'yoken-case-study' || hash === 'case-study/cs-b2c-yoken' || hash === 'case-study/yoken') return 'yoken-case-study';
+  if (hash === 'siltal' || hash === 'siltal-case-study' || hash === 'case-study/cs-b2c-siltal' || hash === 'case-study/siltal') return 'siltal-case-study';
+  if (hash === 'passap' || hash === 'passap-case-study' || hash === 'case-study/cs-b2c-passap' || hash === 'case-study/passap') return 'passap-case-study';
+  if (hash === 'alwaad' || hash === 'alwaad-travel' || hash === 'alwaad-case-study' || hash === 'case-study/cs-b2c-alwaad-travel' || hash === 'case-study/alwaad') return 'alwaad-case-study';
   return 'home';
 }
 
@@ -100,13 +110,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       // Clear legacy state keys to avoid stale case studies
       localStorage.removeItem('digital_effect_agency_state_v9');
+      localStorage.removeItem('digital_effect_agency_state_v10');
+      localStorage.removeItem('digital_effect_agency_state_v11');
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.caseStudies && parsed.packages) {
-          // Ensure non-IPT medical case studies are pruned
+          // Ensure removed dummy case studies are pruned
           parsed.caseStudies = parsed.caseStudies.filter(
-            (c: any) => c.id !== 'cs-med-1' && c.id !== 'cs-med-2'
+            (c: any) => c.id !== 'cs-med-1' && c.id !== 'cs-med-2' && c.id !== 'cs-b2b-1' && c.id !== 'cs-b2b-2' && c.id !== 'cs-b2c-1' && c.id !== 'cs-b2c-2'
           );
           if (!parsed.promoCodes || parsed.promoCodes.length === 0) {
             parsed.promoCodes = INITIAL_AGENCY_DATA.promoCodes || [];
@@ -159,13 +171,47 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, [language]);
 
-  // Sync data to localStorage
+  // Fetch persisted data from server on mount
+  useEffect(() => {
+    fetch('/api/agency-data')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((serverData) => {
+        if (serverData && serverData.caseStudies && Array.isArray(serverData.caseStudies)) {
+          setData((prev) => {
+            // If local storage has newer custom creatives, retain them, otherwise use server
+            return {
+              ...serverData,
+              inquiries: prev.inquiries || serverData.inquiries || []
+            };
+          });
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(serverData));
+          } catch {}
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync data to localStorage & server
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {
       console.error('Failed to save to localStorage', e);
     }
+
+    // Server-side persistence so all visitors and published sites see changes
+    const timer = setTimeout(() => {
+      fetch('/api/agency-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).catch((err) => {
+        console.warn('Server sync notice:', err);
+      });
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [data]);
 
   // Case Studies CRUD

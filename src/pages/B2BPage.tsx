@@ -245,10 +245,10 @@ export const B2BPage: React.FC = () => {
                 {/* Header Row */}
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
                   <div className="flex items-center gap-4">
-                    <div className="h-14 sm:h-16 w-36 sm:w-44 rounded-2xl bg-white p-2.5 flex items-center justify-center shadow-lg shrink-0 border border-white/20">
+                    <div className="h-14 sm:h-16 w-48 sm:w-60 rounded-2xl bg-white p-2 sm:p-2.5 flex items-center justify-center shadow-lg shrink-0 border border-white/20">
                       <img 
                         src="/assets/bsizia/bsizia_img_1.png" 
-                        alt="ACTON BLUE ICE / BSIZIA" 
+                        alt={isAr ? 'شعار جمعية مستثمري مناطق بني سويف الصناعية' : 'Beni Suef Industrial Zones (BSIZIA) Logo'} 
                         className="max-h-full max-w-full object-contain"
                       />
                     </div>
@@ -393,67 +393,69 @@ export const B2BPage: React.FC = () => {
           );
         })()}
 
-        {/* Other B2B Case Studies Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {b2bCaseStudies.filter(c => c.id !== 'cs-b2b-bsizia').map((study) => {
-            const title = isAr ? study.title : study.titleEn;
-            const client = isAr ? study.client : study.clientEn;
-            const industry = isAr ? study.industry : study.industryEn;
-            const solution = isAr ? study.solution : study.solutionEn;
-            const mainMetric = study.metrics[0];
+        {/* Other B2B Case Studies Grid (if any) */}
+        {b2bCaseStudies.filter(c => c.id !== 'cs-b2b-bsizia').length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {b2bCaseStudies.filter(c => c.id !== 'cs-b2b-bsizia').map((study) => {
+              const title = isAr ? study.title : study.titleEn;
+              const client = isAr ? study.client : study.clientEn;
+              const industry = isAr ? study.industry : study.industryEn;
+              const solution = isAr ? study.solution : study.solutionEn;
+              const mainMetric = study.metrics[0];
 
-            return (
-              <div
-                key={study.id}
-                onClick={() => setSelectedCaseStudy(study)}
-                className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-sky-300 transition-all p-6 sm:p-8 flex flex-col justify-between text-start cursor-pointer group"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span className="font-bold text-sky-600">{industry}</span>
-                    <span>{isAr ? `المدة: ${study.duration}` : `Duration: ${study.durationEn}`}</span>
-                  </div>
-
-                  <div className="p-4 bg-sky-50/80 rounded-2xl border border-sky-100 flex items-center justify-between">
-                    <div>
-                      <div className="text-3xl sm:text-4xl font-black text-sky-600 tabular-nums">
-                        {mainMetric?.value}
-                      </div>
-                      <div className="text-xs font-bold text-slate-800 mt-0.5">
-                        {isAr ? mainMetric?.label : mainMetric?.labelEn}
-                      </div>
+              return (
+                <div
+                  key={study.id}
+                  onClick={() => setSelectedCaseStudy(study)}
+                  className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-sky-300 transition-all p-6 sm:p-8 flex flex-col justify-between text-start cursor-pointer group"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="font-bold text-sky-600">{industry}</span>
+                      <span>{isAr ? `المدة: ${study.duration}` : `Duration: ${study.durationEn}`}</span>
                     </div>
-                    {study.metrics[1] && (
-                      <div className="text-end">
-                        <div className="text-2xl font-black text-slate-900 tabular-nums">
-                          {study.metrics[1].value}
+
+                    <div className="p-4 bg-sky-50/80 rounded-2xl border border-sky-100 flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl sm:text-4xl font-black text-sky-600 tabular-nums">
+                          {mainMetric?.value}
                         </div>
-                        <div className="text-[11px] text-slate-500">
-                          {isAr ? study.metrics[1].label : study.metrics[1].labelEn}
+                        <div className="text-xs font-bold text-slate-800 mt-0.5">
+                          {isAr ? mainMetric?.label : mainMetric?.labelEn}
                         </div>
                       </div>
-                    )}
+                      {study.metrics[1] && (
+                        <div className="text-end">
+                          <div className="text-2xl font-black text-slate-900 tabular-nums">
+                            {study.metrics[1].value}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            {isAr ? study.metrics[1].label : study.metrics[1].labelEn}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-slate-600">{client}</div>
+                      <h3 className="text-lg font-bold text-slate-900 group-hover:text-sky-600 transition-colors leading-snug">
+                        {title}
+                      </h3>
+                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
+                        {solution}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="text-xs font-bold text-slate-600">{client}</div>
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-sky-600 transition-colors leading-snug">
-                      {title}
-                    </h3>
-                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
-                      {solution}
-                    </p>
+                  <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-xs font-bold text-sky-600">
+                    <span>{t.common.viewDetails}</span>
+                    {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                   </div>
                 </div>
-
-                <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-xs font-bold text-sky-600">
-                  <span>{t.common.viewDetails}</span>
-                  {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* B2B Call To Action Box */}

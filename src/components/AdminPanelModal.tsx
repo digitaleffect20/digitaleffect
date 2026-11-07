@@ -21,8 +21,13 @@ import {
   CheckCircle2,
   Calendar,
   Building,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  Code2,
+  AlertCircle,
+  Copy
 } from 'lucide-react';
+import { generateCaseStudySeo } from '../lib/seoGenerator';
 
 export const AdminPanelModal: React.FC = () => {
   const { 
@@ -91,6 +96,16 @@ export const AdminPanelModal: React.FC = () => {
   const [projChallenge, setProjChallenge] = useState('');
   const [projSolution, setProjSolution] = useState('');
   const [projServicesText, setProjServicesText] = useState('إدارة الحملات, إنتاج المحتوى, تحسين محركات البحث');
+  
+  // Project SEO & Schema Metadata States
+  const [projMetaTitle, setProjMetaTitle] = useState('');
+  const [projMetaTitleEn, setProjMetaTitleEn] = useState('');
+  const [projMetaDesc, setProjMetaDesc] = useState('');
+  const [projMetaDescEn, setProjMetaDescEn] = useState('');
+  const [projSlug, setProjSlug] = useState('');
+  const [projSchemaJsonLd, setProjSchemaJsonLd] = useState<Record<string, unknown> | undefined>(undefined);
+  const [showSeoSettings, setShowSeoSettings] = useState(false);
+  const [copiedSchemaSnippet, setCopiedSchemaSnippet] = useState(false);
 
   // Banner State
   const [bannerEnabled, setBannerEnabled] = useState(data.banner.enabled);
@@ -221,6 +236,14 @@ export const AdminPanelModal: React.FC = () => {
     setProjChallenge(study.challenge);
     setProjSolution(study.solution);
     setProjServicesText(study.services.join(', '));
+    // SEO fields
+    setProjMetaTitle(study.metaTitle || '');
+    setProjMetaTitleEn(study.metaTitleEn || '');
+    setProjMetaDesc(study.metaDescription || '');
+    setProjMetaDescEn(study.metaDescriptionEn || '');
+    setProjSlug(study.slug || study.id.replace('cs-', ''));
+    setProjSchemaJsonLd(study.schemaJsonLd);
+    setShowSeoSettings(Boolean(study.metaTitle || study.schemaJsonLd));
   };
 
   const startAddProject = () => {
@@ -242,6 +265,41 @@ export const AdminPanelModal: React.FC = () => {
     setProjChallenge('التحدي الذي كان يواجهه العميل...');
     setProjSolution('خطة العمل والحلول التقنية المنفذة...');
     setProjServicesText('إعلانات جوجل, لينكد إن, صناعة محتوى');
+    // SEO fields
+    setProjMetaTitle('');
+    setProjMetaTitleEn('');
+    setProjMetaDesc('');
+    setProjMetaDescEn('');
+    setProjSlug('');
+    setProjSchemaJsonLd(undefined);
+    setShowSeoSettings(false);
+  };
+
+  const handleAutoGenerateProjectSeo = () => {
+    const seo = generateCaseStudySeo({
+      title: projTitle || `دراسة حالة ${projClient || 'العميل'}`,
+      titleEn: projTitleEn || `${projClientEn || projClient || 'Client'} Case Study`,
+      client: projClient || 'العميل',
+      clientEn: projClientEn || 'Client',
+      sector: projSector,
+      industry: projIndustry,
+      metrics: [
+        { label: projMetric1Label, labelEn: projMetric1LabelEn, value: projMetric1Value },
+        { label: projMetric2Label, labelEn: projMetric2LabelEn, value: projMetric2Value },
+      ],
+      solution: projSolution,
+      services: projServicesText.split(',').map((s) => s.trim()).filter(Boolean),
+      slug: projSlug,
+    });
+
+    setProjMetaTitle(seo.title);
+    setProjMetaTitleEn(seo.titleEn);
+    setProjMetaDesc(seo.description);
+    setProjMetaDescEn(seo.descriptionEn);
+    setProjSlug(seo.slug);
+    setProjSchemaJsonLd(seo.schemaJsonLd);
+    setShowSeoSettings(true);
+    showNotice(isAr ? 'تم توليد إعدادات السيو وبيانات Schema.org بنجاح!' : 'SEO metadata and Schema.org generated!');
   };
 
   const handleSaveProject = (e: React.FormEvent) => {
@@ -271,6 +329,12 @@ export const AdminPanelModal: React.FC = () => {
       tags: [projSector.toUpperCase(), projIndustry],
       tagsEn: [projSector.toUpperCase(), projIndustry],
       featured: true,
+      metaTitle: projMetaTitle.trim() || undefined,
+      metaTitleEn: projMetaTitleEn.trim() || undefined,
+      metaDescription: projMetaDesc.trim() || undefined,
+      metaDescriptionEn: projMetaDescEn.trim() || undefined,
+      slug: projSlug.trim() || undefined,
+      schemaJsonLd: projSchemaJsonLd || undefined,
     };
 
     if (editingProjectId) {
@@ -1036,20 +1100,33 @@ export const AdminPanelModal: React.FC = () => {
             <div className="space-y-6">
               {(isAddingProject || editingProjectId) ? (
                 <form onSubmit={handleSaveProject} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
                     <h4 className="text-sm font-bold text-slate-900">
                       {editingProjectId ? (isAr ? 'تعديل دراسة الحالة' : 'Edit Case Study') : (isAr ? 'إضافة دراسة حالة جديدة' : 'Add New Case Study')}
                     </h4>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingProject(false);
-                        setEditingProjectId(null);
-                      }}
-                      className="text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-                    >
-                      {isAr ? 'إلغاء' : 'Cancel'}
-                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleAutoGenerateProjectSeo}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 rounded-xl transition-all shadow-xs cursor-pointer"
+                        title={isAr ? 'توليد عناوين وأوصاف مطابقة لمعايير السيو ومخطط Schema.org' : 'Generate Schema & SEO'}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                        <span>{isAr ? 'توليد الـ SEO وبيانات Schema تلقائياً' : 'Auto-Generate SEO & Schema'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAddingProject(false);
+                          setEditingProjectId(null);
+                        }}
+                        className="text-xs text-slate-500 hover:text-slate-800 px-2 py-1 cursor-pointer"
+                      >
+                        {isAr ? 'إلغاء' : 'Cancel'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1172,6 +1249,190 @@ export const AdminPanelModal: React.FC = () => {
                       onChange={(e) => setProjSolution(e.target.value)}
                       className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-white"
                     />
+                  </div>
+
+                  {/* ============================================================ */}
+                  {/* SEO & SCHEMA.ORG ADVANCED SETTINGS ACCORDION                */}
+                  {/* ============================================================ */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1 rounded-lg bg-sky-50 text-sky-600 border border-sky-100">
+                          <Globe className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <h5 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>{isAr ? 'بيانات الـ SEO ومخطط Schema.org المنظم' : 'SEO & Schema.org Metadata'}</span>
+                            {projMetaTitle && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {isAr ? 'تم ضبطه' : 'Configured'}
+                              </span>
+                            )}
+                          </h5>
+                          <p className="text-[11px] text-slate-500">
+                            {isAr ? 'عناوين وأوصاف مخصصة ومطابقة لمعايير جوجل ومخططات Schema.org الرسمية' : 'Google SERP and OpenGraph optimized tags'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAutoGenerateProjectSeo}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-xl border border-sky-200 transition-colors cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                        <span>{isAr ? 'توليد تلقائي' : 'Auto Generate'}</span>
+                      </button>
+                    </div>
+
+                    {/* SEO Fields Grid */}
+                    <div className="space-y-4">
+                      {/* Meta Titles */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">{isAr ? 'عنوان الصفحة لمحركات البحث (عربي):' : 'SEO Meta Title (Arabic):'}</label>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              projMetaTitle.length >= 30 && projMetaTitle.length <= 60 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : 'bg-amber-50 text-amber-700'
+                            }`}>
+                              {projMetaTitle.length} / 60 {isAr ? 'حرف' : 'chars'}
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={projMetaTitle}
+                            onChange={(e) => setProjMetaTitle(e.target.value)}
+                            placeholder={isAr ? 'دراسة حالة [العميل]: [أبرز نتيجة] | ديجيتال إفكت' : 'Case study title'}
+                            className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">{isAr ? 'عنوان الصفحة (إنجليزي):' : 'SEO Meta Title (English):'}</label>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              projMetaTitleEn.length >= 30 && projMetaTitleEn.length <= 60 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {projMetaTitleEn.length} / 60
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={projMetaTitleEn}
+                            onChange={(e) => setProjMetaTitleEn(e.target.value)}
+                            placeholder="Client Case Study: Growth Outcome | Digital Effect"
+                            className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Meta Descriptions */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">{isAr ? 'الوصف التعريفي (Meta Description عربي):' : 'Meta Description (Arabic):'}</label>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              projMetaDesc.length >= 120 && projMetaDesc.length <= 160 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : 'bg-amber-50 text-amber-700'
+                            }`}>
+                              {projMetaDesc.length} / 160 {isAr ? 'حرف' : 'chars'}
+                            </span>
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={projMetaDesc}
+                            onChange={(e) => setProjMetaDesc(e.target.value)}
+                            placeholder={isAr ? 'اكتشف قصة نجاح العميل مع ديجيتال إفكت...' : 'Actionable meta description'}
+                            className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white leading-relaxed"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-bold text-slate-700">{isAr ? 'الوصف التعريفي (إنجليزي):' : 'Meta Description (English):'}</label>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              projMetaDescEn.length >= 120 && projMetaDescEn.length <= 160 
+                                ? 'bg-emerald-50 text-emerald-700' 
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {projMetaDescEn.length} / 160
+                            </span>
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={projMetaDescEn}
+                            onChange={(e) => setProjMetaDescEn(e.target.value)}
+                            placeholder="Discover how this client achieved record outcomes..."
+                            className="w-full text-xs p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white leading-relaxed"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Slug Input */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700">{isAr ? 'الرابط الدائم والمختصر (URL Slug):' : 'URL Slug:'}</label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-slate-400 font-mono">https://digitaleffect.net/#</span>
+                          <input
+                            type="text"
+                            value={projSlug}
+                            onChange={(e) => setProjSlug(e.target.value)}
+                            placeholder="client-name"
+                            className="flex-1 text-xs p-2 rounded-lg border border-slate-200 bg-white font-mono"
+                          />
+                          <span className="text-xs text-slate-400 font-mono">-case-study</span>
+                        </div>
+                      </div>
+
+                      {/* Live SERP Snippet Preview */}
+                      {projMetaTitle && (
+                        <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1 font-sans">
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                            <span className="font-semibold text-slate-900">digitaleffect.net</span>
+                            <span className="text-slate-400">›</span>
+                            <span>{projSlug || 'case-study'}</span>
+                          </div>
+                          <div className="text-sm font-medium text-blue-700 hover:underline line-clamp-1">
+                            {isAr ? projMetaTitle : (projMetaTitleEn || projMetaTitle)}
+                          </div>
+                          <p className="text-xs text-slate-600 line-clamp-2">
+                            {isAr ? projMetaDesc : (projMetaDescEn || projMetaDesc)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Schema.org JSON-LD Code Snippet & Copy Action */}
+                      {projSchemaJsonLd && (
+                        <div className="space-y-2 pt-2 border-t border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                              <Code2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>{isAr ? 'بيانات Schema.org المنظمة (JSON-LD Article):' : 'Schema.org Article JSON-LD:'}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(JSON.stringify(projSchemaJsonLd, null, 2));
+                                setCopiedSchemaSnippet(true);
+                                setTimeout(() => setCopiedSchemaSnippet(false), 2000);
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-700 hover:text-sky-800 bg-white border border-slate-200 px-2 py-1 rounded-lg cursor-pointer"
+                            >
+                              {copiedSchemaSnippet ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                              <span>{copiedSchemaSnippet ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ Schema' : 'Copy Schema')}</span>
+                            </button>
+                          </div>
+                          <pre className="p-3 rounded-lg bg-slate-900 text-emerald-400 font-mono text-[10px] overflow-x-auto max-h-36 dir-ltr text-left">
+                            {JSON.stringify(projSchemaJsonLd, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex justify-end gap-2 pt-2">

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { 
   X, 
@@ -10,12 +10,17 @@ import {
   ArrowRight, 
   Clock, 
   Quote, 
-  Briefcase 
+  Briefcase,
+  Maximize2,
+  Film
 } from 'lucide-react';
+import { getCaseStudyCreatives, getCaseStudyVideos } from '../utils/caseStudyMedia';
+import { CaseStudyVideoSection } from './CaseStudyVideoSection';
 
 export const CaseStudyModal: React.FC = () => {
   const { selectedCaseStudy, setSelectedCaseStudy, setIsConsultationOpen, language, t } = useAgencyData();
   const isAr = language === 'ar';
+  const [activeZoomImage, setActiveZoomImage] = useState<{ url: string; title: string; desc?: string } | null>(null);
 
   if (!selectedCaseStudy) return null;
 
@@ -27,6 +32,9 @@ export const CaseStudyModal: React.FC = () => {
   const solution = isAr ? selectedCaseStudy.solution : selectedCaseStudy.solutionEn;
   const services = isAr ? selectedCaseStudy.services : (selectedCaseStudy.servicesEn?.length ? selectedCaseStudy.servicesEn : selectedCaseStudy.services);
   const quote = selectedCaseStudy.quote;
+
+  const creatives = getCaseStudyCreatives(selectedCaseStudy.id, selectedCaseStudy);
+  const videos = getCaseStudyVideos(selectedCaseStudy);
 
   const getSectorLabel = (sector: string) => {
     switch (sector) {
@@ -72,7 +80,7 @@ export const CaseStudyModal: React.FC = () => {
 
             <div className="flex items-center gap-3">
               {selectedCaseStudy.logoUrl && (
-                <div className="h-9 w-9 rounded-lg bg-white p-1 border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
+                <div className="h-9 min-w-9 max-w-28 px-1.5 rounded-lg bg-white border border-slate-200 shadow-xs shrink-0 flex items-center justify-center">
                   <img
                     src={selectedCaseStudy.logoUrl}
                     alt={client}
@@ -97,7 +105,7 @@ export const CaseStudyModal: React.FC = () => {
         </div>
 
         {/* Dedicated Page Jump Banner if applicable */}
-        {(selectedCaseStudy.id === 'cs-b2b-bsizia' || selectedCaseStudy.id === 'cs-b2c-penguin' || selectedCaseStudy.id === 'cs-med-ipt') && (
+        {(selectedCaseStudy.id === 'cs-b2b-bsizia' || selectedCaseStudy.id === 'cs-b2c-penguin' || selectedCaseStudy.id === 'cs-med-ipt' || selectedCaseStudy.id === 'cs-b2c-binaryracks' || selectedCaseStudy.id === 'cs-b2c-gimoka' || selectedCaseStudy.id === 'cs-b2c-memar-lashin' || selectedCaseStudy.id === 'cs-b2c-concrete' || selectedCaseStudy.id === 'cs-b2c-hamburg' || selectedCaseStudy.id === 'cs-b2c-acton' || selectedCaseStudy.id === 'cs-b2c-yoken' || selectedCaseStudy.id === 'cs-b2c-siltal' || selectedCaseStudy.id === 'cs-b2c-passap' || selectedCaseStudy.id === 'cs-b2c-alwaad-travel') && (
           <div className="bg-sky-50 px-6 py-3 border-b border-sky-100 flex items-center justify-between gap-3 text-xs">
             <span className="text-sky-800 font-medium">
               {isAr ? 'تتوفر دراسة الحالة هذه في صفحة مستقلة تعرض كافة التصاميم بالحجم الكامل والوضوح الفائق.' : 'This case study has a dedicated standalone page displaying all high-resolution visuals.'}
@@ -106,7 +114,17 @@ export const CaseStudyModal: React.FC = () => {
               onClick={() => {
                 const targetPage = 
                   selectedCaseStudy.id === 'cs-b2b-bsizia' ? 'bsizia-case-study' :
-                  selectedCaseStudy.id === 'cs-b2c-penguin' ? 'penguin-case-study' : 'ipt-case-study';
+                  selectedCaseStudy.id === 'cs-b2c-penguin' ? 'penguin-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-binaryracks' ? 'binaryracks-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-gimoka' ? 'gimoka-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-memar-lashin' ? 'lashin-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-concrete' ? 'concrete-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-hamburg' ? 'hamburg-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-acton' ? 'acton-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-yoken' ? 'yoken-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-siltal' ? 'siltal-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-passap' ? 'passap-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-alwaad-travel' ? 'alwaad-case-study' : 'ipt-case-study';
                 setSelectedCaseStudy(null);
                 useAgencyData; // no-op reference check
                 window.location.hash = `#${targetPage}`;
@@ -176,11 +194,25 @@ export const CaseStudyModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Campaign Visuals & Gallery Showcase if available */}
-          {(selectedCaseStudy.gallery?.length || selectedCaseStudy.statsImage) && (
-            <div className="space-y-3">
-              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center justify-between">
-                <span>{isAr ? 'معرض نماذج الحملة والإحصائيات الموثقة:' : 'Campaign Creatives & Audited Analytics:'}</span>
+          {/* Campaign Videos Showcase if available */}
+          {videos && videos.length > 0 && (
+            <div className="space-y-2">
+              <CaseStudyVideoSection
+                videos={videos}
+                isAr={isAr}
+                clientName={client}
+              />
+            </div>
+          )}
+
+          {/* Campaign Visuals, Plans & Gallery Showcase */}
+          {(creatives.length > 0 || selectedCaseStudy.statsImage) && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span>{isAr ? `معرض النماذج والخطط الإعلانية (${creatives.length} نموذج):` : `Campaign Creatives & Plans (${creatives.length}):`}</span>
+                </h4>
                 {selectedCaseStudy.clientUrl && (
                   <a
                     href={selectedCaseStudy.clientUrl}
@@ -191,7 +223,7 @@ export const CaseStudyModal: React.FC = () => {
                     {isAr ? 'رابط الصفحة الأصلية ↗' : 'Original Case Study ↗'}
                   </a>
                 )}
-              </h4>
+              </div>
 
               {/* Analytics banner if available */}
               {selectedCaseStudy.statsImage && (
@@ -205,20 +237,44 @@ export const CaseStudyModal: React.FC = () => {
                 </div>
               )}
 
-              {/* Creative Posts Gallery Grid */}
-              {selectedCaseStudy.gallery && selectedCaseStudy.gallery.length > 0 && (
+              {/* Creative Posts & Plans Gallery Grid */}
+              {creatives.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {selectedCaseStudy.gallery.map((imgSrc, idx) => (
+                  {creatives.map((item, idx) => (
                     <div 
-                      key={idx} 
-                      className="group relative rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-square shadow-xs"
+                      key={item.id || idx} 
+                      onClick={() => setActiveZoomImage({
+                        url: item.url,
+                        title: isAr ? item.title : (item.titleEn || item.title),
+                        desc: isAr ? item.desc : (item.descEn || item.desc)
+                      })}
+                      className="group relative rounded-xl overflow-hidden border border-slate-200 bg-slate-950 aspect-square shadow-xs cursor-pointer flex flex-col justify-end"
                     >
                       <img
-                        src={imgSrc}
-                        alt={`Creative ${idx + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        src={item.url}
+                        alt={isAr ? item.title : (item.titleEn || item.title)}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         loading="lazy"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-80 group-hover:opacity-60 transition-opacity" />
+                      
+                      {item.tag && (
+                        <span className="absolute top-2 end-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-950/80 text-amber-400 border border-slate-800">
+                          {item.tag}
+                        </span>
+                      )}
+
+                      <div className="relative p-2.5 text-white space-y-0.5">
+                        <div className="text-[11px] font-bold line-clamp-1 group-hover:text-amber-400 transition-colors">
+                          {isAr ? item.title : (item.titleEn || item.title)}
+                        </div>
+                      </div>
+
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-slate-950/40 backdrop-blur-[2px]">
+                        <span className="p-2 rounded-full bg-amber-500 text-slate-950 shadow-md">
+                          <Maximize2 className="w-4 h-4" />
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -267,6 +323,35 @@ export const CaseStudyModal: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Lightbox Zoom Modal for Creatives inside CaseStudyModal */}
+      {activeZoomImage && (
+        <div 
+          className="fixed inset-0 z-60 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setActiveZoomImage(null)}
+        >
+          <div className="max-w-4xl w-full max-h-[90vh] flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full flex items-center justify-between text-white px-2">
+              <span className="text-sm font-bold">{activeZoomImage.title}</span>
+              <button
+                type="button"
+                onClick={() => setActiveZoomImage(null)}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="rounded-2xl overflow-hidden border border-slate-700 bg-black shadow-2xl max-h-[75vh] flex items-center justify-center">
+              <img src={activeZoomImage.url} alt={activeZoomImage.title} className="max-h-[75vh] w-auto object-contain" />
+            </div>
+            {activeZoomImage.desc && (
+              <p className="text-xs text-slate-300 text-center max-w-2xl px-4">
+                {activeZoomImage.desc}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

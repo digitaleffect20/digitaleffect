@@ -1,7 +1,9 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
-import { Award, ShieldCheck, Users, TrendingUp, CheckCircle2, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Award, ShieldCheck, Users, TrendingUp, CheckCircle2, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { StatsRibbon } from '../components/StatsRibbon';
+import { OurTeamSection } from '../components/OurTeamSection';
+import { SeoHead } from '../components/SeoHead';
 
 export const AboutPage: React.FC = () => {
   const { language, t, setCurrentPage, setIsConsultationOpen } = useAgencyData();
@@ -10,6 +12,16 @@ export const AboutPage: React.FC = () => {
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">
+      {/* Dynamic OpenGraph, Twitter Cards & Structured Data */}
+      <SeoHead
+        title={isAr ? 'من نحن — خبرة ٢٠ عاماً في التسويق والحلول الرقمية | ديجيتال إفكت' : 'About Us — 20+ Years of Digital Marketing Excellence | Digital Effect'}
+        description={isAr ? 'تعرف على قصة ديجيتال إفكت وفريق العمل والقيادات المتخصصة التي تقود قطاعات B2B، B2C، والقطاع الطبي بخبرة تراكمية تفوق ٢٠ عاماً.' : 'Discover the Digital Effect story, our specialized sector leadership, and how we engineer long-term growth across B2B, B2C, and Healthcare.'}
+        image="/assets/team/team_ceo.jpg"
+        imageAlt={isAr ? 'فريق قيادات ديجيتال إفكت' : 'Digital Effect Leadership Team'}
+        urlPath="#about"
+        type="website"
+      />
+
       {/* Header */}
       <section className="bg-slate-900 text-white pt-14 pb-20 border-b border-slate-800 text-start">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 max-w-3xl">
@@ -129,6 +141,9 @@ export const AboutPage: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* Our Team Leadership Section */}
+      <OurTeamSection />
 
       {/* Final Action CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

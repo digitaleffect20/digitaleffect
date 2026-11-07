@@ -52,6 +52,26 @@ export const CaseStudiesPage: React.FC = () => {
       setCurrentPage('penguin-case-study');
     } else if (study.id === 'cs-b2b-bsizia') {
       setCurrentPage('bsizia-case-study');
+    } else if (study.id === 'cs-b2c-binaryracks') {
+      setCurrentPage('binaryracks-case-study');
+    } else if (study.id === 'cs-b2c-gimoka') {
+      setCurrentPage('gimoka-case-study');
+    } else if (study.id === 'cs-b2c-memar-lashin') {
+      setCurrentPage('lashin-case-study');
+    } else if (study.id === 'cs-b2c-concrete') {
+      setCurrentPage('concrete-case-study');
+    } else if (study.id === 'cs-b2c-hamburg') {
+      setCurrentPage('hamburg-case-study');
+    } else if (study.id === 'cs-b2c-acton') {
+      setCurrentPage('acton-case-study');
+    } else if (study.id === 'cs-b2c-yoken') {
+      setCurrentPage('yoken-case-study');
+    } else if (study.id === 'cs-b2c-siltal') {
+      setCurrentPage('siltal-case-study');
+    } else if (study.id === 'cs-b2c-passap') {
+      setCurrentPage('passap-case-study');
+    } else if (study.id === 'cs-b2c-alwaad-travel') {
+      setCurrentPage('alwaad-case-study');
     } else {
       setSelectedCaseStudy(study);
     }
@@ -201,7 +221,17 @@ export const CaseStudiesPage: React.FC = () => {
               const isIpt = study.id === 'cs-med-ipt';
               const isPenguin = study.id === 'cs-b2c-penguin';
               const isBsizia = study.id === 'cs-b2b-bsizia';
-              const hasDedicatedPage = isIpt || isPenguin || isBsizia;
+              const isBinaryracks = study.id === 'cs-b2c-binaryracks';
+              const isGimoka = study.id === 'cs-b2c-gimoka';
+              const isLashin = study.id === 'cs-b2c-memar-lashin';
+              const isConcrete = study.id === 'cs-b2c-concrete';
+              const isHamburg = study.id === 'cs-b2c-hamburg';
+              const isActon = study.id === 'cs-b2c-acton';
+              const isYoken = study.id === 'cs-b2c-yoken';
+              const isSiltal = study.id === 'cs-b2c-siltal';
+              const isPassap = study.id === 'cs-b2c-passap';
+              const isAlwaad = study.id === 'cs-b2c-alwaad-travel';
+              const hasDedicatedPage = isIpt || isPenguin || isBsizia || isBinaryracks || isGimoka || isLashin || isConcrete || isHamburg || isActon || isYoken || isSiltal || isPassap || isAlwaad;
 
               return (
                 <div
@@ -357,7 +387,17 @@ export const CaseStudiesPage: React.FC = () => {
               const isIpt = study.id === 'cs-med-ipt';
               const isPenguin = study.id === 'cs-b2c-penguin';
               const isBsizia = study.id === 'cs-b2b-bsizia';
-              const hasDedicatedPage = isIpt || isPenguin || isBsizia;
+              const isBinaryracks = study.id === 'cs-b2c-binaryracks';
+              const isGimoka = study.id === 'cs-b2c-gimoka';
+              const isLashin = study.id === 'cs-b2c-memar-lashin';
+              const isConcrete = study.id === 'cs-b2c-concrete';
+              const isHamburg = study.id === 'cs-b2c-hamburg';
+              const isActon = study.id === 'cs-b2c-acton';
+              const isYoken = study.id === 'cs-b2c-yoken';
+              const isSiltal = study.id === 'cs-b2c-siltal';
+              const isPassap = study.id === 'cs-b2c-passap';
+              const isAlwaad = study.id === 'cs-b2c-alwaad-travel';
+              const hasDedicatedPage = isIpt || isPenguin || isBsizia || isBinaryracks || isGimoka || isLashin || isConcrete || isHamburg || isActon || isYoken || isSiltal || isPassap || isAlwaad;
 
               return (
                 <div
@@ -370,6 +410,26 @@ export const CaseStudiesPage: React.FC = () => {
                       ? 'border-sky-300 ring-2 ring-sky-500/20 hover:border-sky-500'
                       : isBsizia
                       ? 'border-blue-400 ring-2 ring-blue-500/20 hover:border-blue-500'
+                      : isBinaryracks
+                      ? 'border-sky-400 ring-2 ring-sky-500/20 hover:border-sky-500'
+                      : isGimoka
+                      ? 'border-amber-400 ring-2 ring-amber-500/20 hover:border-amber-500'
+                      : isLashin
+                      ? 'border-amber-400 ring-2 ring-amber-500/20 hover:border-amber-500'
+                      : isConcrete
+                      ? 'border-amber-400 ring-2 ring-amber-500/20 hover:border-amber-500'
+                      : isHamburg
+                      ? 'border-amber-400 ring-2 ring-amber-500/20 hover:border-amber-500'
+                      : isActon
+                      ? 'border-sky-400 ring-2 ring-sky-500/20 hover:border-sky-500'
+                      : isYoken
+                      ? 'border-sky-400 ring-2 ring-sky-500/20 hover:border-sky-500'
+                      : isSiltal
+                      ? 'border-sky-400 ring-2 ring-sky-500/20 hover:border-sky-500'
+                      : isPassap
+                      ? 'border-amber-400 ring-2 ring-amber-500/20 hover:border-amber-500'
+                      : isAlwaad
+                      ? 'border-sky-400 ring-2 ring-sky-500/20 hover:border-sky-500'
                       : 'border-slate-200 hover:border-sky-300'
                   }`}
                 >

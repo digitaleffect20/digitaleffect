@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 
@@ -13,7 +14,38 @@ const app = express();
 // AI Studio dev server must run strictly on port 3000
 const port = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+
+const DATA_STORE_PATH = path.resolve(__dirname, 'data-store.json');
+
+// Endpoint: Get persisted agency data (case studies, packages, etc.)
+app.get('/api/agency-data', (_req, res) => {
+  try {
+    if (fs.existsSync(DATA_STORE_PATH)) {
+      const content = fs.readFileSync(DATA_STORE_PATH, 'utf-8');
+      return res.json(JSON.parse(content));
+    }
+  } catch (err) {
+    console.warn('Error reading data-store.json:', err);
+  }
+  res.json(null);
+});
+
+// Endpoint: Save / update persisted agency data on the server
+app.post('/api/agency-data', (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || !payload.caseStudies) {
+      return res.status(400).json({ error: 'Invalid payload structure' });
+    }
+    fs.writeFileSync(DATA_STORE_PATH, JSON.stringify(payload, null, 2), 'utf-8');
+    res.json({ success: true, message: 'Agency data persisted to server successfully' });
+  } catch (err: any) {
+    console.error('Error saving data-store.json:', err);
+    res.status(500).json({ error: 'Failed to write agency data on server' });
+  }
+});
 
 // Cloudflare GeoIP local development emulator
 app.get('/api/geo', (req, res) => {
@@ -22,6 +54,106 @@ app.get('/api/geo', (req, res) => {
     country: cfCountry ? cfCountry.toUpperCase() : null,
     isDetected: Boolean(cfCountry),
   });
+});
+
+// Endpoint: AI Creative / Plan Image Analyzer using Gemini Vision
+app.post('/api/analyze-creative-image', async (req, res) => {
+  try {
+    const { imageBase64, imageUrl, projectName, sector } = req.body;
+
+    if (!imageBase64 && !imageUrl) {
+      return res.status(400).json({ error: 'Image data is required.' });
+    }
+
+    // Prepare image part for Gemini
+    let imagePart: any = null;
+    const targetSource = imageBase64 || imageUrl;
+
+    if (targetSource && targetSource.startsWith('data:')) {
+      const matches = targetSource.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+      if (matches) {
+        imagePart = {
+          inlineData: {
+            mimeType: matches[1],
+            data: matches[2]
+          }
+        };
+      }
+    }
+
+    const fallbackResponse = {
+      title: `تصميم وخطة إعلانية استراتيجية — ${projectName || 'ديجيتال إفكت'}`,
+      titleEn: `Strategic Ad Creative & Plan — ${projectName || 'Digital Effect'}`,
+      tag: 'خطة تسويقية',
+      tagEn: 'Marketing Plan',
+      desc: `تصميم إعلاني وخطة تسويقية متكاملة لمشروع ${projectName || 'المشروع'} تهدف لترسيخ المكانة السوقية وزيادة التحويل والمبيعات.`,
+      descEn: `Integrated ad creative and marketing plan asset for ${projectName || 'Project'} designed to maximize conversions and brand authority.`
+    };
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({ ...fallbackResponse, note: 'Used intelligent fallback (GEMINI_API_KEY not configured)' });
+    }
+
+    const promptText = `أنت خبير تسويق رقمي وإدارة حملات إعلانية في وكالة ديجيتال إفكت (Digital Effect).
+قم بفحص وتحليل هذه الصورة المرفقة بدقة بالغة (قد تكون تصميماً إعلانياً، بوستر سوشيال ميديا، خطة تسويقية/بلان، صورة منتج أو كتالوج، أو رسم بياني للأداء).
+سياق المشروع/العميل الحالي: "${projectName || 'مشروع تسويقي'}"، القطاع: "${sector || 'عام'}".
+
+المطلوب:
+استخرج وحلل محتوى الصورة بعناية شديدة، ثم أنشئ بيانات تسويقية متقنة بصيغة JSON فقط بهذه الحقول المحددة:
+1. "title": عنوان رئيسي جذاب وموجز ودقيق باللغة العربية (بين 5 و 12 كلمة) يلخص ما تحتويه الصورة/الخطة وقيمتها الترويجية مع ذكر المنتج أو الخدمة البارزة.
+2. "titleEn": عنوان احترافي مقابل باللغة الإنجليزية.
+3. "tag": تصنيف تسويقي دقيق من كلمة أو كلمتين بالعربية يلائم المحتوى (مثل: "خطة تسويقية", "إعلانات تحويلية", "هوية رقمية", "تصميم إعلاني", "حملة الصيف", "عروض وتخفيضات", "توعية طبية", "موشن جرافيك", "أداء سحابي").
+4. "tagEn": التصنيف المقابل باللغة الإنجليزية (e.g. "Ad Creative", "Marketing Plan", "Brand Campaign", "Seasonal Offer").
+5. "desc": شرح تسويقي احترافي متكامل من جملتين إلى 3 جمل بالعربية يصف سياق الحملة، القيمة المضافة المعروضة في الصورة، الجمهور المستهدف، والهدف الترويجي.
+6. "descEn": الشرح المقابل باللغة الإنجليزية.
+
+أجب بصيغة JSON فقط بدون نصوص تمهيدية.`;
+
+    const parts: any[] = [];
+    if (imagePart) {
+      parts.push(imagePart);
+    }
+    parts.push({ text: promptText });
+
+    const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
+    let resultJson = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: { parts },
+          config: {
+            responseMimeType: 'application/json',
+          }
+        });
+
+        if (response.text) {
+          const cleanText = response.text.replace(/```json\n?|\n?```/g, '').trim();
+          resultJson = JSON.parse(cleanText);
+          if (resultJson.title) break;
+        }
+      } catch (err: any) {
+        console.warn(`Model ${modelName} error during image analysis:`, err?.message || err);
+      }
+    }
+
+    if (resultJson && resultJson.title) {
+      return res.json(resultJson);
+    }
+
+    return res.json(fallbackResponse);
+  } catch (err: any) {
+    console.error('Error analyzing creative image with AI:', err);
+    return res.json({
+      title: `تصميم إعلاني رقمي متكامل — ${req.body?.projectName || 'المشروع'}`,
+      titleEn: `Integrated Digital Creative — ${req.body?.projectName || 'Project'}`,
+      tag: 'تصميم إعلاني',
+      tagEn: 'Ad Creative',
+      desc: `تصميم إعلاني رقمي عالي الجودة يعزز التفاعل وتوليد الطلبات للعميل.`,
+      descEn: `High-impact digital creative designed to maximize engagement and lead generation.`
+    });
+  }
 });
 
 // Initialize server-side Gemini client

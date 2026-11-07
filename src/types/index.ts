@@ -1,6 +1,6 @@
 export type SectorType = 'all' | 'b2b' | 'b2c' | 'medical';
 export type Language = 'ar' | 'en';
-export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'ipt-case-study' | 'penguin-case-study' | 'bsizia-case-study' | 'admin';
+export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'ipt-case-study' | 'penguin-case-study' | 'bsizia-case-study' | 'binaryracks-case-study' | 'gimoka-case-study' | 'lashin-case-study' | 'concrete-case-study' | 'hamburg-case-study' | 'acton-case-study' | 'yoken-case-study' | 'siltal-case-study' | 'passap-case-study' | 'alwaad-case-study' | 'admin';
 
 export interface ProjectMetric {
   label: string;
@@ -47,6 +47,56 @@ export interface CaseStudy {
   subtitle?: string;
   subtitleEn?: string;
   statsImage?: string;
+  metaTitle?: string;
+  metaTitleEn?: string;
+  metaDescription?: string;
+  metaDescriptionEn?: string;
+  slug?: string;
+  schemaJsonLd?: Record<string, unknown>;
+  videoUrl?: string;
+  videos?: CaseStudyVideo[];
+  customCreatives?: CaseStudyCreative[];
+}
+
+export interface CaseStudyVideo {
+  id: string;
+  url: string;
+  title: string;
+  titleEn?: string;
+  desc?: string;
+  descEn?: string;
+  type?: 'embed' | 'direct' | 'upload';
+}
+
+export interface CaseStudyCreative {
+  id: string;
+  url: string;
+  title: string;
+  titleEn?: string;
+  tag?: string;
+  tagEn?: string;
+  desc?: string;
+  descEn?: string;
+  type?: 'image' | 'video';
+}
+
+export interface Testimonial {
+  id: string;
+  client: string;
+  clientEn: string;
+  author: string;
+  authorEn: string;
+  role: string;
+  roleEn: string;
+  text: string;
+  textEn: string;
+  sector: 'b2b' | 'b2c' | 'medical';
+  rating: number; // usually 5
+  metricResult?: string;
+  metricResultEn?: string;
+  logoUrl?: string;
+  projectUrl?: string;
+  avatarBg?: string;
 }
 
 export interface ServicePackage {

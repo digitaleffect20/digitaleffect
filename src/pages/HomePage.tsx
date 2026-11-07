@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { StatsRibbon } from '../components/StatsRibbon';
 import { RoiCalculator } from '../components/RoiCalculator';
+import { TestimonialsSection } from '../components/TestimonialsSection';
 
 export const HomePage: React.FC = () => {
   const { data, language, t, setCurrentPage, setSelectedCaseStudy, setIsConsultationOpen } = useAgencyData();
@@ -120,6 +121,161 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
+      {/* Featured Projects Showcase across sectors (Visuals right after Hero) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 text-start">
+          <div className="space-y-1">
+            <div className="text-xs font-bold text-sky-600 uppercase tracking-wider">
+              {t.home.featuredProjects}
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              {isAr ? 'نماذج حقيقية من نتائج أعمالنا' : 'Real Measurable Client Growth'}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              {t.home.featuredProjectsDesc}
+            </p>
+          </div>
+
+          <button
+            onClick={() => setCurrentPage('case-studies')}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer shrink-0"
+          >
+            <span>{t.home.allCaseStudiesLink}</span>
+            {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {featuredProjects.map((study) => {
+            const title = isAr ? study.title : study.titleEn;
+            const client = isAr ? study.client : study.clientEn;
+            const industry = isAr ? study.industry : study.industryEn;
+            const mainMetric = study.metrics[0];
+            const metricVal = mainMetric?.value;
+            const metricLabel = isAr ? mainMetric?.label : mainMetric?.labelEn;
+
+            const isIpt = study.id === 'cs-med-ipt';
+            const isPenguin = study.id === 'cs-b2c-penguin';
+            const isBsizia = study.id === 'cs-b2b-bsizia';
+            const isBinaryracks = study.id === 'cs-b2c-binaryracks';
+            const isGimoka = study.id === 'cs-b2c-gimoka';
+            const isLashin = study.id === 'cs-b2c-memar-lashin';
+            const isConcrete = study.id === 'cs-b2c-concrete';
+            const isHamburg = study.id === 'cs-b2c-hamburg';
+            const isActon = study.id === 'cs-b2c-acton';
+            const isYoken = study.id === 'cs-b2c-yoken';
+            const isSiltal = study.id === 'cs-b2c-siltal';
+            const isPassap = study.id === 'cs-b2c-passap';
+            const isAlwaad = study.id === 'cs-b2c-alwaad-travel';
+
+            return (
+              <div
+                key={study.id}
+                onClick={() => {
+                  if (isIpt) {
+                    setCurrentPage('ipt-case-study');
+                  } else if (isPenguin) {
+                    setCurrentPage('penguin-case-study');
+                  } else if (isBsizia) {
+                    setCurrentPage('bsizia-case-study');
+                  } else if (isBinaryracks) {
+                    setCurrentPage('binaryracks-case-study');
+                  } else if (isGimoka) {
+                    setCurrentPage('gimoka-case-study');
+                  } else if (isLashin) {
+                    setCurrentPage('lashin-case-study');
+                  } else if (isConcrete) {
+                    setCurrentPage('concrete-case-study');
+                  } else if (isHamburg) {
+                    setCurrentPage('hamburg-case-study');
+                  } else if (isActon) {
+                    setCurrentPage('acton-case-study');
+                  } else if (isYoken) {
+                    setCurrentPage('yoken-case-study');
+                  } else if (isSiltal) {
+                    setCurrentPage('siltal-case-study');
+                  } else if (isPassap) {
+                    setCurrentPage('passap-case-study');
+                  } else if (isAlwaad) {
+                    setCurrentPage('alwaad-case-study');
+                  } else {
+                    setSelectedCaseStudy(study);
+                  }
+                }}
+                className={`bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col justify-between text-start cursor-pointer group ${
+                  isIpt 
+                    ? 'border-emerald-300 ring-1 ring-emerald-400/20 hover:border-emerald-500' 
+                    : isPenguin
+                    ? 'border-sky-300 ring-1 ring-sky-400/20 hover:border-sky-500' 
+                    : isBsizia
+                    ? 'border-blue-400 ring-1 ring-blue-400/20 hover:border-blue-500'
+                    : isBinaryracks
+                    ? 'border-sky-400 ring-1 ring-sky-400/20 hover:border-sky-500'
+                    : isGimoka
+                    ? 'border-amber-400 ring-1 ring-amber-400/20 hover:border-amber-500'
+                    : isLashin
+                    ? 'border-amber-400 ring-1 ring-amber-400/20 hover:border-amber-500'
+                    : isConcrete
+                    ? 'border-amber-400 ring-1 ring-amber-400/20 hover:border-amber-500'
+                    : isHamburg
+                    ? 'border-amber-400 ring-1 ring-amber-400/20 hover:border-amber-500'
+                    : isActon
+                    ? 'border-sky-400 ring-1 ring-sky-400/20 hover:border-sky-500'
+                    : isYoken
+                    ? 'border-sky-400 ring-1 ring-sky-400/20 hover:border-sky-500'
+                    : isSiltal
+                    ? 'border-sky-400 ring-1 ring-sky-400/20 hover:border-sky-500'
+                    : isPassap
+                    ? 'border-amber-400 ring-1 ring-amber-400/20 hover:border-amber-500'
+                    : isAlwaad
+                    ? 'border-sky-400 ring-1 ring-sky-400/20 hover:border-sky-500'
+                    : 'border-slate-200/90 hover:border-sky-300'
+                }`}
+              >
+                {/* Visual Thumbnail */}
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                  <img
+                    src={study.thumbnailUrl || study.image}
+                    alt={title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                  
+                  <div className="absolute top-3 start-3">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900/80 text-white backdrop-blur-md border border-white/20">
+                      {study.sector.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="absolute bottom-3 start-3 end-3 flex items-end justify-between text-white">
+                    <div className="text-xl font-black text-emerald-400 tabular-nums">
+                      {metricVal}
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-300 truncate max-w-[150px]">
+                      {metricLabel}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1">
+                    <div className="text-xs text-slate-500">{client} · {industry}</div>
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-sky-600 transition-colors line-clamp-2">
+                      {title}
+                    </h3>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-sky-600">
+                    <span>{t.common.viewDetails}</span>
+                    {isAr ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* 3 Dedicated Standalone Sector Portal Cards */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-10 space-y-2">
@@ -180,113 +336,13 @@ export const HomePage: React.FC = () => {
       {/* Stats Ribbon */}
       <StatsRibbon />
 
-      {/* Featured Projects Showcase across sectors */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10 text-start">
-          <div className="space-y-1">
-            <div className="text-xs font-bold text-sky-600 uppercase tracking-wider">
-              {t.home.featuredProjects}
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {isAr ? 'نماذج حقيقية من نتائج أعمالنا' : 'Real Measurable Client Growth'}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500">
-              {t.home.featuredProjectsDesc}
-            </p>
-          </div>
 
-          <button
-            onClick={() => setCurrentPage('case-studies')}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 transition-colors cursor-pointer shrink-0"
-          >
-            <span>{t.home.allCaseStudiesLink}</span>
-            {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {featuredProjects.map((study) => {
-            const title = isAr ? study.title : study.titleEn;
-            const client = isAr ? study.client : study.clientEn;
-            const industry = isAr ? study.industry : study.industryEn;
-            const mainMetric = study.metrics[0];
-            const metricVal = mainMetric?.value;
-            const metricLabel = isAr ? mainMetric?.label : mainMetric?.labelEn;
-
-            const isIpt = study.id === 'cs-med-ipt';
-            const isPenguin = study.id === 'cs-b2c-penguin';
-            const isBsizia = study.id === 'cs-b2b-bsizia';
-
-            return (
-              <div
-                key={study.id}
-                onClick={() => {
-                  if (isIpt) {
-                    setCurrentPage('ipt-case-study');
-                  } else if (isPenguin) {
-                    setCurrentPage('penguin-case-study');
-                  } else if (isBsizia) {
-                    setCurrentPage('bsizia-case-study');
-                  } else {
-                    setSelectedCaseStudy(study);
-                  }
-                }}
-                className={`bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all overflow-hidden flex flex-col justify-between text-start cursor-pointer group ${
-                  isIpt 
-                    ? 'border-emerald-300 ring-1 ring-emerald-400/20 hover:border-emerald-500' 
-                    : isPenguin
-                    ? 'border-sky-300 ring-1 ring-sky-400/20 hover:border-sky-500'
-                    : isBsizia
-                    ? 'border-blue-400 ring-1 ring-blue-400/20 hover:border-blue-500'
-                    : 'border-slate-200/90 hover:border-sky-300'
-                }`}
-              >
-                {/* Visual Thumbnail */}
-                <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
-                  <img
-                    src={study.thumbnailUrl || study.image}
-                    alt={title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-                  
-                  <div className="absolute top-3 start-3">
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-900/80 text-white backdrop-blur-md border border-white/20">
-                      {study.sector.toUpperCase()}
-                    </span>
-                  </div>
-
-                  <div className="absolute bottom-3 start-3 end-3 flex items-end justify-between text-white">
-                    <div className="text-xl font-black text-emerald-400 tabular-nums">
-                      {metricVal}
-                    </div>
-                    <span className="text-[11px] font-medium text-slate-300 truncate max-w-[150px]">
-                      {metricLabel}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
-                  <div className="space-y-1">
-                    <div className="text-xs text-slate-500">{client} · {industry}</div>
-                    <h3 className="text-base font-bold text-slate-900 group-hover:text-sky-600 transition-colors line-clamp-2">
-                      {title}
-                    </h3>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-sky-600">
-                    <span>{t.common.viewDetails}</span>
-                    {isAr ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
 
       {/* Interactive ROI Calculator */}
       <RoiCalculator />
+
+      {/* Client Feedback Testimonials Slider */}
+      <TestimonialsSection />
 
       {/* Agency Credibility & Mission */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

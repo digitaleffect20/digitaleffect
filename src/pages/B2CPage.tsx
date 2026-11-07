@@ -428,12 +428,69 @@ export const B2CPage: React.FC = () => {
                 const industry = isAr ? study.industry : study.industryEn;
                 const solution = isAr ? study.solution : study.solutionEn;
                 const mainMetric = study.metrics[0];
+                const isBinaryracks = study.id === 'cs-b2c-binaryracks';
+                const isGimoka = study.id === 'cs-b2c-gimoka';
+                const isLashin = study.id === 'cs-b2c-memar-lashin';
+                const isConcrete = study.id === 'cs-b2c-concrete';
+                const isHamburg = study.id === 'cs-b2c-hamburg';
+                const isActon = study.id === 'cs-b2c-acton';
+                const isYoken = study.id === 'cs-b2c-yoken';
+                const isSiltal = study.id === 'cs-b2c-siltal';
+                const isPassap = study.id === 'cs-b2c-passap';
+                const isAlwaad = study.id === 'cs-b2c-alwaad-travel';
+                const hasDedicatedPage = isBinaryracks || isGimoka || isLashin || isConcrete || isHamburg || isActon || isYoken || isSiltal || isPassap || isAlwaad;
 
                 return (
                   <div
                     key={study.id}
-                    onClick={() => setSelectedCaseStudy(study)}
-                    className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-amber-300 transition-all p-6 sm:p-7 flex flex-col justify-between text-start cursor-pointer group overflow-hidden"
+                    onClick={() => {
+                      if (isBinaryracks) {
+                        setCurrentPage('binaryracks-case-study');
+                      } else if (isGimoka) {
+                        setCurrentPage('gimoka-case-study');
+                      } else if (isLashin) {
+                        setCurrentPage('lashin-case-study');
+                      } else if (isConcrete) {
+                        setCurrentPage('concrete-case-study');
+                      } else if (isHamburg) {
+                        setCurrentPage('hamburg-case-study');
+                      } else if (isActon) {
+                        setCurrentPage('acton-case-study');
+                      } else if (isYoken) {
+                        setCurrentPage('yoken-case-study');
+                      } else if (isSiltal) {
+                        setCurrentPage('siltal-case-study');
+                      } else if (isPassap) {
+                        setCurrentPage('passap-case-study');
+                      } else if (isAlwaad) {
+                        setCurrentPage('alwaad-case-study');
+                      } else {
+                        setSelectedCaseStudy(study);
+                      }
+                    }}
+                    className={`bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all p-6 sm:p-7 flex flex-col justify-between text-start cursor-pointer group overflow-hidden ${
+                      isAlwaad
+                        ? 'border-sky-300 ring-2 ring-sky-400/20 hover:border-sky-500'
+                        : isPassap
+                        ? 'border-amber-300 ring-2 ring-amber-400/20 hover:border-amber-500'
+                        : isSiltal
+                        ? 'border-sky-300 ring-2 ring-sky-400/20 hover:border-sky-500'
+                        : isYoken
+                        ? 'border-sky-300 ring-2 ring-sky-400/20 hover:border-sky-500'
+                        : isActon
+                        ? 'border-sky-300 ring-2 ring-sky-400/20 hover:border-sky-500'
+                        : isHamburg
+                        ? 'border-amber-300 ring-2 ring-amber-400/20 hover:border-amber-500'
+                        : isConcrete
+                        ? 'border-amber-300 ring-2 ring-amber-400/20 hover:border-amber-500'
+                        : isLashin
+                        ? 'border-amber-300 ring-2 ring-amber-400/20 hover:border-amber-500'
+                        : isGimoka
+                        ? 'border-amber-300 ring-2 ring-amber-400/20 hover:border-amber-500'
+                        : isBinaryracks 
+                        ? 'border-sky-300 ring-2 ring-sky-400/20 hover:border-sky-500' 
+                        : 'border-slate-200 hover:border-amber-300'
+                    }`}
                   >
                     <div className="space-y-4">
                       {/* Top Meta & Logo Row */}
@@ -513,7 +570,11 @@ export const B2CPage: React.FC = () => {
                     </div>
 
                     <div className="pt-4 border-t border-slate-100 mt-6 flex items-center justify-between text-xs font-bold text-amber-600">
-                      <span>{t.common.viewDetails}</span>
+                      <span>
+                        {hasDedicatedPage 
+                          ? (isAr ? 'عرض صفحة دراسة الحالة الكاملة ↗' : 'View Full Case Study Page ↗')
+                          : t.common.viewDetails}
+                      </span>
                       {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </div>
                   </div>

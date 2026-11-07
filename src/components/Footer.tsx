@@ -1,9 +1,9 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
-import { Phone, Mail, MapPin, MessageSquare, ArrowUpRight } from 'lucide-react';
+import { Phone, Mail, MapPin, MessageSquare, ArrowUpRight, Lock } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { data, language, t, setCurrentPage, setIsConsultationOpen } = useAgencyData();
+  const { data, language, t, currentPage, setCurrentPage, setIsConsultationOpen } = useAgencyData();
   const isAr = language === 'ar';
   const info = data.agencyInfo;
   const f = t.footer;
@@ -94,6 +94,24 @@ export const Footer: React.FC = () => {
                   {t.nav.about}
                 </button>
               </li>
+              <li>
+                <button
+                  onClick={() => {
+                    if (currentPage !== 'home') {
+                      setCurrentPage('home');
+                      setTimeout(() => {
+                        document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' });
+                      }, 100);
+                    } else {
+                      document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="hover:text-sky-400 text-sky-300/90 transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <span>{isAr ? 'آراء وتقييمات العملاء' : 'Client Testimonials'}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300">★ 5.0</span>
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -170,6 +188,15 @@ export const Footer: React.FC = () => {
           </div>
           <div className="flex items-center gap-4">
             <span>B2B · B2C · Medical</span>
+            <span className="text-slate-700">|</span>
+            <button
+              onClick={() => setCurrentPage('admin')}
+              className="text-slate-500 hover:text-sky-400 transition-colors flex items-center gap-1.5 cursor-pointer font-medium"
+              title={isAr ? 'لوحة تحكم إدارة المحتوى والطلبات' : 'Admin & CMS Portal'}
+            >
+              <Lock className="w-3 h-3" />
+              <span>{isAr ? 'لوحة التحكم (Admin)' : 'Admin Portal'}</span>
+            </button>
           </div>
         </div>
       </div>

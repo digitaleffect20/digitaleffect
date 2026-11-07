@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
+import { SeoHead } from '../components/SeoHead';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -17,37 +18,54 @@ import {
   Sparkles, 
   Quote, 
   Maximize2,
-  X
+  X,
+  Check
 } from 'lucide-react';
+
+import { getCaseStudyCreatives, getCaseStudyVideos } from '../utils/caseStudyMedia';
+import { CaseStudyVideoSection } from '../components/CaseStudyVideoSection';
 
 export const IptCaseStudyPage: React.FC = () => {
   const { data, language, setCurrentPage, setIsConsultationOpen } = useAgencyData();
   const isAr = language === 'ar';
 
-  const [activeLightboxImg, setActiveLightboxImg] = useState<{ url: string; title: string } | null>(null);
+  const currentCaseStudy = data.caseStudies.find((c) => c.id === 'cs-med-ipt');
+  const creatives = getCaseStudyCreatives('cs-med-ipt', currentCaseStudy);
+  const videos = getCaseStudyVideos(currentCaseStudy);
 
-  const creatives = [
-    {
-      url: '/assets/ipt/ipt_creative_1.jpg',
-      title: isAr ? 'تصميم توعوي: أسباب وعلاج آلام أسفل الظهر' : 'Educational Post: Lower Back Pain Relief & Causes',
-      desc: isAr ? 'استهداف الحالات التي تعاني من آلام الجلوس المكتبي والانزلاق الغضروفي بتمارين آمنة.' : 'Targeting sedentary desk workers and disc herniation cases with safe clinical exercises.',
-    },
-    {
-      url: '/assets/ipt/ipt_creative_2.jpg',
-      title: isAr ? 'تصميم تخصصي: التأهيل الحركي للإصابات الرياضية' : 'Clinical Post: Sports Injury Rehabilitation',
-      desc: isAr ? 'إبراز برامج تأهيل الرياضيين واستعادة حركة المفاصل بعد العمليات والإصابات.' : 'Spotlighting athlete recovery programs and post-surgical joint mobility protocols.',
-    },
-    {
-      url: '/assets/ipt/ipt_creative_3.jpg',
-      title: isAr ? 'تصميم إرشادي: العلاج الطبيعي لخشونة الركبة' : 'Guidance Post: Knee Osteoarthritis Management',
-      desc: isAr ? 'شرح تقنيات تقوية العضلات المحيطة بالركبة وتخفيف الحمل على الغضاريف دون جراحة.' : 'Explaining non-surgical joint strengthening techniques to alleviate cartilage strain.',
-    },
-    {
-      url: '/assets/ipt/ipt_creative_4.jpg',
-      title: isAr ? 'تصميم تعريفي: أحدث أجهزة العلاج الطبيعي بالمركز' : 'Feature Post: State-of-the-art Rehabilitation Tech',
-      desc: isAr ? 'تعزيز ثقة المريض عبر إبراز أجهزة الليزر البارد والتحفيز الكهربائي والأسرّة المتطورة.' : 'Building patient trust by showcasing high-tech electrotherapy and spine decompression units.',
-    },
-  ];
+  const [activeLightboxImg, setActiveLightboxImg] = useState<{ url: string; title: string; desc?: string } | null>(null);
+  const [shareToast, setShareToast] = useState(false);
+
+  const pageTitle = isAr 
+    ? 'دراسة حالة مركز IPT للعلاج الطبيعي | ديجيتال إفكت للتسويق الطبي' 
+    : 'IPT Physiotherapy Center Case Study | Digital Effect Healthcare Marketing';
+
+  const pageDescription = isAr
+    ? 'تعرف على قصة نجاح مركز IPT للعلاج الطبيعي والتأهيل الحركي مع ديجيتال إفكت: أكثر من 2.4 مليون مشاهدة، قفزة في التفاعل بنسبة +43,576% وتحويل المشاهدات إلى حجوزات عيادة حقيقية.'
+    : 'Discover the IPT Physiotherapy & Movement Rehab success story with Digital Effect: 2.4M+ patient impressions, +43,576% engagement surge, and full clinic appointment funnels.';
+
+  const handleShare = async () => {
+    const shareData = {
+      title: pageTitle,
+      text: pageDescription,
+      url: window.location.href,
+    };
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User dismissed
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareToast(true);
+        setTimeout(() => setShareToast(false), 2500);
+      } catch {
+        // Fallback
+      }
+    }
+  };
 
   const auditedMetrics = [
     {
@@ -89,6 +107,46 @@ export const IptCaseStudyPage: React.FC = () => {
 
   return (
     <div className="bg-slate-950 text-white min-h-screen pb-24 text-start font-sans">
+      {/* Dynamic OpenGraph, Twitter Cards & Structured Data */}
+      <SeoHead
+        title={pageTitle}
+        description={pageDescription}
+        image="/assets/portfolio_crops/card_ipt.png"
+        imageAlt={isAr ? 'دراسة حالة مركز IPT للعلاج الطبيعي - ديجيتال إفكت' : 'IPT Physiotherapy Center Case Study - Digital Effect'}
+        urlPath="#ipt-case-study"
+        type="article"
+        publishedTime="2024-01-15T08:00:00Z"
+        author="Digital Effect | ديجيتال إفكت للحلول الرقمية"
+        section={isAr ? 'التسويق الطبي والرعاية الصحية' : 'Healthcare & Medical Marketing'}
+        tags={['مركز IPT', 'علاج طبيعي', 'تسويق طبي', 'ديجيتال إفكت', 'Digital Effect', 'Medical Marketing', 'Physical Therapy Egypt', 'Meta Ads Healthcare']}
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: pageTitle,
+          description: pageDescription,
+          image: typeof window !== 'undefined' ? `${window.location.origin}/assets/portfolio_crops/card_ipt.png` : 'https://digitaleffect.net/assets/portfolio_crops/card_ipt.png',
+          datePublished: '2024-01-15T08:00:00Z',
+          inLanguage: isAr ? 'ar' : 'en',
+          author: {
+            '@type': 'Organization',
+            name: 'Digital Effect',
+            alternateName: 'ديجيتال إفكت للحلول الرقمية والتسويق',
+            url: 'https://digitaleffect.net'
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Digital Effect',
+            url: 'https://digitaleffect.net'
+          },
+          about: {
+            '@type': 'MedicalBusiness',
+            name: 'IPT International Physical Therapy Center',
+            alternateName: 'مركز IPT للعلاج الطبيعي والتأهيل الحركي',
+            medicalSpecialty: 'Physiotherapy'
+          }
+        }}
+      />
+
       {/* Lightbox Modal for Full Image Inspection */}
       {activeLightboxImg && (
         <div 
@@ -149,6 +207,16 @@ export const IptCaseStudyPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Social Share Button with Toast */}
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
+              title={isAr ? 'مشاركة رابط دراسة الحالة عبر السوشيال ميديا' : 'Share case study link'}
+            >
+              {shareToast ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-emerald-400" />}
+              <span>{shareToast ? (isAr ? 'تم نسخ الرابط!' : 'Copied!') : (isAr ? 'مشاركة' : 'Share')}</span>
+            </button>
+
             <button
               onClick={() => setCurrentPage('case-studies')}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
@@ -167,17 +235,30 @@ export const IptCaseStudyPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Main Hero Header */}
-      <section className="relative overflow-hidden pt-12 pb-16 border-b border-slate-800">
-        <div 
-          className="absolute inset-0 opacity-[0.07] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(#10b981 1.5px, transparent 1.5px)`,
-            backgroundSize: '32px 32px',
-          }}
-        />
+      {/* Main Hero Header with Cinematic Medical Clinic Background */}
+      <section className="relative overflow-hidden pt-14 pb-20 sm:pb-28 border-b border-slate-800 bg-slate-950">
+        {/* Cinematic Medical Clinic Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/assets/ipt/ipt_hero_bg.jpg" 
+            alt="IPT Medical Clinic Interior Background" 
+            className="w-full h-full object-cover object-center filter brightness-90 contrast-105"
+          />
+          {/* Heavy Gradient Overlays for Maximum Contrast & Negative Space behind Text */}
+          <div className="absolute inset-0 bg-slate-950/75 mix-blend-multiply"></div>
+          {/* Directional gradient: Deep dark slate on the text side (right in RTL, left in LTR) */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-slate-950/85 to-slate-950 rtl:from-slate-950/30 rtl:via-slate-950/90 rtl:to-slate-950"></div>
+          {/* Top and Bottom Fades */}
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/90 via-transparent to-slate-950"></div>
+        </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-8">
+        {/* Ambient Glows */}
+        <div className="absolute inset-0 pointer-events-none opacity-30 z-0">
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-teal-600/20 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-7 text-start">
           {/* Client Logos & Tags Row */}
           <div className="flex flex-wrap items-center justify-between gap-6">
             <div className="flex items-center gap-4">
@@ -190,12 +271,12 @@ export const IptCaseStudyPage: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-500/30">
+                <div className="inline-flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-500/30 backdrop-blur-md">
                   <Award className="w-3.5 h-3.5 text-emerald-400" />
                   <span>{isAr ? 'شريك ديجيتال إفكت المعتمد في القطاع الطبي' : 'Accredited Medical Partner'}</span>
                 </div>
-                <div className="text-xs text-slate-400">
-                  {isAr ? 'علاج طبيعي وتأهيل حركي · القاهرة' : 'Physiotherapy & Movement Rehab · Cairo'}
+                <div className="text-xs text-slate-300">
+                  {isAr ? 'علاج طبيعي وتأهيل حركي · القاهرة — مصر' : 'Physiotherapy & Movement Rehab · Cairo — Egypt'}
                 </div>
               </div>
             </div>
@@ -205,14 +286,14 @@ export const IptCaseStudyPage: React.FC = () => {
                 href="https://digitaleffect.net/ipt/"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-200 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-200 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-colors backdrop-blur-sm"
               >
                 <span>{isAr ? 'رابط صفحة العميل الأصلية ↗' : 'Official Case Study Link ↗'}</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
               <button
                 onClick={() => setIsConsultationOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 rounded-xl transition-all shadow-lg cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 rounded-xl transition-all shadow-lg cursor-pointer"
               >
                 <CalendarCheck className="w-3.5 h-3.5" />
                 <span>{isAr ? 'طلب خطة مشابهة لمركزك' : 'Request Similar Strategy'}</span>
@@ -222,17 +303,17 @@ export const IptCaseStudyPage: React.FC = () => {
 
           {/* Headline and Narrative */}
           <div className="space-y-4 max-w-4xl text-start">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-400">
-              <span className="text-emerald-400 font-extrabold tracking-wider">SOCIAL MEDIA</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-300">
+              <span className="text-emerald-400 font-extrabold tracking-wider bg-emerald-950/70 px-2.5 py-1 rounded-md border border-emerald-500/30">MEDICAL SOCIAL MEDIA</span>
               <span>·</span>
-              <span>FACEBOOK | INSTAGRAM</span>
+              <span>FACEBOOK & INSTAGRAM</span>
               <span>·</span>
-              <span>REELS & VIDEOS</span>
+              <span>CLINICAL REELS & MOTION</span>
               <span>·</span>
               <span>{isAr ? 'المدة: ٦ أشهر' : 'Duration: 6 Months'}</span>
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.2]">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.2] drop-shadow-md">
               {isAr ? (
                 <>
                   دراسة حالة مركز IPT للعلاج الطبيعي —{' '}
@@ -249,33 +330,132 @@ export const IptCaseStudyPage: React.FC = () => {
               )}
             </h1>
 
-            <p className="text-base sm:text-xl text-slate-300 font-light leading-relaxed">
+            <p className="text-base sm:text-xl text-slate-200/90 font-light leading-relaxed max-w-3xl drop-shadow-sm">
               {isAr
                 ? 'من مجرد التواجد على منصات التواصل إلى بناء أثر رقمي حقيقي وملموس. تحويل صفحة المركز إلى وجهة موثوقة تستقبل آلاف المتابعين واستفسارات الحجوزات اليومية لحالات آلام العمود الفقري والمفاصل والتأهيل الرياضي.'
                 : 'From simply being present on social media to building measurable digital impact. Transforming the center’s social presence into an authoritative patient magnet generating consistent qualified bookings.'}
             </p>
           </div>
 
-          {/* Full-size Hero Banner Image Showcase */}
-          <div className="pt-4">
-            <div className="relative rounded-3xl overflow-hidden border border-slate-700 bg-slate-900 shadow-2xl group">
-              <img
-                src="/assets/ipt/ipt_hero_banner.png"
-                alt="IPT Physiotherapy Center Hero Showcase Banner"
-                className="w-full h-auto object-cover max-h-[640px]"
-              />
-              <button
-                onClick={() => setActiveLightboxImg({ url: '/assets/ipt/ipt_hero_banner.png', title: 'بانر الهوية الرئيسي لمركز IPT للعلاج الطبيعي' })}
-                className="absolute bottom-4 end-4 p-3 bg-slate-950/80 hover:bg-slate-900 text-white rounded-2xl border border-white/20 transition-all opacity-90 hover:opacity-100 flex items-center gap-2 text-xs font-bold cursor-pointer"
-              >
-                <Maximize2 className="w-4 h-4 text-emerald-400" />
-                <span>{isAr ? 'تكبير البانر بالحجم الكامل' : 'View Full Image'}</span>
-              </button>
-            </div>
-            <div className="text-center text-xs text-slate-400 mt-2">
-              {isAr ? 'بانر الهوية والحملات الرسمي المعتمد من ديجيتال إفكت لمركز IPT للعلاج الطبيعي' : 'Official creative campaign showcase banner for IPT Physiotherapy Center'}
-            </div>
+          {/* Quick KPI Highlights inside Hero Banner */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 max-w-4xl">
+            {[
+              { val: '+43,576%', label: isAr ? 'نمو التفاعل الإجمالي' : 'Total Engagement' },
+              { val: '2.4M+', label: isAr ? 'وصول حقيقي للمرضى' : 'Patient Reach' },
+              { val: '1,800+', label: isAr ? 'استفسار حجز عيادات' : 'Bookings Inquiries' },
+              { val: '4.8X', label: isAr ? 'عائد إنفاق إعلاني ROAS' : 'Campaign ROAS' },
+            ].map((kpi, idx) => (
+              <div key={idx} className="p-3 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700/70">
+                <div className="text-xl sm:text-2xl font-black text-emerald-400 tabular-nums">
+                  {kpi.val}
+                </div>
+                <div className="text-[11px] text-slate-300 font-medium mt-0.5">
+                  {kpi.label}
+                </div>
+              </div>
+            ))}
           </div>
+
+          {/* CTA Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <button
+              onClick={() => setIsConsultationOpen(true)}
+              className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <CalendarCheck className="w-4 h-4 text-slate-950" />
+              {isAr ? 'احجز استشارة لمركزك الطبي أو عيادتك' : 'Book Clinical Growth Consultation'}
+            </button>
+
+            <button
+              onClick={() => setCurrentPage('medical')}
+              className="px-5 py-3.5 rounded-xl bg-slate-900/85 hover:bg-slate-800 text-slate-200 font-semibold text-sm border border-slate-700 backdrop-blur-sm transition-all cursor-pointer"
+            >
+              {isAr ? 'استعراض باقات القطاع الطبي' : 'View Medical Packages'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Video Showcase Section */}
+      {videos.length > 0 && (
+        <CaseStudyVideoSection
+          videos={videos}
+          title={isAr ? 'مقاطع الفيديو والريلز الطبية لمركز IPT' : 'IPT Clinical Video Reels & Motion'}
+          subtitle={isAr ? 'مقاطع توعوية وشروحات طبية للأخصائيين حققت ملايين المشاهدات' : 'Medical educational reels and specialist explanations reaching millions'}
+          badgeText={isAr ? 'فيديوهات المركز والريلز' : 'Clinical Video Reel'}
+          accentColor="emerald"
+        />
+      )}
+
+      {/* Full-Size Creatives Gallery (Main Showcase) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-8">
+        <div className="text-start space-y-2">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-500/30">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{isAr ? 'معرض المنشورات والبلان بالحجم الواضح الكامل' : 'Full-Resolution Creative Showcase'}</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-black text-white">
+            {isAr ? 'نماذج من المنشورات والتصاميم الطبية والبلان المنفذة' : 'Selected Campaign Creatives & Medical Posts'}
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
+            {isAr
+              ? 'تصاميم بأبعادها الأصلية الكاملة تعكس الجودة الفنية، الهوية الطبية الراقية، وكتابة المحتوى الجاذب للمرضى. انقر على أي صورة لتكبيرها.'
+              : 'Full portrait resolution showcasing premium medical aesthetics, clear Arabic typography, and clinical authority. Click any image to enlarge.'}
+          </p>
+        </div>
+
+        {/* 2-Column Spacious Grid for Maximum Clarity */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
+          {creatives.map((item, idx) => {
+            const itemTitle = isAr ? item.title : (item.titleEn || item.title);
+            const itemTag = isAr ? item.tag : (item.tagEn || item.tag);
+            const itemDesc = isAr ? item.desc : (item.descEn || item.desc);
+            return (
+              <div
+                key={item.id || idx}
+                className="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 hover:border-emerald-500/50 transition-all shadow-xl flex flex-col justify-between group"
+              >
+                {/* Image Container with high clarity */}
+                <div 
+                  className="relative bg-slate-950 overflow-hidden cursor-pointer"
+                  onClick={() => setActiveLightboxImg({ url: item.url, title: itemTitle, desc: itemDesc })}
+                >
+                  <img
+                    src={item.url}
+                    alt={itemTitle}
+                    className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-500 max-h-[720px]"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="px-4 py-2 bg-slate-900/90 text-white rounded-xl text-xs font-bold border border-white/20 flex items-center gap-2">
+                      <Maximize2 className="w-4 h-4 text-emerald-400" />
+                      <span>{isAr ? 'تكبير التصميم' : 'Enlarge Image'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Text Meta info */}
+                <div className="p-6 space-y-2 text-start bg-slate-900/90 border-t border-slate-800">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-emerald-400">
+                      {isAr ? `نموذج الحملة #${idx + 1}` : `Creative Asset #${idx + 1}`}
+                    </span>
+                    {itemTag && (
+                      <span className="bg-emerald-950 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-800 font-semibold text-[11px]">
+                        {itemTag}
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-base sm:text-lg font-bold text-white">
+                    {itemTitle}
+                  </h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {itemDesc}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -451,65 +631,6 @@ export const IptCaseStudyPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Full-Size Creatives Gallery (معرض المنشورات بالحجم الكامل والواضح) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 space-y-8">
-        <div className="text-start space-y-2">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-500/30">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>{isAr ? 'معرض المنشورات بالحجم الواضح الكامل' : 'Full-Resolution Creative Showcase'}</span>
-          </div>
-          <h2 className="text-2xl sm:text-4xl font-black text-white">
-            {isAr ? 'نماذج من المنشورات والتصاميم الطبية المنفذة' : 'Selected Campaign Creatives & Medical Posts'}
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl">
-            {isAr
-              ? 'تصاميم بأبعادها الأصلية الكاملة (1080x1350) تعكس الجودة الفنية، الهوية الطبية الراقية، وكتابة المحتوى الجاذب للمرضى. انقر على أي صورة لتكبيرها.'
-              : 'Full portrait resolution (1080x1350) showcasing premium medical aesthetics, clear Arabic typography, and clinical authority. Click any image to enlarge.'}
-          </p>
-        </div>
-
-        {/* 2-Column Spacious Grid for Maximum Clarity */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
-          {creatives.map((item, idx) => (
-            <div
-              key={idx}
-              className="bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 hover:border-emerald-500/50 transition-all shadow-xl flex flex-col justify-between group"
-            >
-              {/* Image Container with high clarity */}
-              <div 
-                className="relative bg-slate-950 overflow-hidden cursor-pointer"
-                onClick={() => setActiveLightboxImg({ url: item.url, title: item.title })}
-              >
-                <img
-                  src={item.url}
-                  alt={item.title}
-                  className="w-full h-auto object-cover group-hover:scale-[1.02] transition-transform duration-500 max-h-[720px]"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="px-4 py-2 bg-slate-900/90 text-white rounded-xl text-xs font-bold border border-white/20 flex items-center gap-2">
-                    <Maximize2 className="w-4 h-4 text-emerald-400" />
-                    <span>{isAr ? 'تكبير التصميم' : 'Enlarge Image'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Text Meta info */}
-              <div className="p-6 space-y-2 text-start bg-slate-900/90 border-t border-slate-800">
-                <div className="text-xs font-bold text-emerald-400">
-                  {isAr ? `نموذج الحملة #${idx + 1}` : `Creative Asset #${idx + 1}`}
-                </div>
-                <h4 className="text-base sm:text-lg font-bold text-white">
-                  {item.title}
-                </h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {item.desc}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* Client Quote & Testimonial */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
