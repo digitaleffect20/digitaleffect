@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const PackagesSection: React.FC = () => {
-  const { data, activeSector, language, t, setIsConsultationOpen } = useAgencyData();
+  const { data, activeSector, language, t, setIsConsultationOpen, setCurrentPage, setCustomPackageConfig } = useAgencyData();
   const isAr = language === 'ar';
   
   // Local sector tab for packages (defaults to activeSector if not 'all', otherwise 'b2c')
@@ -129,12 +129,21 @@ export const PackagesSection: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-4">
+              <div className="pt-4 space-y-2">
                 <button
                   onClick={() => setIsConsultationOpen(true)}
-                  className="w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 transition-colors cursor-pointer text-center"
+                  className="w-full py-3 px-4 rounded-xl text-xs sm:text-sm font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 transition-colors cursor-pointer text-center"
                 >
                   {isAr ? 'طلب عرض سعر مخصص للشركات' : 'Request Custom Enterprise Quote'}
+                </button>
+                <button
+                  onClick={() => {
+                    setCustomPackageConfig({ sector: 'b2b', posts: 4, reels: 2 });
+                    setCurrentPage('custom-package');
+                  }}
+                  className="w-full py-2 px-4 rounded-xl text-xs font-bold text-slate-200 bg-slate-800/80 hover:bg-slate-700 transition-colors cursor-pointer text-center border border-slate-700"
+                >
+                  {isAr ? '✨ صمم باقة B2B مخصصة بالحاسبة' : '✨ Build Custom B2B Package'}
                 </button>
               </div>
             </div>
@@ -158,12 +167,23 @@ export const PackagesSection: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
-            onClick={() => setIsConsultationOpen(true)}
-            className="px-5 py-2.5 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 rounded-xl transition-colors border border-slate-300 shadow-sm whitespace-nowrap cursor-pointer shrink-0"
-          >
-            {t.common.requestQuote}
-          </button>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              onClick={() => {
+                setCustomPackageConfig({ sector: packageSectorTab });
+                setCurrentPage('custom-package');
+              }}
+              className="px-5 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors shadow-xs whitespace-nowrap cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <span>{isAr ? '✨ صمم باقتك واحسب التكلفة فوراً' : '✨ Build Custom Package'}</span>
+            </button>
+            <button
+              onClick={() => setIsConsultationOpen(true)}
+              className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 rounded-xl transition-colors border border-slate-300 shadow-xs whitespace-nowrap cursor-pointer"
+            >
+              {t.common.requestQuote}
+            </button>
+          </div>
         </div>
       </div>
     </section>

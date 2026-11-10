@@ -25,8 +25,9 @@ import { YokenCaseStudyPage } from './pages/YokenCaseStudyPage';
 import { SiltalCaseStudyPage } from './pages/SiltalCaseStudyPage';
 import { PassapCaseStudyPage } from './pages/PassapCaseStudyPage';
 import { AlwaadCaseStudyPage } from './pages/AlwaadCaseStudyPage';
+import { CustomPackagePage } from './pages/CustomPackagePage';
 import { AdminPortalPage } from './pages/AdminPortalPage';
-import { Building2, ShoppingBag, Stethoscope, Home, MessageSquare, Briefcase } from 'lucide-react';
+import { Building2, ShoppingBag, Stethoscope, Home, MessageSquare, Briefcase, Sliders } from 'lucide-react';
 import { PageRoute } from './types';
 import { recordPageView } from './lib/analyticsTracker';
 
@@ -52,6 +53,8 @@ const AppContent: React.FC = () => {
       document.title = isAr ? 'سابقة الأعمال ودراسات الحالة وقصص النجاح | ديجيتال إفكت' : 'Case Studies & Success Stories Portfolio | Digital Effect';
     } else if (currentPage === 'about') {
       document.title = isAr ? 'من نحن — خبرة ٢٠ عاماً في التسويق والحلول الرقمية | ديجيتال إفكت' : 'About Us — 20+ Years of Digital Marketing Excellence | Digital Effect';
+    } else if (currentPage === 'custom-package') {
+      document.title = isAr ? 'صمم باقتك المخصصة واحسب تكلفتها فوراً | ديجيتال إفكت' : 'Custom Package Calculator & Scope Builder | Digital Effect';
     }
   }, [currentPage, isAr]);
 
@@ -72,6 +75,8 @@ const AppContent: React.FC = () => {
         return <CaseStudiesPage />;
       case 'about':
         return <AboutPage />;
+      case 'custom-package':
+        return <CustomPackagePage />;
       case 'ipt-case-study':
         return <IptCaseStudyPage />;
       case 'penguin-case-study':
@@ -106,6 +111,7 @@ const AppContent: React.FC = () => {
 
   const quickSwitchPages: Array<{ page: PageRoute; label: string; icon: React.ReactNode }> = [
     { page: 'home', label: isAr ? 'الرئيسية' : 'Home', icon: <Home className="w-3.5 h-3.5" /> },
+    { page: 'custom-package', label: isAr ? 'صمم باقتك' : 'Custom', icon: <Sliders className="w-3.5 h-3.5 text-emerald-500" /> },
     { page: 'b2b', label: 'B2B', icon: <Building2 className="w-3.5 h-3.5" /> },
     { page: 'b2c', label: 'B2C', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
     { page: 'medical', label: 'Medical', icon: <Stethoscope className="w-3.5 h-3.5" /> },

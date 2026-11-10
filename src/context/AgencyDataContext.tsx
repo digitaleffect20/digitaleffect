@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, Language, PageRoute, Inquiry, PromoCode } from '../types';
+import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
+import { DEFAULT_CUSTOM_PACKAGE_RATES } from '../utils/pricingCalculator';
 
 interface AgencyContextType {
   data: AgencyDataState;
@@ -21,6 +22,8 @@ interface AgencyContextType {
   setSelectedPackageForInquiry: (pkg: ServicePackage | null) => void;
   selectedCaseStudy: CaseStudy | null;
   setSelectedCaseStudy: (study: CaseStudy | null) => void;
+  customPackageConfig: CustomPackageConfig | null;
+  setCustomPackageConfig: (cfg: CustomPackageConfig | null) => void;
 
   // CRUD actions for user customizability
   addCaseStudy: (study: Omit<CaseStudy, 'id'>) => void;
@@ -30,6 +33,7 @@ interface AgencyContextType {
   addPackage: (pkg: Omit<ServicePackage, 'id'>) => void;
   updatePackage: (pkg: ServicePackage) => void;
   deletePackage: (id: string) => void;
+  updateCustomRates: (rates: CustomPackagePricingRates) => void;
 
   // Promo Codes System
   addPromoCode: (promo: Omit<PromoCode, 'id' | 'createdAt' | 'usageCount'>) => void;
@@ -50,8 +54,9 @@ interface AgencyContextType {
   };
 
   // Leads & Inquiries Management
-  addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'>) => void;
+  addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { status?: Inquiry['status'] }) => void;
   updateInquiryStatus: (id: string, status: Inquiry['status']) => void;
+  updateInquiry: (id: string, updates: Partial<Inquiry>) => void;
   deleteInquiry: (id: string) => void;
   clearAllInquiries: () => void;
 
@@ -89,6 +94,7 @@ function getPageFromHash(): PageRoute {
   if (hash === 'yoken' || hash === 'yoken-case-study' || hash === 'case-study/cs-b2c-yoken' || hash === 'case-study/yoken') return 'yoken-case-study';
   if (hash === 'siltal' || hash === 'siltal-case-study' || hash === 'case-study/cs-b2c-siltal' || hash === 'case-study/siltal') return 'siltal-case-study';
   if (hash === 'passap' || hash === 'passap-case-study' || hash === 'case-study/cs-b2c-passap' || hash === 'case-study/passap') return 'passap-case-study';
+  if (hash === 'custom-package' || hash === 'custom-calculator' || hash === 'calculator' || path === 'custom-package') return 'custom-package';
   if (hash === 'alwaad' || hash === 'alwaad-travel' || hash === 'alwaad-case-study' || hash === 'case-study/cs-b2c-alwaad-travel' || hash === 'case-study/alwaad') return 'alwaad-case-study';
   return 'home';
 }
@@ -123,11 +129,20 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (!parsed.promoCodes || parsed.promoCodes.length === 0) {
             parsed.promoCodes = INITIAL_AGENCY_DATA.promoCodes || [];
           }
+          if (!parsed.inquiries || parsed.inquiries.length === 0) {
+            parsed.inquiries = INITIAL_AGENCY_DATA.inquiries || [];
+          }
+          if (!parsed.customRates) {
+            parsed.customRates = DEFAULT_CUSTOM_PACKAGE_RATES;
+          }
           return parsed;
         }
       }
     } catch {}
-    return INITIAL_AGENCY_DATA;
+    return {
+      ...INITIAL_AGENCY_DATA,
+      customRates: DEFAULT_CUSTOM_PACKAGE_RATES,
+    };
   });
 
   const [activeSector, setActiveSector] = useState<SectorType>('all');
@@ -135,6 +150,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isConsultationOpen, setIsConsultationOpen] = useState(false);
   const [selectedPackageForInquiry, setSelectedPackageForInquiry] = useState<ServicePackage | null>(null);
   const [selectedCaseStudy, setSelectedCaseStudy] = useState<CaseStudy | null>(null);
+  const [customPackageConfig, setCustomPackageConfig] = useState<CustomPackageConfig | null>(null);
 
   // Language setter with HTML document update
   const setLanguage = (lang: Language) => {
@@ -259,6 +275,13 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setData((prev) => ({
       ...prev,
       packages: prev.packages.filter((p) => p.id !== id),
+    }));
+  };
+
+  const updateCustomRates = (rates: CustomPackagePricingRates) => {
+    setData((prev) => ({
+      ...prev,
+      customRates: rates,
     }));
   };
 
@@ -445,12 +468,43 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return false;
   };
 
-  const addInquiry = (inquiryData: Omit<Inquiry, 'id' | 'createdAt' | 'status'>) => {
+  const addInquiry = (inquiryData: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { status?: Inquiry['status'] }) => {
+    const isClosed = inquiryData.status === 'closed';
+    const today = new Date().toISOString().split('T')[0];
+    const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
     const newInquiry: Inquiry = {
       ...inquiryData,
       id: `inq-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      status: 'new',
+      status: inquiryData.status || 'new',
+      ...(isClosed ? {
+        contractStartDate: inquiryData.contractStartDate || today,
+        renewalDate: inquiryData.renewalDate || renewal,
+        contractStatus: inquiryData.contractStatus || 'active',
+        paymentStatus: inquiryData.paymentStatus || 'paid',
+        billingCycle: inquiryData.billingCycle || 'monthly',
+        postsDelivered: inquiryData.postsDelivered ?? 0,
+        reelsDelivered: inquiryData.reelsDelivered ?? 0,
+        storiesDelivered: inquiryData.storiesDelivered ?? 0,
+        currentWorkflowDay: inquiryData.currentWorkflowDay || 12,
+        todayTaskTitle: inquiryData.todayTaskTitle || 'تصميم النسخة النهائية للمحتوى',
+        workflowStages: inquiryData.workflowStages || [
+          { id: 'content_creator', title: 'Content Creator', status: 'completed' },
+          { id: 'visual_design', title: 'Visual Design', status: 'completed' },
+          { id: 'final_design', title: 'Final Design', status: 'in_progress' },
+          { id: 'client_approve', title: 'Client Approve', status: 'pending' },
+          { id: 'publish', title: 'Publish', status: 'pending' },
+        ],
+        clientNotes: inquiryData.clientNotes || [
+          {
+            id: `note-${Date.now()}`,
+            text: 'تم تسجيل العميل وتأكيد التعاقد وبدء خطة العمل.',
+            createdAt: new Date().toISOString(),
+            type: 'update',
+          }
+        ]
+      } : {})
     };
     setData((prev) => ({
       ...prev,
@@ -458,11 +512,54 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
   };
 
-  const updateInquiryStatus = (id: string, status: Inquiry['status']) => {
+  const updateInquiry = (id: string, updates: Partial<Inquiry>) => {
     setData((prev) => ({
       ...prev,
-      inquiries: (prev.inquiries || []).map((item) => (item.id === id ? { ...item, status } : item)),
+      inquiries: (prev.inquiries || []).map((item) => {
+        if (item.id === id) {
+          const merged = { ...item, ...updates };
+          if (updates.status === 'closed' || (merged.status === 'closed' && !merged.contractStartDate)) {
+            const today = new Date().toISOString().split('T')[0];
+            const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            merged.contractStartDate = merged.contractStartDate || today;
+            merged.renewalDate = merged.renewalDate || renewal;
+            merged.contractStatus = merged.contractStatus || 'active';
+            merged.paymentStatus = merged.paymentStatus || 'paid';
+            merged.billingCycle = merged.billingCycle || 'monthly';
+            merged.postsDelivered = merged.postsDelivered ?? 0;
+            merged.reelsDelivered = merged.reelsDelivered ?? 0;
+            merged.storiesDelivered = merged.storiesDelivered ?? 0;
+            merged.currentWorkflowDay = merged.currentWorkflowDay || 12;
+            merged.todayTaskTitle = merged.todayTaskTitle || 'تصميم النسخة النهائية للمحتوى';
+            if (!merged.workflowStages || merged.workflowStages.length === 0) {
+              merged.workflowStages = [
+                { id: 'content_creator', title: 'Content Creator', status: 'completed' },
+                { id: 'visual_design', title: 'Visual Design', status: 'completed' },
+                { id: 'final_design', title: 'Final Design', status: 'in_progress' },
+                { id: 'client_approve', title: 'Client Approve', status: 'pending' },
+                { id: 'publish', title: 'Publish', status: 'pending' },
+              ];
+            }
+            if (!merged.clientNotes || merged.clientNotes.length === 0) {
+              merged.clientNotes = [
+                {
+                  id: `note-${Date.now()}`,
+                  text: 'تم تحويل العميل إلى مرحلة التعاقد وتفعيل حساب المتابعة.',
+                  createdAt: new Date().toISOString(),
+                  type: 'update',
+                }
+              ];
+            }
+          }
+          return merged;
+        }
+        return item;
+      }),
     }));
+  };
+
+  const updateInquiryStatus = (id: string, status: Inquiry['status']) => {
+    updateInquiry(id, { status });
   };
 
   const deleteInquiry = (id: string) => {
@@ -500,12 +597,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setSelectedPackageForInquiry,
         selectedCaseStudy,
         setSelectedCaseStudy,
+        customPackageConfig,
+        setCustomPackageConfig,
         addCaseStudy,
         updateCaseStudy,
         deleteCaseStudy,
         addPackage,
         updatePackage,
         deletePackage,
+        updateCustomRates,
         addPromoCode,
         updatePromoCode,
         deletePromoCode,
@@ -514,6 +614,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         validatePromoCode,
         addInquiry,
         updateInquiryStatus,
+        updateInquiry,
         deleteInquiry,
         clearAllInquiries,
         updateBanner,

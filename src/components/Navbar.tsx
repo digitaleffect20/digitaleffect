@@ -18,6 +18,7 @@ export const Navbar: React.FC = () => {
 
   const navLinks: Array<{ page: PageRoute; label: string }> = [
     { page: 'home', label: t.nav.home },
+    { page: 'custom-package', label: isAr ? '✨ صمم باقتك' : '✨ Custom Plan' },
     { page: 'b2b', label: t.nav.b2b },
     { page: 'b2c', label: t.nav.b2c },
     { page: 'medical', label: t.nav.medical },

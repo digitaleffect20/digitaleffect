@@ -25,9 +25,21 @@ import {
   Globe,
   Code2,
   AlertCircle,
-  Copy
+  Copy,
+  UserPlus,
+  UserCheck,
+  DollarSign,
+  Clock,
+  Layers,
+  AlertTriangle,
+  BellRing
 } from 'lucide-react';
 import { generateCaseStudySeo } from '../lib/seoGenerator';
+import { AddClientModal } from './AddClientModal';
+import { ClientAccountDrawer } from './ClientAccountDrawer';
+import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from './ClientWorkflowStepper';
+import { ClientPackageDeliverablesCard } from './ClientPackageDeliverablesCard';
+import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
 
 export const AdminPanelModal: React.FC = () => {
   const { 
@@ -42,6 +54,7 @@ export const AdminPanelModal: React.FC = () => {
     updatePackage, 
     deletePackage,
     updateInquiryStatus,
+    updateInquiry,
     deleteInquiry,
     clearAllInquiries,
     updateBanner,
@@ -51,11 +64,20 @@ export const AdminPanelModal: React.FC = () => {
   } = useAgencyData();
 
   const isAr = language === 'ar';
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'clients' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
   const [inquiryStatusFilter, setInquiryStatusFilter] = useState<'all' | 'new' | 'contacted' | 'closed' | 'cancelled'>('all');
   const [inquirySearch, setInquirySearch] = useState('');
+  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
+  const [selectedClientForAccount, setSelectedClientForAccount] = useState<Inquiry | null>(null);
+  const [isClientAccountOpen, setIsClientAccountOpen] = useState(false);
+  const [clientSectorFilter, setClientSectorFilter] = useState<'all' | 'b2c' | 'b2b' | 'medical'>('all');
+  const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'renewal_due' | 'paused' | 'completed'>('all');
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [workflowTaskFilter, setWorkflowTaskFilter] = useState<'all' | 'in_progress' | 'completed' | 'delayed' | 'overdue'>('all');
+  const [workflowStageFilter, setWorkflowStageFilter] = useState<string>('all');
 
   // Package Form States
+  const [packageFilterSector, setPackageFilterSector] = useState<'all' | 'b2b' | 'b2c' | 'medical'>('all');
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null);
   const [isAddingPackage, setIsAddingPackage] = useState(false);
   const [pkgName, setPkgName] = useState('');
@@ -149,27 +171,39 @@ export const AdminPanelModal: React.FC = () => {
   };
 
   // Open Add Package Form
-  const startAddPackage = () => {
+  const startAddPackage = (preferredSector?: 'b2b' | 'b2c' | 'medical') => {
     setEditingPackageId(null);
     setIsAddingPackage(true);
+    const chosenSector = preferredSector || (packageFilterSector === 'all' ? 'b2c' : packageFilterSector);
     setPkgName('');
     setPkgNameEn('');
-    setPkgSector('b2b');
-    setPkgPrice(15000);
-    setPkgOriginalPrice(18000);
-    setPkgQuarterlyPrice(undefined);
-    setPkgPostsCount(8);
-    setPkgReelsCount(2);
-    setPkgStoriesCount(0);
-    setPkgFrequency('');
-    setPkgHasMonthlyPlan(false);
-    setPkgHasOffer(true);
-    setPkgOfferNote('عرض إطلاق خاص');
+    setPkgSector(chosenSector);
+    setPkgPrice(chosenSector === 'b2b' ? 4000 : chosenSector === 'medical' ? 19500 : 15000);
+    setPkgOriginalPrice(chosenSector === 'b2b' ? 5000 : chosenSector === 'medical' ? 22000 : 18000);
+    setPkgQuarterlyPrice(chosenSector === 'medical' ? 49750 : undefined);
+    setPkgPostsCount(chosenSector === 'b2b' ? 4 : chosenSector === 'medical' ? 8 : 12);
+    setPkgReelsCount(chosenSector === 'b2b' ? 0 : chosenSector === 'medical' ? 8 : 2);
+    setPkgStoriesCount(chosenSector === 'b2c' ? 2 : 0);
+    setPkgFrequency(chosenSector === 'b2b' ? 'منشور أسبوعياً' : '٣ منشورات / أسبوع');
+    setPkgHasMonthlyPlan(true);
+    setPkgHasOffer(false);
+    setPkgOfferNote('');
     setPkgIsPopular(false);
-    setPkgTagline('وصف مختصر لقيمة الباقة');
-    setPkgTaglineEn('Brief high-impact package summary');
-    setPkgIdealFor('الشركات والعملاء المستهدفين');
-    setPkgFeaturesText('الميزة الأولى والخدمة الأساسية\nإنتاج المحتوى التخصصي\nإدارة الحملات الإعلانية\nتقارير أداء دورية');
+    setPkgTagline(chosenSector === 'b2b' ? 'تسريع خط التعاقدات للمصانع والشركات' : chosenSector === 'medical' ? 'بناء الحضور والهيمنة الرقمية للعيادة' : 'مضاعفة المبيعات والتفاعل لمتجرك');
+    setPkgTaglineEn(chosenSector === 'b2b' ? 'B2B enterprise pipeline acceleration' : chosenSector === 'medical' ? 'Healthcare clinical growth retainer' : 'E-commerce hyper-growth deliverables');
+    setPkgIdealFor(chosenSector === 'b2b' ? 'المصانع والشركات الكبرى' : chosenSector === 'medical' ? 'العيادات والمراكز التخصصية' : 'المتاجر الإلكترونية والتجزئة');
+    setPkgFeaturesText('إدارة كاملة لحسابات التواصل\nتصاميم إعلانية وبوستات احترافية\nمقاطع ريلز وفيديوهات بالذكاء الاصطناعي\nتقرير تحليلي شهري مفصل');
+  };
+
+  const handleDuplicatePackage = (pkg: ServicePackage) => {
+    const duplicated: Omit<ServicePackage, 'id'> = {
+      ...pkg,
+      name: `${pkg.name} (نسخة جديدة)`,
+      nameEn: `${pkg.nameEn || pkg.name} (Copy)`,
+      isPopular: false,
+    };
+    addPackage(duplicated);
+    showNotice(isAr ? 'تم استنساخ الباقة بنجاح، يمكنك الآن تعديل بياناتها!' : 'Package duplicated successfully!');
   };
 
   const handleSavePackage = (e: React.FormEvent) => {
@@ -406,6 +440,106 @@ export const AdminPanelModal: React.FC = () => {
     return true;
   });
 
+  const contractedClients = inquiries.filter(i => i.status === 'closed');
+
+  // Workflow Task Status Counts
+  const workflowCounts = {
+    all: contractedClients.length,
+    inProgress: contractedClients.filter((c) => {
+      const stages = c.workflowStages || [];
+      const isAllCompleted = stages.length > 0 && stages.every((s) => s.status === 'completed');
+      return stages.some((s) => s.status === 'in_progress') && !isAllCompleted;
+    }).length,
+    completed: contractedClients.filter((c) => {
+      const stages = c.workflowStages || [];
+      return stages.length > 0 && stages.every((s) => s.status === 'completed');
+    }).length,
+    overdue: contractedClients.filter((c) => getClientOverdueStatus(c, isAr).isOverdue).length,
+    delayed: contractedClients.filter((c) => {
+      const stages = c.workflowStages || [];
+      const isAllCompleted = stages.length > 0 && stages.every((s) => s.status === 'completed');
+      const hasInProgress = stages.some((s) => s.status === 'in_progress');
+      return !isAllCompleted && !hasInProgress;
+    }).length,
+  };
+
+  const filteredContractedClients = contractedClients.filter((client) => {
+    if (clientSectorFilter !== 'all' && client.sector !== clientSectorFilter) return false;
+    if (clientStatusFilter !== 'all' && client.contractStatus && client.contractStatus !== clientStatusFilter) return false;
+
+    // Filter by Workflow Task Status:
+    if (workflowTaskFilter !== 'all') {
+      const stages = client.workflowStages || [];
+      const isAllCompleted = stages.length > 0 && stages.every((s) => s.status === 'completed');
+      const hasInProgress = stages.some((s) => s.status === 'in_progress');
+      const overdueStatus = getClientOverdueStatus(client, isAr);
+
+      if (workflowTaskFilter === 'overdue' && !overdueStatus.isOverdue) return false;
+      if (workflowTaskFilter === 'completed' && !isAllCompleted) return false;
+      if (workflowTaskFilter === 'in_progress' && (!hasInProgress || isAllCompleted)) return false;
+      if (workflowTaskFilter === 'delayed' && (isAllCompleted || hasInProgress)) return false;
+    }
+
+    // Filter by specific stage:
+    if (workflowStageFilter !== 'all') {
+      const stages = client.workflowStages || [];
+      const targetStage = stages.find((s) => s.id === workflowStageFilter);
+      if (!targetStage || targetStage.status === 'completed') return false;
+    }
+
+    if (clientSearchQuery.trim()) {
+      const q = clientSearchQuery.toLowerCase();
+      const matchName = client.name.toLowerCase().includes(q);
+      const matchCompany = (client.company || '').toLowerCase().includes(q);
+      const matchPhone = client.phone.toLowerCase().includes(q);
+      const matchPackage = (client.packageName || '').toLowerCase().includes(q);
+      if (!matchName && !matchCompany && !matchPhone && !matchPackage) return false;
+    }
+    return true;
+  });
+
+  const totalClientsMrr = contractedClients.reduce((acc, c) => {
+    if (c.retainerAmount) return acc + c.retainerAmount;
+    if (c.budget) {
+      const num = parseInt(c.budget.replace(/\D/g, ''), 10);
+      if (!isNaN(num) && num > 0) return acc + num;
+    }
+    const defaultFee = c.sector === 'b2b' ? 4000 : c.sector === 'medical' ? 19500 : 15000;
+    return acc + defaultFee;
+  }, 0);
+
+  const totalDeliveredCount = contractedClients.reduce((acc, c) => 
+    acc + (c.postsDelivered || 0) + (c.reelsDelivered || 0) + (c.storiesDelivered || 0), 0
+  );
+
+  const totalTargetCount = contractedClients.reduce((acc, c) => {
+    const targets = getClientDeliverableTargets(c, data.packages);
+    return acc + targets.totalTarget;
+  }, 0);
+
+  const handleToggleClientStage = (client: Inquiry, stageId: string) => {
+    const currentStages = client.workflowStages && client.workflowStages.length === 5 
+      ? client.workflowStages 
+      : DEFAULT_WORKFLOW_STAGES;
+
+    const updatedStages = currentStages.map((stage) => {
+      if (stage.id === stageId) {
+        const nextStatus: 'completed' | 'in_progress' | 'pending' =
+          stage.status === 'pending'
+            ? 'in_progress'
+            : stage.status === 'in_progress'
+            ? 'completed'
+            : 'pending';
+        const completedAt = nextStatus === 'pending' ? undefined : new Date().toISOString();
+        return { ...stage, status: nextStatus, completedAt };
+      }
+      return stage;
+    });
+
+    updateInquiry(client.id, { workflowStages: updatedStages });
+    showNotice(isAr ? 'تم تحديث حالة المرحلة وتسجيل تاريخ ووقت الإنجاز بنجاح!' : 'Stage updated with timestamp!');
+  };
+
   const exportInquiriesCsv = () => {
     if (inquiries.length === 0) {
       alert(isAr ? 'لا توجد طلبات لتصديرها حالياً.' : 'No inquiries to export.');
@@ -489,6 +623,23 @@ export const AdminPanelModal: React.FC = () => {
             {newInquiriesCount > 0 && (
               <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-white rounded-full font-bold animate-pulse">
                 {newInquiriesCount} {isAr ? 'جديد' : 'new'}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('clients')}
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'clients'
+                ? 'border-emerald-600 text-emerald-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{isAr ? `العملاء والتعاقدات (${contractedClients.length})` : `Clients & Retainers (${contractedClients.length})`}</span>
+            {contractedClients.length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 rounded-full font-bold">
+                {contractedClients.length} {isAr ? 'نشط' : 'active'}
               </span>
             )}
           </button>
@@ -600,6 +751,15 @@ export const AdminPanelModal: React.FC = () => {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <button
+                    type="button"
+                    onClick={() => setIsAddClientOpen(true)}
+                    className="px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>{isAr ? 'إضافة عميل وتحديد باقة' : 'Add Client & Assign Package'}</span>
+                  </button>
+
+                  <button
                     onClick={exportInquiriesCsv}
                     className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                     title={isAr ? 'تصدير الطلبات إلى ملف Excel / CSV' : 'Export leads to Excel/CSV'}
@@ -689,8 +849,13 @@ export const AdminPanelModal: React.FC = () => {
                             <select
                               value={inq.status}
                               onChange={(e) => {
-                                updateInquiryStatus(inq.id, e.target.value as any);
-                                showNotice(isAr ? 'تم تحديث حالة الطلب!' : 'Inquiry status updated!');
+                                const newStatus = e.target.value as any;
+                                updateInquiryStatus(inq.id, newStatus);
+                                if (newStatus === 'closed') {
+                                  showNotice(isAr ? 'تهانينا! تم تحويل العميل إلى قسم العملاء والتعاقدات بنجاح 🎉' : 'Client transferred to Contracted Clients section 🎉');
+                                } else {
+                                  showNotice(isAr ? 'تم تحديث حالة الطلب!' : 'Inquiry status updated!');
+                                }
                               }}
                               className={`text-[11px] font-bold py-1 px-2.5 rounded-lg border focus:outline-none cursor-pointer ${
                                 inq.status === 'new'
@@ -707,6 +872,21 @@ export const AdminPanelModal: React.FC = () => {
                               <option value="closed">{isAr ? 'تم التعاقد' : 'Closed Deal'}</option>
                               <option value="cancelled">{isAr ? 'ملغي' : 'Cancelled'}</option>
                             </select>
+
+                            {inq.status === 'closed' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedClientForAccount(inq);
+                                  setIsClientAccountOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 rounded-lg transition-colors cursor-pointer"
+                                title={isAr ? 'فتح ملف ومتابعة حساب العميل' : 'Open Client Account'}
+                              >
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>{isAr ? 'متابعة الحساب' : 'Account'}</span>
+                              </button>
+                            )}
 
                             <button
                               onClick={() => {
@@ -773,6 +953,534 @@ export const AdminPanelModal: React.FC = () => {
                           <div className="text-[11px] text-slate-400">
                             ID: <span className="font-mono">{inq.id}</span>
                           </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: CONTRACTED CLIENTS & RETAINER ACCOUNTS */}
+          {activeTab === 'clients' && (
+            <div className="space-y-6">
+              {/* Stats Overview */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-emerald-700 block">{isAr ? 'العملاء المتعاقدون' : 'Contracted Clients'}</span>
+                    <UserCheck className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <span className="text-2xl font-black text-emerald-900 mt-1 block">{contractedClients.length}</span>
+                  <span className="text-[10px] text-emerald-600 font-bold">{isAr ? 'حسابات ومتابعة دورية' : 'Active accounts'}</span>
+                </div>
+
+                <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-sky-700 block">{isAr ? 'الإيراد الشهري (MRR)' : 'Monthly Retainer'}</span>
+                    <DollarSign className="w-4 h-4 text-sky-600" />
+                  </div>
+                  <span className="text-2xl font-black text-sky-900 mt-1 block">
+                    {totalClientsMrr.toLocaleString(isAr ? 'ar-EG' : 'en-US')}
+                  </span>
+                  <span className="text-[10px] text-sky-600 font-bold">{isAr ? 'ج.م شهرياً' : 'EGP / month'}</span>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-700 block">{isAr ? 'تجديدات ومتابعات' : 'Renewals Due'}</span>
+                    <Clock className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <span className="text-2xl font-black text-amber-900 mt-1 block">
+                    {contractedClients.filter(c => c.contractStatus === 'renewal_due' || c.paymentStatus === 'pending' || c.paymentStatus === 'overdue').length}
+                  </span>
+                  <span className="text-[10px] text-amber-600 font-bold">{isAr ? 'تحتاج تواصل' : 'Action needed'}</span>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-purple-700 block">{isAr ? 'المخرجات المنشورة' : 'Assets Delivered'}</span>
+                    <Layers className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <span className="text-2xl font-black text-purple-900 mt-1 block">
+                    {totalDeliveredCount} <span className="text-xs font-normal text-purple-500">/ {totalTargetCount}</span>
+                  </span>
+                  <span className="text-[10px] text-purple-600 font-bold">{isAr ? 'مخرجات الدورة الحالية' : 'Current cycle'}</span>
+                </div>
+              </div>
+
+              {/* =============================================================== */}
+              {/* OVERDUE TASKS URGENT NOTIFICATION BANNER                        */}
+              {/* =============================================================== */}
+              {workflowCounts.overdue > 0 && (
+                <div className="bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 text-white p-3.5 rounded-2xl shadow-md border border-rose-400/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 shadow-inner">
+                      <BellRing className="w-4 h-4 text-white animate-bounce" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="text-xs sm:text-sm font-black tracking-wide">
+                          {isAr 
+                            ? `نظام الإشعارات: يوجد ${workflowCounts.overdue} عميل لديهم مهام متأخرة تجاوزت موعد الاستحقاق!`
+                            : `Alert System: ${workflowCounts.overdue} client accounts have tasks exceeding their scheduled due date!`}
+                        </h4>
+                        <span className="bg-white text-rose-700 text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase shadow-xs">
+                          {isAr ? 'عاجل ومطلوب اتخاذ إجراء' : 'Action Required'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-rose-100 mt-0.5 leading-relaxed truncate sm:whitespace-normal">
+                        {isAr
+                          ? 'تجاوزت هذه الحسابات تاريخ الاستحقاق المحدد دون اكتمال المراحل التنفيذية. يرجى المتابعة وتحديث سير العمل.'
+                          : 'These accounts exceeded their target handoff date with pending stages. Please review and update stalled deliverables.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowTaskFilter(workflowTaskFilter === 'overdue' ? 'all' : 'overdue')}
+                    className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all shadow-sm shrink-0 flex items-center gap-1.5 cursor-pointer self-start sm:self-center ${
+                      workflowTaskFilter === 'overdue'
+                        ? 'bg-slate-900 text-white ring-2 ring-white/60'
+                        : 'bg-white text-rose-700 hover:bg-rose-50'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    <span>
+                      {workflowTaskFilter === 'overdue'
+                        ? (isAr ? 'إلغاء التصفية (عرض الكل)' : 'Clear Filter (Show All)')
+                        : (isAr ? `تصفية وعرض المتأخرين فقط (${workflowCounts.overdue})` : `Filter Overdue Only (${workflowCounts.overdue})`)}
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {/* =============================================================== */}
+              {/* UPPER WORKFLOW TASK STATUS FILTER BAR                           */}
+              {/* =============================================================== */}
+              <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+                      <Layers className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                        <span>{isAr ? 'تصفية ومتابعة سير عمل المهام:' : 'Workflow Tasks Status Filter:'}</span>
+                        {workflowTaskFilter !== 'all' && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
+                            workflowTaskFilter === 'overdue'
+                              ? 'bg-rose-100 text-rose-800'
+                              : workflowTaskFilter === 'completed'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : workflowTaskFilter === 'in_progress'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {workflowTaskFilter === 'overdue' ? (isAr ? 'تجاوزت الاستحقاق ⚠️' : 'Overdue ⚠️')
+                              : workflowTaskFilter === 'completed' ? (isAr ? 'مكتملة' : 'Completed')
+                              : workflowTaskFilter === 'in_progress' ? (isAr ? 'قيد التنفيذ' : 'In Progress')
+                              : (isAr ? 'متأخرة / قيد الانتظار' : 'Delayed / Pending')}
+                          </span>
+                        )}
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* Stage filter and reset */}
+                  <div className="flex items-center gap-1.5 self-start sm:self-center">
+                    <select
+                      value={workflowStageFilter}
+                      onChange={(e) => setWorkflowStageFilter(e.target.value)}
+                      className="text-[11px] font-bold py-1 px-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                    >
+                      <option value="all">{isAr ? 'كافة مراحل سير العمل' : 'All Stages'}</option>
+                      <option value="content">{isAr ? 'صناعة المحتوى' : 'Content Creator'}</option>
+                      <option value="visual_design">{isAr ? 'التصميم البصري' : 'Visual Design'}</option>
+                      <option value="final_design">{isAr ? 'النسخة النهائية' : 'Final Design'}</option>
+                      <option value="client_approval">{isAr ? 'موافقة العميل' : 'Client Approve'}</option>
+                      <option value="publishing">{isAr ? 'النشر والجدولة' : 'Publish'}</option>
+                    </select>
+
+                    {(workflowTaskFilter !== 'all' || workflowStageFilter !== 'all') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWorkflowTaskFilter('all');
+                          setWorkflowStageFilter('all');
+                        }}
+                        className="text-[10px] font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                        title={isAr ? 'إعادة ضبط الفلاتر' : 'Reset task filters'}
+                      >
+                        <RotateCcw className="w-2.5 h-2.5" />
+                        <span>{isAr ? 'إعادة تعيين' : 'Reset'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filter buttons */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 pt-1 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowTaskFilter('all')}
+                    className={`p-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-between border cursor-pointer ${
+                      workflowTaskFilter === 'all'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      <span>{isAr ? 'كافة المهام' : 'All'}</span>
+                    </div>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black tabular-nums ${
+                      workflowTaskFilter === 'all' ? 'bg-slate-800 text-slate-200' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {workflowCounts.all}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowTaskFilter('in_progress')}
+                    className={`p-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-between border cursor-pointer ${
+                      workflowTaskFilter === 'in_progress'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-1 ring-blue-400/40'
+                        : 'bg-blue-50/50 hover:bg-blue-50 text-blue-800 border-blue-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      <span>{isAr ? 'قيد التنفيذ' : 'In Progress'}</span>
+                    </div>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black tabular-nums ${
+                      workflowTaskFilter === 'in_progress' ? 'bg-blue-700 text-blue-100' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {workflowCounts.inProgress}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowTaskFilter('completed')}
+                    className={`p-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-between border cursor-pointer ${
+                      workflowTaskFilter === 'completed'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-1 ring-emerald-400/40'
+                        : 'bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 border-emerald-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                      <span>{isAr ? 'مكتملة' : 'Completed'}</span>
+                    </div>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black tabular-nums ${
+                      workflowTaskFilter === 'completed' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {workflowCounts.completed}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowTaskFilter('overdue')}
+                    className={`p-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-between border cursor-pointer ${
+                      workflowTaskFilter === 'overdue'
+                        ? 'bg-rose-600 text-white border-rose-600 shadow-xs ring-1 ring-rose-400/40'
+                        : 'bg-rose-50/50 hover:bg-rose-50 text-rose-800 border-rose-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <AlertTriangle className="w-3 h-3 text-rose-500 animate-pulse" />
+                      <span>{isAr ? 'تجاوزت الاستحقاق' : 'Overdue'}</span>
+                    </div>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black tabular-nums ${
+                      workflowTaskFilter === 'overdue' ? 'bg-rose-700 text-rose-100' : 'bg-rose-100 text-rose-800'
+                    }`}>
+                      {workflowCounts.overdue}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowTaskFilter('delayed')}
+                    className={`p-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-between border cursor-pointer ${
+                      workflowTaskFilter === 'delayed'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs ring-1 ring-amber-400/40'
+                        : 'bg-amber-50/50 hover:bg-amber-50 text-amber-800 border-amber-200/80'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3 h-3 text-amber-500" />
+                      <span>{isAr ? 'متأخرة / انتظار' : 'Delayed'}</span>
+                    </div>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black tabular-nums ${
+                      workflowTaskFilter === 'delayed' ? 'bg-amber-700 text-amber-100' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {workflowCounts.delayed}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Bar: Search, Sector Filter, Status Filter & Add Client Button */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+                <div className="flex flex-wrap items-center gap-2 flex-1">
+                  <div className="relative flex-1 min-w-[160px]">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={clientSearchQuery}
+                      onChange={(e) => setClientSearchQuery(e.target.value)}
+                      placeholder={isAr ? 'البحث بالاسم، الشركة، الباقة، أو الهاتف...' : 'Search clients...'}
+                      className="w-full ps-8 pe-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <select
+                    value={clientSectorFilter}
+                    onChange={(e) => setClientSectorFilter(e.target.value as any)}
+                    className="py-1.5 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-slate-700 cursor-pointer"
+                  >
+                    <option value="all">{isAr ? 'جميع القطاعات' : 'All Sectors'}</option>
+                    <option value="b2c">{isAr ? 'B2C والتجارة' : 'B2C'}</option>
+                    <option value="b2b">{isAr ? 'B2B والشركات' : 'B2B'}</option>
+                    <option value="medical">{isAr ? 'القطاع الطبي' : 'Medical'}</option>
+                  </select>
+
+                  <select
+                    value={clientStatusFilter}
+                    onChange={(e) => setClientStatusFilter(e.target.value as any)}
+                    className="py-1.5 px-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 font-bold text-slate-700 cursor-pointer"
+                  >
+                    <option value="all">{isAr ? 'كل الحالات' : 'All Statuses'}</option>
+                    <option value="active">{isAr ? 'نشط ومفعل' : 'Active'}</option>
+                    <option value="renewal_due">{isAr ? 'قيد التجديد' : 'Renewal Due'}</option>
+                    <option value="paused">{isAr ? 'موقوف مؤقتاً' : 'Paused'}</option>
+                    <option value="completed">{isAr ? 'مكتمل' : 'Completed'}</option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddClientOpen(true)}
+                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all shadow-xs inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'إضافة عميل وتحديد باقة' : 'Add Client'}</span>
+                </button>
+              </div>
+
+              {/* Clients Cards Grid */}
+              {filteredContractedClients.length === 0 ? (
+                <div className="py-12 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-6 space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
+                    <UserCheck className="w-6 h-6" />
+                  </div>
+                  <h5 className="text-sm font-bold text-slate-700">
+                    {contractedClients.length === 0
+                      ? (isAr ? 'لا يوجد عملاء متعاقدون حالياً' : 'No contracted clients yet')
+                      : (isAr ? 'لا توجد نتائج مطابقة لبحثك' : 'No matching clients found')}
+                  </h5>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    {contractedClients.length === 0
+                      ? (isAr ? 'عند اختيار "تم التعاقد" على أي طلب، أو عند إضافة عميل جديد، سينتقل العميل تلقائياً إلى هذا القسم لمتابعة مخرجاته الشهرية وحسابه.' : 'Marking any lead as "Closed Deal" will automatically transfer them here for retainer management.')
+                      : (isAr ? 'جرّب تعديل كلمات البحث أو تصفية القطاعات.' : 'Try adjusting your search filters.')}
+                  </p>
+                  {contractedClients.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddClientOpen(true)}
+                      className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'إضافة أول عميل متعاقد الآن' : 'Add First Client'}</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredContractedClients.map((client) => {
+                    const resolvedTargets = getClientDeliverableTargets(client, data.packages);
+                    const targetP = resolvedTargets.postsTarget;
+                    const targetR = resolvedTargets.reelsTarget;
+                    const targetS = resolvedTargets.storiesTarget;
+                    const deliveredP = client.postsDelivered ?? 0;
+                    const deliveredR = client.reelsDelivered ?? 0;
+                    const deliveredS = client.storiesDelivered ?? 0;
+                    const totalT = resolvedTargets.totalTarget;
+                    const totalD = deliveredP + deliveredR + deliveredS;
+                    const pct = Math.min(100, Math.round((totalD / totalT) * 100));
+
+                    const cleanDigits = (client.phoneE164 || client.phone).replace(/\D/g, '');
+                    const waPhone = cleanDigits.startsWith('0') ? `20${cleanDigits.slice(1)}` : cleanDigits;
+                    const waText = encodeURIComponent(
+                      isAr 
+                        ? `مرحباً ${client.name}، معك مدير حسابك من فريق ديجيتال إفكت بخصوص متابعة خطة (${client.packageName || 'العمل'}).`
+                        : `Hello ${client.name}, this is your Account Manager from Digital Effect.`
+                    );
+
+                    const overdueInfo = getClientOverdueStatus(client, isAr);
+
+                    return (
+                      <div
+                        key={client.id}
+                        className={`bg-white rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-3.5 border ${
+                          overdueInfo.isOverdue
+                            ? 'border-rose-400 ring-2 ring-rose-400/25 bg-gradient-to-b from-rose-50/25 via-white to-white'
+                            : 'border-slate-200'
+                        }`}
+                      >
+                        <div>
+                          {/* Client Header: Company primary, Client secondary */}
+                          <div className="flex items-start justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-10 h-10 rounded-xl font-black flex items-center justify-center text-sm shrink-0 shadow-2xs text-white ${
+                                overdueInfo.isOverdue ? 'bg-rose-700' : 'bg-slate-900'
+                              }`}>
+                                {(client.company || client.name).slice(0, 1).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h4 className="text-sm font-black text-slate-900 truncate">
+                                    {client.company || client.name}
+                                  </h4>
+                                  {overdueInfo.isOverdue && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs animate-pulse shrink-0">
+                                      <AlertTriangle className="w-2.5 h-2.5 text-rose-600 shrink-0" />
+                                      <span>{isAr ? `تجاوزت الاستحقاق (${overdueInfo.badgeTextAr})` : `Overdue (${overdueInfo.badgeTextEn})`}</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-500 truncate flex items-center gap-1 font-medium mt-0.5">
+                                  <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>{client.name}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase border ${
+                                client.sector === 'medical' 
+                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                  : client.sector === 'b2b'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-purple-50 text-purple-700 border-purple-200'
+                              }`}>
+                                {client.sector.toUpperCase()}
+                              </span>
+
+                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
+                                overdueInfo.isOverdue
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200 font-black'
+                                  : client.contractStatus === 'renewal_due'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : client.contractStatus === 'paused'
+                                  ? 'bg-slate-100 text-slate-700'
+                                  : client.contractStatus === 'completed'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                {overdueInfo.isOverdue
+                                  ? (isAr ? '⚠️ متأخر عن الموعد' : '⚠️ Past Due')
+                                  : client.contractStatus === 'renewal_due' ? (isAr ? 'تجديد مستحق' : 'Renewal Due')
+                                  : client.contractStatus === 'paused' ? (isAr ? 'موقوف مؤقتاً' : 'Paused')
+                                  : client.contractStatus === 'completed' ? (isAr ? 'منتهي' : 'Completed')
+                                  : (isAr ? 'نشط ومفعل' : 'Active')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Overdue Warning Alert Strip */}
+                          {overdueInfo.isOverdue && (
+                            <div className="mb-2.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200/90 text-rose-900 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-6 h-6 rounded-lg bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                                  <AlertTriangle className="w-3.5 h-3.5 animate-bounce" />
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-black text-[11px] block text-rose-950 truncate">
+                                    {isAr ? overdueInfo.alertTitleAr : overdueInfo.alertTitleEn}
+                                  </span>
+                                  <span className="text-[10px] text-rose-700 block truncate font-medium">
+                                    {isAr 
+                                      ? `تاريخ الاستحقاق: ${overdueInfo.dueFormatted} • المرحلة المتعطلة: ${overdueInfo.stalledStageName || 'المراحل التنفيذية'}`
+                                      : `Due: ${overdueInfo.dueFormatted} • Stalled at: ${overdueInfo.stalledStageName || 'Execution Stages'}`}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-white text-rose-700 border border-rose-200 shadow-2xs shrink-0">
+                                {isAr ? 'عاجل 🚨' : 'Urgent 🚨'}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* 3-Box Deliverables Card (Image Style: Blue Posts, Purple Reels, Orange Stories - No Price) */}
+                          <ClientPackageDeliverablesCard
+                            packageName={client.packageName}
+                            postsCount={targetP}
+                            reelsCount={targetR}
+                            storiesCount={targetS}
+                            isAr={isAr}
+                            className="mb-2.5"
+                          />
+
+                          {/* Interactive Workflow Tasks Stepper with Timestamps */}
+                          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold text-slate-700 flex items-center gap-1">
+                                <Layers className="w-3 h-3 text-blue-600" />
+                                <span>{isAr ? 'التايم لاين ومراحل سير العمل:' : 'Workflow Tasks Pipeline:'}</span>
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {isAr ? 'اضغط للتحديث وتاريخ التعليم' : 'Click to toggle status & date'}
+                              </span>
+                            </div>
+
+                            <ClientWorkflowStepper
+                              stages={client.workflowStages}
+                              onToggleStage={(stageId) => handleToggleClientStage(client, stageId)}
+                              interactive={true}
+                              size="sm"
+                              isAr={isAr}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Actions Footer */}
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={`https://wa.me/${waPhone}?text=${waText}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                              title={isAr ? 'واتساب العميل' : 'WhatsApp Client'}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </a>
+                            <a
+                              href={`tel:${client.phone}`}
+                              className="p-1.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                              title={isAr ? 'اتصال هاتفي' : 'Phone Call'}
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedClientForAccount(client);
+                              setIsClientAccountOpen(true);
+                            }}
+                            className="px-3 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Layers className="w-3.5 h-3.5 text-blue-400" />
+                            <span>{isAr ? 'متابعة المهام والحساب' : 'Workflow & Account'}</span>
+                          </button>
                         </div>
                       </div>
                     );
@@ -1012,74 +1720,160 @@ export const AdminPanelModal: React.FC = () => {
                 </form>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500">
-                      {isAr ? 'قائمة الباقات والعروض المفعلة حالياً في الموقع:' : 'Manage active packages, highlights, and promotional discounts:'}
-                    </span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">
+                        {isAr ? 'إدارة باقات الأسعار والعروض الترويجية' : 'Manage Pricing Packages & Offers'}
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        {isAr ? 'أضف باقات مخصصة أو عدل الأسعار والمخرجات للقطاعات (B2B, B2C, الطبي) أو استنسخ باقات قائمة.' : 'Add custom packages, edit deliverables & pricing for B2B/B2C/Medical, or duplicate existing packages.'}
+                      </p>
+                    </div>
+
                     <button
-                      onClick={startAddPackage}
-                      className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      type="button"
+                      onClick={() => startAddPackage(packageFilterSector === 'all' ? 'b2c' : packageFilterSector)}
+                      className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-colors shrink-0"
                     >
                       <Plus className="w-4 h-4" />
                       <span>{isAr ? 'إضافة باقة جديدة' : 'Add New Package'}</span>
                     </button>
                   </div>
 
-                  <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                  {/* Sector Filter Bar */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    <span className="text-[11px] font-bold text-slate-400 me-1">{isAr ? 'القطاع:' : 'Sector:'}</span>
+                    {[
+                      { id: 'all', labelAr: 'الكل', labelEn: 'All' },
+                      { id: 'b2c', labelAr: 'B2C والتجارة', labelEn: 'B2C' },
+                      { id: 'b2b', labelAr: 'B2B والشركات', labelEn: 'B2B' },
+                      { id: 'medical', labelAr: 'الطبي والعيادات', labelEn: 'Medical' },
+                    ].map((sec) => {
+                      const count = sec.id === 'all' 
+                        ? data.packages.length 
+                        : data.packages.filter(p => p.sector === sec.id).length;
+                      const isActive = packageFilterSector === sec.id;
+                      return (
+                        <button
+                          key={sec.id}
+                          type="button"
+                          onClick={() => setPackageFilterSector(sec.id as any)}
+                          className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ${
+                            isActive
+                              ? 'bg-slate-900 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span>{isAr ? sec.labelAr : sec.labelEn}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                            isActive ? 'bg-slate-800 text-sky-300' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
                     <table className="w-full text-start text-xs">
                       <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
                         <tr>
-                          <th className="p-3">{isAr ? 'اسم الباقة' : 'Package Name'}</th>
-                          <th className="p-3">{isAr ? 'القطاع' : 'Sector'}</th>
-                          <th className="p-3">{isAr ? 'السعر' : 'Price'}</th>
-                          <th className="p-3">{isAr ? 'التمييز والعرض' : 'Highlight Status'}</th>
+                          <th className="p-3 text-start">{isAr ? 'اسم الباقة' : 'Package Name'}</th>
+                          <th className="p-3 text-start">{isAr ? 'القطاع' : 'Sector'}</th>
+                          <th className="p-3 text-start">{isAr ? 'المخرجات الشهرية' : 'Deliverables'}</th>
+                          <th className="p-3 text-start">{isAr ? 'السعر' : 'Price'}</th>
+                          <th className="p-3 text-start">{isAr ? 'الحالة والعرض' : 'Status & Offer'}</th>
                           <th className="p-3 text-center">{isAr ? 'إجراءات' : 'Actions'}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {data.packages.map((pkg) => (
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {data.packages
+                          .filter((pkg) => packageFilterSector === 'all' || pkg.sector === packageFilterSector)
+                          .map((pkg) => (
                           <tr key={pkg.id} className="hover:bg-slate-50/80 transition-colors">
                             <td className="p-3 font-bold text-slate-900">
-                              {isAr ? pkg.name : pkg.nameEn}
-                              {pkg.isPopular && (
-                                <span className="ms-2 text-[10px] bg-sky-100 text-sky-800 px-2 py-0.5 rounded font-bold">
-                                  {isAr ? 'الأكثر طلباً' : 'Popular'}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{isAr ? pkg.name : pkg.nameEn}</span>
+                                {pkg.isPopular && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-black">
+                                    {isAr ? 'الأكثر طلباً' : 'Popular'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-400 font-normal line-clamp-1 mt-0.5">
+                                {isAr ? pkg.tagline : pkg.taglineEn}
+                              </p>
                             </td>
                             <td className="p-3 font-semibold text-slate-600 uppercase">
-                              {pkg.sector}
+                              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                pkg.sector === 'medical' 
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                  : pkg.sector === 'b2b'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                                  : 'bg-purple-50 text-purple-700 border border-purple-100'
+                              }`}>
+                                {pkg.sector}
+                              </span>
                             </td>
-                            <td className="p-3 font-bold tabular-nums">
-                              {pkg.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? pkg.currency : pkg.currencyEn}
+                            <td className="p-3 text-slate-600">
+                              <div className="space-y-0.5 font-medium">
+                                {pkg.postsCount !== undefined && <span>{pkg.postsCount} {isAr ? 'بوست' : 'posts'}</span>}
+                                {pkg.reelsCount !== undefined && pkg.reelsCount > 0 && <span> • {pkg.reelsCount} {isAr ? 'ريلز' : 'reels'}</span>}
+                                {pkg.storiesCount !== undefined && pkg.storiesCount > 0 && <span> • {pkg.storiesCount} {isAr ? 'ستوري' : 'stories'}</span>}
+                                {pkg.frequency && (
+                                  <div className="text-[10px] text-slate-400">{pkg.frequency}</div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="font-bold text-slate-900 tabular-nums">
+                                {pkg.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? pkg.currency : pkg.currencyEn}
+                              </div>
+                              {pkg.quarterlyPrice && (
+                                <div className="text-[10px] text-slate-500 tabular-nums">
+                                  {isAr ? 'ربع سنوي: ' : 'Quarterly: '}
+                                  {pkg.quarterlyPrice.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? pkg.currency : pkg.currencyEn}
+                                </div>
+                              )}
                             </td>
                             <td className="p-3">
                               {pkg.hasOffer ? (
-                                <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
-                                  {pkg.offerNote || 'Offer'}
+                                <span className="text-rose-600 text-[11px] font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+                                  {pkg.offerNote || (isAr ? 'عرض ترويجي' : 'Offer')}
                                 </span>
                               ) : (
-                                <span className="text-slate-400">{isAr ? 'سعر قياسي' : 'Standard'}</span>
+                                <span className="text-slate-400 text-[11px]">{isAr ? 'سعر قياسي' : 'Standard'}</span>
                               )}
                             </td>
                             <td className="p-3 text-center">
-                              <div className="flex items-center justify-center gap-2">
+                              <div className="flex items-center justify-center gap-1.5">
                                 <button
+                                  type="button"
                                   onClick={() => startEditPackage(pkg)}
                                   className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Edit Package"
+                                  title={isAr ? 'تعديل الباقة والأسعار' : 'Edit Package'}
                                 >
                                   <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button
+                                  type="button"
+                                  onClick={() => handleDuplicatePackage(pkg)}
+                                  className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                  title={isAr ? 'استنساخ الباقة لإنشاء باقة مخصصة' : 'Duplicate Package'}
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => {
                                     if (confirm(isAr ? `هل أنت متأكد من حذف ${pkg.name}؟` : `Delete ${pkg.name}?`)) {
                                       deletePackage(pkg.id);
-                                      showNotice(isAr ? 'تم حذف الباقة.' : 'Package deleted.');
+                                      showNotice(isAr ? 'تم حذف الباقة بنجاح.' : 'Package deleted.');
                                     }
                                   }}
                                   className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Delete Package"
+                                  title={isAr ? 'حذف الباقة' : 'Delete Package'}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -1641,6 +2435,33 @@ export const AdminPanelModal: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Add Client to CRM Modal */}
+      <AddClientModal
+        isOpen={isAddClientOpen}
+        onClose={() => setIsAddClientOpen(false)}
+        onClientAdded={(newClient) => {
+          showNotice(
+            isAr 
+              ? `تم تسجيل العميل (${newClient.name}) وتحديد باقة (${newClient.packageName}) بنجاح!` 
+              : `Client (${newClient.name}) assigned to (${newClient.packageName}) successfully!`
+          );
+        }}
+      />
+
+      {/* Client Profile & Retainer Account Drawer */}
+      <ClientAccountDrawer
+        client={selectedClientForAccount}
+        isOpen={isClientAccountOpen}
+        onClose={() => {
+          setIsClientAccountOpen(false);
+          setSelectedClientForAccount(null);
+        }}
+        onClientUpdated={(updated) => {
+          setSelectedClientForAccount(updated);
+          showNotice(isAr ? 'تم حفظ وتحديث بيانات حساب العميل بنجاح!' : 'Client account updated successfully!');
+        }}
+      />
     </div>
   );
 };

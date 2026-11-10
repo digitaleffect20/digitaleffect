@@ -1,0 +1,720 @@
+import React, { useState, useRef } from 'react';
+import { Inquiry } from '../types';
+import {
+  X,
+  Download,
+  Printer,
+  FileText,
+  CheckCircle2,
+  Calendar,
+  Building,
+  User,
+  Phone,
+  Tag,
+  CreditCard,
+  ShieldCheck,
+  Share2,
+  Sparkles,
+  Loader2,
+  Layers,
+  CheckSquare,
+  AlertCircle
+} from 'lucide-react';
+import html2canvas from 'html2canvas-pro';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
+
+interface ClientInvoiceModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  client: Inquiry;
+  packageName: string;
+  budget: string;
+  billingCycle?: Inquiry['billingCycle'];
+  contractStartDate?: string;
+  renewalDate?: string;
+  paymentStatus?: Inquiry['paymentStatus'];
+  targetPosts: number;
+  targetReels: number;
+  targetStories: number;
+  isAr?: boolean;
+}
+
+export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
+  isOpen,
+  onClose,
+  client,
+  packageName,
+  budget,
+  billingCycle = 'quarterly',
+  contractStartDate,
+  renewalDate,
+  paymentStatus = 'paid',
+  targetPosts,
+  targetReels,
+  targetStories,
+  isAr = true,
+}) => {
+  const invoiceRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Editable invoice fields for full flexibility
+  const autoInvoiceNo = `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${client.id.replace(/\D/g, '').slice(-3) || '101'}`;
+  const [invoiceNumber, setInvoiceNumber] = useState(autoInvoiceNo);
+  const [issueDate, setIssueDate] = useState(
+    contractStartDate || new Date().toISOString().split('T')[0]
+  );
+  const [dueDate, setDueDate] = useState(
+    renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  );
+  const [notes, setNotes] = useState(
+    isAr
+      ? 'شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.'
+      : 'Thank you for choosing Digital Effect. This invoice constitutes an official statement of agreed marketing services.'
+  );
+
+  // Financial calculations
+  const numericBudget = parseInt(budget.replace(/\D/g, ''), 10) || 15000;
+  const cycleTextAr =
+    billingCycle === 'annual'
+      ? 'سنوي'
+      : billingCycle === 'quarterly'
+      ? 'ربع سنوي'
+      : 'شهري';
+  const cycleTextEn =
+    billingCycle === 'annual'
+      ? 'Annual'
+      : billingCycle === 'quarterly'
+      ? 'Quarterly'
+      : 'Monthly';
+
+  // Calculate multiplier for deliverables based on cycle
+  const cycleMultiplier = billingCycle === 'quarterly' ? 3 : billingCycle === 'annual' ? 12 : 1;
+  const cyclePosts = targetPosts * cycleMultiplier;
+  const cycleReels = targetReels * cycleMultiplier;
+  const cycleStories = targetStories * cycleMultiplier;
+
+  if (!isOpen) return null;
+
+  // Handle PDF Generation & Download with robust dual-engine support
+  const handleGeneratePdf = async (action: 'download' | 'print' = 'download') => {
+    if (!invoiceRef.current) return;
+    setIsGenerating(true);
+    setDownloadSuccess(false);
+    setErrorMessage(null);
+
+    try {
+      const element = invoiceRef.current;
+      let imgData: string;
+      let imgWidth: number;
+      let imgHeight: number;
+      let imgFormat: 'JPEG' | 'PNG' = 'JPEG';
+
+      try {
+        // Engine 1: html2canvas-pro (native support for modern CSS oklch, oklab, color())
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+        imgData = canvas.toDataURL('image/jpeg', 0.98);
+        imgWidth = canvas.width;
+        imgHeight = canvas.height;
+        imgFormat = 'JPEG';
+      } catch (proErr) {
+        console.warn('html2canvas-pro encountered an issue, seamlessly falling back to html-to-image:', proErr);
+        // Engine 2: html-to-image (browser-native SVG foreignObject rasterization, 100% immune to color syntax parser bugs)
+        imgData = await toPng(element, {
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          cacheBust: true,
+        });
+        imgFormat = 'PNG';
+        const img = new Image();
+        img.src = imgData;
+        await new Promise<void>((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        });
+        imgWidth = img.naturalWidth || 1200;
+        imgHeight = img.naturalHeight || 1700;
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+
+      pdf.addImage(imgData, imgFormat, 0, 0, pdfWidth, pdfHeight);
+
+      const cleanCompany = (client.company || client.name).replace(/\s+/g, '_');
+      const filename = `فاتورة_${cleanCompany}_${invoiceNumber}.pdf`;
+
+      if (action === 'download') {
+        pdf.save(filename);
+        setDownloadSuccess(true);
+        setTimeout(() => setDownloadSuccess(false), 3500);
+      } else {
+        // Direct print via hidden iframe to avoid window.open (complies with runtime rules)
+        const blobUrl = pdf.output('bloburl');
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.src = blobUrl as any;
+        document.body.appendChild(iframe);
+        iframe.onload = () => {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 15000);
+        };
+      }
+    } catch (err: any) {
+      console.error('Error generating PDF:', err);
+      setErrorMessage(
+        isAr 
+          ? 'تعذر تصدير الفاتورة مؤقتاً، يرجى المحاولة مرة أخرى أو استخدام زر الطباعة المباشرة.' 
+          : 'Failed to generate PDF. Please retry or use the Print button.'
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // WhatsApp invoice sharing
+  const cleanPhone = (client.phoneE164 || client.phone).replace(/\D/g, '');
+  const waPhone = cleanPhone.startsWith('0') ? `20${cleanPhone.slice(1)}` : cleanPhone;
+  const waInvoiceText = encodeURIComponent(
+    isAr
+      ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nالقيمة: ${budget} (${cycleTextAr})\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
+      : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}) totaling ${budget} (${cycleTextEn}). Due: ${dueDate}.\n\nDigital Effect Team.`
+  );
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-start sm:justify-center p-2.5 sm:p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200/90 overflow-hidden relative text-start flex flex-col my-auto max-h-[calc(100dvh-1rem)] sm:max-h-[96vh] animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* ================================================================= */}
+        {/* TOP TOOLBAR / ACTION BAR                                          */}
+        {/* ================================================================= */}
+        <div className="bg-[#0f172a] text-white p-3.5 sm:p-4 flex items-center justify-between gap-3 shrink-0 border-b border-slate-800 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/30 border border-blue-500/40 text-blue-300 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
+                <span>{isAr ? 'إصدار الفاتورة وبيان التعاقد' : 'Generate & Export Official Invoice'}</span>
+                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  PDF A4 Ready
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                {isAr
+                  ? `فاتورة رسمية معتمدة لـ ${client.company || client.name} تتضمن تفاصيل الباقة والتكلفة.`
+                  : `Official invoice statement for ${client.company || client.name} with deliverables breakdown.`}
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            {/* WhatsApp Share */}
+            <a
+              href={`https://wa.me/${waPhone}?text=${waInvoiceText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
+              title="Share on WhatsApp"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isAr ? 'إرسال بالواتساب' : 'WhatsApp'}</span>
+            </a>
+
+            {/* Print Button */}
+            <button
+              type="button"
+              disabled={isGenerating}
+              onClick={() => handleGeneratePdf('print')}
+              className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-all border border-slate-700 inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title={isAr ? 'طباعة مباشرة' : 'Print'}
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isAr ? 'طباعة' : 'Print'}</span>
+            </button>
+
+            {/* Download PDF Button (The primary requested button) */}
+            <button
+              type="button"
+              disabled={isGenerating}
+              onClick={() => handleGeneratePdf('download')}
+              className="px-4 py-1.5 text-xs font-black text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-xl transition-all shadow-sm inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{isAr ? 'جارٍ إنشاء الـ PDF...' : 'Generating PDF...'}</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'تحميل ملف PDF' : 'Download PDF'}</span>
+                </>
+              )}
+            </button>
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Success toast */}
+        {downloadSuccess && (
+          <div className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 text-center flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
+            <span>{isAr ? 'تم تنزيل ملف الفاتورة PDF بنجاح على جهازك!' : 'Invoice PDF downloaded successfully!'}</span>
+          </div>
+        )}
+
+        {/* Error toast */}
+        {errorMessage && (
+          <div className="bg-rose-600 text-white text-xs font-bold px-4 py-2 text-center flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
+            <AlertCircle className="w-4 h-4" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* QUICK CUSTOMIZATION SETTINGS BAR                                  */}
+        {/* ================================================================= */}
+        <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-3.5 shrink-0 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-600">{isAr ? 'رقم الفاتورة:' : 'Invoice #:'}</span>
+              <input
+                type="text"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                className="font-mono font-bold text-xs px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 w-36 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-600">{isAr ? 'تاريخ الإصدار:' : 'Date:'}</span>
+              <input
+                type="date"
+                value={issueDate}
+                onChange={(e) => setIssueDate(e.target.value)}
+                className="font-bold text-xs px-2 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-600">{isAr ? 'تاريخ الاستحقاق:' : 'Due Date:'}</span>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="font-bold text-xs px-2 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{isAr ? 'معاينة مباشرة مطابقة لملف الـ PDF' : 'Live preview matches exported PDF'}</span>
+          </div>
+        </div>
+
+        {/* ================================================================= */}
+        {/* INVOICE DOCUMENT (A4 PRINTABLE CONTAINER)                        */}
+        {/* ================================================================= */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-200/70 flex justify-center">
+          {/* A4 Sheet Container */}
+          <div
+            id="invoice-document-capture"
+            ref={invoiceRef}
+            className="w-full max-w-[760px] bg-white rounded-2xl shadow-lg border border-slate-300 p-6 sm:p-8 space-y-6 text-slate-900 relative"
+            dir={isAr ? 'rtl' : 'ltr'}
+          >
+            {/* Top Brand Header */}
+            <div className="flex items-start justify-between pb-6 border-b-2 border-slate-900 gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 text-white font-black flex items-center justify-center text-lg shadow-sm">
+                    DE
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                      ديجيتال إفكت | Digital Effect
+                    </h2>
+                    <p className="text-[11px] font-bold text-blue-600">
+                      {isAr ? 'للحلول الرقمية والتسويق الإلكتروني المتكامل' : 'Digital Solutions & Integrated Marketing'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-500 mt-3 space-y-0.5">
+                  <p>📍 {isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</p>
+                  <p>📞 {isAr ? 'خدمة العملاء والمبيعات:' : 'Tel:'} <span dir="ltr">01505000349</span></p>
+                  <p>✉️ Sales@digitaleffect.net | www.digitaleffect.net</p>
+                </div>
+              </div>
+
+              {/* Invoice Meta Box */}
+              <div className="text-end space-y-1.5 shrink-0">
+                <span className="inline-block px-3 py-1 rounded-lg bg-slate-900 text-white font-black text-xs uppercase tracking-wider">
+                  {isAr ? 'بيان فاتورة تعاقد' : 'INVOICE STATEMENT'}
+                </span>
+                <p className="text-xs font-mono font-black text-slate-800">
+                  #{invoiceNumber}
+                </p>
+                <div className="text-[11px] text-slate-600 space-y-0.5">
+                  <p>
+                    <span className="font-bold text-slate-800">{isAr ? 'تاريخ الإصدار:' : 'Date:'}</span>{' '}
+                    {issueDate}
+                  </p>
+                  <p>
+                    <span className="font-bold text-slate-800">{isAr ? 'تاريخ الاستحقاق:' : 'Due Date:'}</span>{' '}
+                    {dueDate}
+                  </p>
+                </div>
+
+                {/* Payment status badge */}
+                <div className="pt-1">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-black border ${
+                    paymentStatus === 'paid'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : paymentStatus === 'partially_paid'
+                      ? 'bg-amber-50 text-amber-800 border-amber-300'
+                      : 'bg-rose-50 text-rose-800 border-rose-300'
+                  }`}>
+                    <CheckSquare className="w-3 h-3" />
+                    <span>
+                      {paymentStatus === 'paid'
+                        ? (isAr ? 'مدفوعة بالكامل (PAID)' : 'PAID IN FULL')
+                        : paymentStatus === 'partially_paid'
+                        ? (isAr ? 'دفعة مقدمة 50% (PARTIAL)' : 'PARTIAL DEPOSIT')
+                        : (isAr ? 'مستحقة السداد (PENDING)' : 'PENDING PAYMENT')}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bill To & Client Info Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                  {isAr ? 'بيانات العميل / الجهة المتعاقدة:' : 'BILLED TO:'}
+                </span>
+                <h4 className="text-base font-black text-slate-900">
+                  {client.company || client.name}
+                </h4>
+                {client.company && (
+                  <p className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                    <User className="w-3 h-3 text-slate-400" />
+                    <span>{isAr ? `المسؤول: ${client.name}` : `Contact: ${client.name}`}</span>
+                  </p>
+                )}
+                <p className="text-xs font-mono text-slate-600 flex items-center gap-1">
+                  <Phone className="w-3 h-3 text-slate-400" />
+                  <span dir="ltr">{client.phone}</span>
+                </p>
+              </div>
+
+              <div className="space-y-1 sm:text-end">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                  {isAr ? 'تفاصيل التعاقد والقطاع:' : 'CONTRACT DETAILS:'}
+                </span>
+                <p className="text-xs font-bold text-slate-800">
+                  {isAr ? 'القطاع المستهدف:' : 'Sector:'}{' '}
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-800 uppercase">
+                    {client.sector.toUpperCase()}
+                  </span>
+                </p>
+                <p className="text-xs font-bold text-slate-800">
+                  {isAr ? 'دورة المحاسبة:' : 'Billing Cycle:'}{' '}
+                  <span className="text-blue-700">{isAr ? cycleTextAr : cycleTextEn}</span>
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {isAr ? 'تاريخ سريان التعاقد:' : 'Effective From:'} {issueDate}
+                </p>
+              </div>
+            </div>
+
+            {/* ============================================================= */}
+            {/* PACKAGE TITLE BANNER (As Requested by User)                   */}
+            {/* ============================================================= */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wider block">
+                  {isAr ? 'الباقة التسويقية المعتمدة:' : 'OFFICIAL MARKETING PACKAGE:'}
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  {packageName}
+                </h3>
+              </div>
+              <div className="text-start sm:text-end shrink-0">
+                <span className="text-[10px] text-slate-300 block font-medium">
+                  {isAr ? 'قيمة الاشتراك' : 'Retainer Rate'}
+                </span>
+                <span className="text-lg font-black text-emerald-300">
+                  {budget}
+                </span>
+              </div>
+            </div>
+
+            {/* ============================================================= */}
+            {/* PACKAGE CONTENTS & DELIVERABLES TABLE (As Requested by User)  */}
+            {/* ============================================================= */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-blue-600" />
+                <span>{isAr ? 'محتويات وبنود الباقة المشمولة في التعاقد:' : 'Included Package Deliverables & Scope:'}</span>
+              </h5>
+
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                <table className="w-full text-xs text-start">
+                  <thead className="bg-slate-100 text-slate-700 font-black border-b border-slate-200">
+                    <tr>
+                      <th className="p-3 text-start">{isAr ? 'البند والخدمة' : 'Item / Service'}</th>
+                      <th className="p-3 text-center w-28">{isAr ? 'الكمية الشهرية' : 'Monthly Qty'}</th>
+                      <th className="p-3 text-center w-28">{isAr ? `إجمالي (${cycleTextAr})` : 'Cycle Qty'}</th>
+                      <th className="p-3 text-end w-28">{isAr ? 'الحالة' : 'Status'}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {/* Item 1: Posts */}
+                    <tr>
+                      <td className="p-3">
+                        <span className="font-black text-slate-900 block">
+                          {isAr ? 'منشورات وتصاميم السوشيال ميديا' : 'Social Media Graphic Posts'}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {isAr
+                            ? 'إعداد المحتوى التسويقي، تصميم الجرافيك بدقة عالية، وتنسيق الهوية البصرية'
+                            : 'Strategic copywriting, bespoke graphic designs, and brand layout alignment'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center font-bold text-sky-700 tabular-nums">
+                        {targetPosts} {isAr ? 'منشور' : 'posts'}
+                      </td>
+                      <td className="p-3 text-center font-black text-slate-900 tabular-nums">
+                        {cyclePosts} {isAr ? 'منشور' : 'posts'}
+                      </td>
+                      <td className="p-3 text-end">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                          {isAr ? 'مشمول' : 'Included'}
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* Item 2: Reels */}
+                    <tr>
+                      <td className="p-3">
+                        <span className="font-black text-slate-900 block">
+                          {isAr ? 'فيديوهات ريلز بتقنية الذكاء الاصطناعي (AI Reels)' : 'AI Video Reels & Short Form'}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {isAr
+                            ? 'كتابة السيناريو التفاعلي، التعليق الصوتي المتقن، والمونتاج الرقمي لزيادة المشاهدات'
+                            : 'Scriptwriting, professional voiceover, and high-retention video editing'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center font-bold text-purple-700 tabular-nums">
+                        {targetReels} {isAr ? 'ريلز' : 'reels'}
+                      </td>
+                      <td className="p-3 text-center font-black text-slate-900 tabular-nums">
+                        {cycleReels} {isAr ? 'ريلز' : 'reels'}
+                      </td>
+                      <td className="p-3 text-end">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                          {isAr ? 'مشمول' : 'Included'}
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* Item 3: Stories (if present) */}
+                    {targetStories > 0 && (
+                      <tr>
+                        <td className="p-3">
+                          <span className="font-black text-slate-900 block">
+                            {isAr ? 'الستوريز اليومية والتفاعلية' : 'Interactive Daily Stories'}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {isAr
+                              ? 'استطلاعات رأي، تفاعل مباشر مع الجمهور، وتعزيز الحضور المستمر'
+                              : 'Engagement polls, product highlights, and direct story interactions'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center font-bold text-amber-700 tabular-nums">
+                          {targetStories} {isAr ? 'ستوري' : 'stories'}
+                        </td>
+                        <td className="p-3 text-center font-black text-slate-900 tabular-nums">
+                          {cycleStories} {isAr ? 'ستوري' : 'stories'}
+                        </td>
+                        <td className="p-3 text-end">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                            {isAr ? 'مشمول' : 'Included'}
+                          </span>
+                        </td>
+                      </tr>
+                    )}
+
+                    {/* Item 4: Campaign Management */}
+                    <tr>
+                      <td className="p-3">
+                        <span className="font-black text-slate-900 block">
+                          {isAr ? 'إدارة وتمويل الحملات الإعلانية ومتابعة الجمهور' : 'Paid Ads & Campaign Optimization'}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {isAr
+                            ? 'إعداد وتوجيه الإعلانات الممولة للجمهور المستهدف ومتابعة معدل التحويل'
+                            : 'Audience targeting, conversion rate optimization, and A/B campaign testing'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center font-bold text-slate-500">
+                        {isAr ? 'مستمر' : 'Active'}
+                      </td>
+                      <td className="p-3 text-center font-bold text-slate-900">
+                        {isAr ? 'كامل الدورة' : 'Full Cycle'}
+                      </td>
+                      <td className="p-3 text-end">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                          {isAr ? 'مشمول' : 'Included'}
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* Item 5: Reporting & Management */}
+                    <tr>
+                      <td className="p-3">
+                        <span className="font-black text-slate-900 block">
+                          {isAr ? 'إدارة الحساب وتقارير الأداء الشهرية المتقدمة' : 'Dedicated Account Management & Reporting'}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {isAr
+                            ? 'مدير حساب مخصص، تقرير تحليلي شهري للنتائج، ومتابعة فورية عبر الواتساب'
+                            : 'Dedicated Account Manager, monthly ROI analytics, and priority support'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center font-bold text-slate-500">
+                        {isAr ? 'مستمر' : 'Active'}
+                      </td>
+                      <td className="p-3 text-center font-bold text-slate-900">
+                        {isAr ? 'كامل الدورة' : 'Full Cycle'}
+                      </td>
+                      <td className="p-3 text-end">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                          {isAr ? 'مشمول' : 'Included'}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ============================================================= */}
+            {/* COST & FINANCIAL SUMMARY (As Requested by User)               */}
+            {/* ============================================================= */}
+            <div className="pt-2 flex flex-col sm:flex-row justify-between items-start gap-4">
+              {/* Payment Methods */}
+              <div className="w-full sm:w-1/2 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+                <span className="font-black text-slate-900 block flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                  <span>{isAr ? 'طرق السداد والتحويل المعتمدة:' : 'Approved Payment Methods:'}</span>
+                </span>
+                <p className="text-[11px] text-slate-600">
+                  🏦 {isAr ? 'تحويل بنكي رسمي: البنك التجاري الدولي CIB / البنك الأهلي' : 'Bank Transfer: CIB / NBE'}
+                </p>
+                <p className="text-[11px] text-slate-600">
+                  📱 {isAr ? 'فودافون كاش / إنستاباي (InstaPay):' : 'InstaPay / Wallet:'}{' '}
+                  <span className="font-mono font-bold text-slate-900">01505000349</span>
+                </p>
+              </div>
+
+              {/* Total Calculation Card */}
+              <div className="w-full sm:w-1/2 p-4 rounded-xl bg-slate-100 border border-slate-200 space-y-2 text-end">
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>{isAr ? 'الإجمالي الفرعي للباقة:' : 'Retainer Subtotal:'}</span>
+                  <span className="font-black text-slate-900 tabular-nums">{budget}</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-600">
+                  <span>{isAr ? 'ضريبة القيمة المضافة / الرسوم:' : 'VAT / Handling:'}</span>
+                  <span className="font-bold text-emerald-700">{isAr ? 'معفاة / مشمولة' : '0% Included'}</span>
+                </div>
+
+                <div className="pt-2 border-t border-slate-300 flex justify-between items-baseline">
+                  <span className="text-sm font-black text-slate-950">
+                    {isAr ? 'الإجمالي المستحق:' : 'Total Amount Due:'}
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-blue-700 tabular-nums">
+                    {budget}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  {isAr 
+                    ? `مستحقة عن فترة الاشتراك (${cycleTextAr}) حتى تاريخ ${dueDate}`
+                    : `Payable for (${cycleTextEn}) billing cycle through ${dueDate}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Official Stamp & Signatures */}
+            <div className="pt-6 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 flex-wrap gap-4">
+              <div className="space-y-1">
+                <p className="font-bold text-slate-800">
+                  {isAr ? 'ملاحظة قانونية وتعاقدية:' : 'Terms Note:'}
+                </p>
+                <p className="text-[10px] text-slate-500 max-w-sm leading-relaxed">
+                  {notes}
+                </p>
+              </div>
+
+              {/* Official Stamp Box */}
+              <div className="text-center p-3 rounded-xl border border-dashed border-blue-400 bg-blue-50/50 w-44">
+                <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto mb-1 text-[10px] font-black shadow-2xs">
+                  DE
+                </div>
+                <span className="text-[11px] font-black text-blue-900 block">
+                  {isAr ? 'معتمد — ديجيتال إفكت' : 'Digital Effect Certified'}
+                </span>
+                <span className="text-[9px] text-blue-600 block">
+                  {isAr ? 'قسم الحسابات والفوترة' : 'Finance & Accounts'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

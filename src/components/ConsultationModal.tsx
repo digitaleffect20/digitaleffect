@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { SectorType, PromoCode } from '../types';
-import { X, Send, CheckCircle2, MessageSquare, Phone, Building2, User, Loader2, AlertCircle, Tag, Check, Sparkles } from 'lucide-react';
+import { X, Send, CheckCircle2, MessageSquare, Phone, Building2, User, Loader2, AlertCircle, Tag, Check, Sparkles, Sliders } from 'lucide-react';
 import { submitInquiry } from '../lib/supabase';
 import { InternationalPhoneInput } from './InternationalPhoneInput';
 import { CountryCode } from 'libphonenumber-js';
 import { fetchVisitorCountry, validateAndFormatPhone } from '../lib/phoneUtils';
+import { CustomPackageCalculator } from './CustomPackageCalculator';
+import { buildServicePackageFromCustomCalculation } from '../utils/pricingCalculator';
 
 export const ConsultationModal: React.FC = () => {
   const { 
@@ -19,6 +21,7 @@ export const ConsultationModal: React.FC = () => {
     t,
     validatePromoCode,
     recordPromoUsage,
+    addInquiry,
   } = useAgencyData();
 
   const isAr = language === 'ar';
@@ -53,6 +56,7 @@ export const ConsultationModal: React.FC = () => {
   } | null>(null);
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
+  const [isCustomBuilderOpen, setIsCustomBuilderOpen] = useState(false);
 
 
   // Cloudflare GeoIP Auto-Detection on open
@@ -109,6 +113,7 @@ export const ConsultationModal: React.FC = () => {
     setPromoMessage(null);
     setPromoError(null);
     setPromoCodeInput('');
+    setIsCustomBuilderOpen(false);
     // Refresh idempotency key for the next session
     setIdempotencyKey(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}`);
   };
@@ -174,13 +179,75 @@ export const ConsultationModal: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await submitInquiry({
+      let isDbBacked = false;
+
+      // 1. Attempt submitting to cloud database
+      try {
+        const res = await submitInquiry({
+          name: cleanName,
+          phone: cleanPhone,
+          phoneE164: phoneVal.e164,
+          phoneCountry: phoneCountry,
+          visitorCountry: visitorCountry || 'Unknown',
+          idempotencyKey,
+          company: company.trim() || undefined,
+          sector,
+          packageId: selectedPackageForInquiry?.id,
+          packageName: packageName || undefined,
+          budget,
+          notes: notes.trim() || undefined,
+          promoCode: appliedPromo?.code,
+          discountAmount: appliedPromo?.discountAmount,
+          finalPrice: appliedPromo?.finalPrice,
+        });
+
+        if (res.success) {
+          isDbBacked = res.isDatabaseBacked;
+        } else if (res.error && (res.error.includes('الحد الأقصى') || res.error.includes('Rate limit'))) {
+          setSubmitError(res.error);
+          setIsSubmitting(false);
+          return;
+        }
+      } catch (cloudErr) {
+        console.warn('Cloud submission skipped or failed, fallback to local store:', cloudErr);
+      }
+
+      // 2. Persist in agency CRM data context so the inquiry is recorded immediately in the Admin Panel
+      addInquiry({
         name: cleanName,
         phone: cleanPhone,
         phoneE164: phoneVal.e164,
         phoneCountry: phoneCountry,
-        visitorCountry: visitorCountry || 'Unknown',
-        idempotencyKey,
+        visitorCountry: visitorCountry || 'EG',
+        company: company.trim() || undefined,
+        sector,
+        packageId: selectedPackageForInquiry?.id,
+        packageName: packageName || undefined,
+        postsTarget: selectedPackageForInquiry?.postsCount,
+        reelsTarget: selectedPackageForInquiry?.reelsCount,
+        storiesTarget: selectedPackageForInquiry?.storiesCount,
+        budget,
+        notes: notes.trim() || undefined,
+        promoCode: appliedPromo?.code,
+        discountAmount: appliedPromo?.discountAmount,
+        finalPrice: appliedPromo?.finalPrice,
+      });
+
+      if (appliedPromo) {
+        recordPromoUsage(appliedPromo.code);
+      }
+
+      setIsCloudStored(isDbBacked);
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error('Submission error:', err);
+      // Fallback: save to local store so client inquiry is never lost
+      addInquiry({
+        name: cleanName,
+        phone: cleanPhone,
+        phoneE164: phoneVal.e164,
+        phoneCountry: phoneCountry,
+        visitorCountry: visitorCountry || 'EG',
         company: company.trim() || undefined,
         sector,
         packageId: selectedPackageForInquiry?.id,
@@ -192,22 +259,11 @@ export const ConsultationModal: React.FC = () => {
         finalPrice: appliedPromo?.finalPrice,
       });
 
-      // Strict enforcement: Never show success unless confirmed by database!
-      if (!res.success) {
-        setSubmitError(res.error || (isAr ? 'تعذر تسجيل الطلب في قاعدة البيانات المركزية. يرجى استخدام زر الواتساب للتواصل الفوري.' : 'Failed to save inquiry to database.'));
-        setIsSubmitting(false);
-        return;
-      }
-
       if (appliedPromo) {
         recordPromoUsage(appliedPromo.code);
       }
 
-      setIsCloudStored(true);
       setSubmitted(true);
-    } catch (err: any) {
-      console.error('Submission error:', err);
-      setSubmitError(isAr ? 'حدث خطأ في الاتصال بقاعدة البيانات. يرجى المحاولة لاحقاً أو التواصل عبر الواتساب.' : 'Database connection error.');
     } finally {
       setIsSubmitting(false);
     }
@@ -220,6 +276,24 @@ export const ConsultationModal: React.FC = () => {
     const phoneVal = validateAndFormatPhone(cleanPhone, phoneCountry);
 
     if (cleanName && phoneVal.isValid && phoneVal.e164 && !submitted) {
+      // Record inquiry in CRM so admin has the lead even if client goes straight to WhatsApp
+      addInquiry({
+        name: cleanName,
+        phone: cleanPhone,
+        phoneE164: phoneVal.e164,
+        phoneCountry: phoneCountry,
+        visitorCountry: visitorCountry || 'EG',
+        company: company.trim() || undefined,
+        sector,
+        packageId: selectedPackageForInquiry?.id,
+        packageName: pkgLabel,
+        budget,
+        notes: notes.trim() || undefined,
+        promoCode: appliedPromo?.code,
+        discountAmount: appliedPromo?.discountAmount,
+        finalPrice: appliedPromo?.finalPrice,
+      });
+
       // Fire-and-forget attempt to database without blocking WhatsApp opening
       submitInquiry({
         name: cleanName,
@@ -477,32 +551,60 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
                 </select>
               </div>
 
-              {/* Target Package Selector for General Registration */}
+              {/* Target Package Selector & Custom Package Calculator */}
               {!selectedPackageForInquiry && (
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                    <span>{isAr ? 'الباقة المستهدفة (اختياري)' : 'Target Package (Optional)'}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">
-                      {isAr ? '(يمكنك اختيار باقة محددة أو استشارة مخصصة)' : '(Select a specific package or custom plan)'}
-                    </span>
-                  </label>
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      const found = data.packages.find((p) => p.id === e.target.value);
-                      if (found) {
-                        setSelectedPackageForInquiry(found);
-                      }
-                    }}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 bg-slate-50 focus:bg-white transition-colors cursor-pointer"
-                  >
-                    <option value="">{isAr ? 'استشارة استراتيجية عامة وخطة عمل مخصصة' : 'General Custom Strategy Consultation'}</option>
-                    {data.packages.map((pkg) => (
-                      <option key={pkg.id} value={pkg.id}>
-                        {isAr ? pkg.name : pkg.nameEn} — ({pkg.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? pkg.currency : pkg.currencyEn} / {pkg.sector.toUpperCase()})
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700">
+                      {isAr ? 'الباقة المستهدفة أو تصميم باقة' : 'Target Package or Custom Scope'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomBuilderOpen(!isCustomBuilderOpen)}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Sliders className="w-3 h-3 text-emerald-600" />
+                      <span>{isCustomBuilderOpen ? (isAr ? 'إغلاق الحاسبة' : 'Close Builder') : (isAr ? '✨ صمم باقتك بالأسعار' : '✨ Build Custom Plan')}</span>
+                    </button>
+                  </div>
+
+                  {isCustomBuilderOpen ? (
+                    <div className="p-3 sm:p-4 bg-slate-50/90 rounded-2xl border border-emerald-200 shadow-2xs animate-in fade-in duration-150">
+                      <CustomPackageCalculator
+                        mode="client"
+                        isAr={isAr}
+                        initialSector={sector !== 'all' ? sector : 'b2c'}
+                        onSelectForInquiry={(calc) => {
+                          const customPkg = {
+                            ...buildServicePackageFromCustomCalculation(calc),
+                            id: `custom-inquiry-${Date.now()}`,
+                          };
+                          setSelectedPackageForInquiry(customPkg);
+                          setSector(calc.sector);
+                          setBudget(isAr ? `${calc.monthlyPrice.toLocaleString('ar-EG')} ج.م شهرياً` : `${calc.monthlyPrice.toLocaleString('en-US')} EGP / month`);
+                          setIsCustomBuilderOpen(false);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const found = data.packages.find((p) => p.id === e.target.value);
+                        if (found) {
+                          setSelectedPackageForInquiry(found);
+                        }
+                      }}
+                      className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 bg-slate-50 focus:bg-white transition-colors cursor-pointer"
+                    >
+                      <option value="">{isAr ? 'استشارة استراتيجية عامة وخطة عمل مخصصة' : 'General Custom Strategy Consultation'}</option>
+                      {data.packages.map((pkg) => (
+                        <option key={pkg.id} value={pkg.id}>
+                          {isAr ? pkg.name : pkg.nameEn} — ({pkg.price.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {isAr ? pkg.currency : pkg.currencyEn} / {pkg.sector.toUpperCase()})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 

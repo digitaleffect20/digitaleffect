@@ -147,10 +147,10 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button
-                  onClick={() => setCurrentPage('home')}
-                  className="hover:text-white transition-colors cursor-pointer"
+                  onClick={() => setCurrentPage('custom-package')}
+                  className="hover:text-emerald-400 text-emerald-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
                 >
-                  {isAr ? 'حاسبة العائد الاستثماري' : 'ROI & Growth Calculator'}
+                  <span>{isAr ? '✨ حاسبة ومصمم الباقات المخصصة' : '✨ Custom Package Builder'}</span>
                 </button>
               </li>
             </ul>

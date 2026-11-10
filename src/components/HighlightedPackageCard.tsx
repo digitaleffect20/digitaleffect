@@ -12,7 +12,8 @@ import {
   Layers,
   Calendar,
   Clock,
-  Sparkle
+  Sparkle,
+  Sliders
 } from 'lucide-react';
 
 interface Props {
@@ -20,7 +21,7 @@ interface Props {
 }
 
 export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
-  const { language, t, setSelectedPackageForInquiry, setIsConsultationOpen } = useAgencyData();
+  const { language, t, setSelectedPackageForInquiry, setIsConsultationOpen, setCurrentPage, setCustomPackageConfig } = useAgencyData();
   const isAr = language === 'ar';
 
   // For packages that support quarterly pricing (e.g., Medical packages)
@@ -274,7 +275,7 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
       </div>
 
       {/* Action Buttons */}
-      <div className="pt-3 border-t border-slate-100">
+      <div className="pt-3 border-t border-slate-100 space-y-2">
         <button
           onClick={handleInquire}
           className={`w-full py-3.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2 ${
@@ -285,6 +286,25 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
         >
           <span>{t.common.bookThisPackage}</span>
           {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+        </button>
+
+        {/* Custom Package Button below booking button */}
+        <button
+          type="button"
+          onClick={() => {
+            setCustomPackageConfig({
+              sector: pkg.sector,
+              posts: pkg.postsCount,
+              reels: pkg.reelsCount,
+              stories: pkg.storiesCount,
+              basePkgName: name,
+            });
+            setCurrentPage('custom-package');
+          }}
+          className="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 hover:text-sky-700 active:bg-slate-200 transition-all flex items-center justify-center gap-2 cursor-pointer border border-slate-200/90 shadow-2xs group"
+        >
+          <Sliders className="w-3.5 h-3.5 text-sky-600 group-hover:rotate-45 transition-transform" />
+          <span>{isAr ? 'صمم باقتك المخصصة' : 'Design Custom Scope'}</span>
         </button>
       </div>
     </div>

@@ -1,6 +1,14 @@
 export type SectorType = 'all' | 'b2b' | 'b2c' | 'medical';
 export type Language = 'ar' | 'en';
-export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'ipt-case-study' | 'penguin-case-study' | 'bsizia-case-study' | 'binaryracks-case-study' | 'gimoka-case-study' | 'lashin-case-study' | 'concrete-case-study' | 'hamburg-case-study' | 'acton-case-study' | 'yoken-case-study' | 'siltal-case-study' | 'passap-case-study' | 'alwaad-case-study' | 'admin';
+export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'custom-package' | 'ipt-case-study' | 'penguin-case-study' | 'bsizia-case-study' | 'binaryracks-case-study' | 'gimoka-case-study' | 'lashin-case-study' | 'concrete-case-study' | 'hamburg-case-study' | 'acton-case-study' | 'yoken-case-study' | 'siltal-case-study' | 'passap-case-study' | 'alwaad-case-study' | 'admin';
+
+export interface CustomPackageConfig {
+  sector?: 'b2b' | 'b2c' | 'medical';
+  posts?: number;
+  reels?: number;
+  stories?: number;
+  basePkgName?: string;
+}
 
 export interface ProjectMetric {
   label: string;
@@ -160,6 +168,23 @@ export interface PromoBanner {
   linkTextEn?: string;
 }
 
+export interface ClientAccountNote {
+  id: string;
+  text: string;
+  createdAt: string;
+  author?: string;
+  type?: 'update' | 'payment' | 'deliverable' | 'meeting';
+}
+
+export interface ClientWorkflowStage {
+  id: string;
+  title: string;
+  status: 'completed' | 'in_progress' | 'pending';
+  assignee?: string;
+  notes?: string;
+  completedAt?: string;
+}
+
 export interface Inquiry {
   id: string;
   name: string;
@@ -178,12 +203,50 @@ export interface Inquiry {
   finalPrice?: number;
   createdAt: string;
   status: 'new' | 'contacted' | 'closed' | 'cancelled';
+  // Client Retainer & Account Tracking (Active when status === 'closed')
+  contractStartDate?: string;
+  renewalDate?: string;
+  contractStatus?: 'active' | 'renewal_due' | 'paused' | 'completed';
+  paymentStatus?: 'paid' | 'pending' | 'partially_paid' | 'overdue';
+  billingCycle?: 'monthly' | 'quarterly' | 'annual';
+  retainerAmount?: number;
+  postsTarget?: number;
+  postsDelivered?: number;
+  reelsTarget?: number;
+  reelsDelivered?: number;
+  storiesTarget?: number;
+  storiesDelivered?: number;
+  accountManager?: string;
+  clientNotes?: ClientAccountNote[];
+  workflowStages?: ClientWorkflowStage[];
+  currentWorkflowDay?: number;
+  todayTaskTitle?: string;
+}
+
+export interface SectorUnitRates {
+  baseFee: number;
+  postPrice: number;
+  reelPrice: number;
+  storyPrice: number;
+  filmingSessionPrice?: number;
+}
+
+export interface CustomPackagePricingRates {
+  b2c: SectorUnitRates;
+  b2b: SectorUnitRates;
+  medical: SectorUnitRates;
+  discounts: {
+    quarterlyDiscountPercent: number; // e.g. 15
+    semiAnnualDiscountPercent: number; // e.g. 20
+    annualDiscountPercent: number; // e.g. 25
+  };
 }
 
 export interface AgencyDataState {
   caseStudies: CaseStudy[];
   packages: ServicePackage[];
   promoCodes?: PromoCode[];
+  customRates?: CustomPackagePricingRates;
   banner: PromoBanner;
   agencyInfo: {
     name: string;
