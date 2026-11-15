@@ -41,6 +41,7 @@ import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from './ClientWorkflow
 import { ClientPackageDeliverablesCard } from './ClientPackageDeliverablesCard';
 import { ClientPerformanceSummary } from './ClientPerformanceSummary';
 import { ClientInvoiceModal } from './ClientInvoiceModal';
+import { AccountStatementModal } from './AccountStatementModal';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
 import { generateClientInvoicePdf } from '../utils/invoicePdfGenerator';
 
@@ -59,11 +60,11 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   onClose,
   onClientUpdated,
 }) => {
-  const { language, updateInquiry, data } = useAgencyData();
+  const { language, updateInquiry, data, addInvoice } = useAgencyData();
   const isAr = language === 'ar';
 
   // Local editable states initialized safely from client data
-  const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'deliverables' | 'billing' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'deliverables' | 'billing' | 'statement' | 'notes'>('overview');
   const [contractStatus, setContractStatus] = useState<Inquiry['contractStatus']>(client?.contractStatus || 'active');
   const [paymentStatus, setPaymentStatus] = useState<Inquiry['paymentStatus']>(client?.paymentStatus || 'paid');
   const [billingCycle, setBillingCycle] = useState<Inquiry['billingCycle']>(client?.billingCycle || 'monthly');
@@ -96,7 +97,17 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   const [newNoteType, setNewNoteType] = useState<ClientAccountNote['type']>('update');
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState<boolean>(false);
   const [isDirectDownloading, setIsDirectDownloading] = useState<boolean>(false);
+
+  // Ad Credit & Campaign Wallet States (الرصيد الإعلاني ومحفظة الحملات)
+  const [adCreditBalance, setAdCreditBalance] = useState<number>(client?.adCreditBalance ?? 0);
+  const [invoiceAdCredit, setInvoiceAdCredit] = useState<number>(client?.pendingInvoiceAdCredit ?? 0);
+  const [adCreditFundedTotal, setAdCreditFundedTotal] = useState<number>(client?.adCreditFundedTotal ?? (client?.adCreditBalance ?? 0));
+  const [adCreditSpentTotal, setAdCreditSpentTotal] = useState<number>(client?.adCreditSpentTotal ?? 0);
+  const [isDeductingSpendOpen, setIsDeductingSpendOpen] = useState(false);
+  const [spendAmountInput, setSpendAmountInput] = useState<string>('');
+  const [spendCampaignPlatform, setSpendCampaignPlatform] = useState<string>('Meta Ads (Facebook & Instagram)');
 
   // Synchronize state when client or isOpen changes
   useEffect(() => {
@@ -108,6 +119,10 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
       setRenewalDate(client.renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
       setBudget(client.budget || (isAr ? '15,000 ج.م شهرياً' : '15,000 EGP / month'));
       setPackageName(client.packageName || (isAr ? 'باقة مخصصة' : 'Custom Package'));
+      setAdCreditBalance(client.adCreditBalance ?? 0);
+      setInvoiceAdCredit(client.pendingInvoiceAdCredit ?? 0);
+      setAdCreditFundedTotal(client.adCreditFundedTotal ?? (client.adCreditBalance ?? 0));
+      setAdCreditSpentTotal(client.adCreditSpentTotal ?? 0);
       setWorkflowStages(
         client.workflowStages && client.workflowStages.length === 5
           ? client.workflowStages
@@ -148,19 +163,145 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           stories: targetStories,
         },
         totalCost: budget,
+        adCreditAmount: invoiceAdCredit,
         billingCycle,
         contractStartDate,
         renewalDate,
         isAr,
       });
       if (res.success) {
-        showNotification(isAr ? 'تم تحميل ملف الفاتورة PDF بنجاح!' : 'Invoice PDF downloaded successfully!');
+        showNotification(isAr ? 'تم تحميل ملف الفاتورة PDF وحفظها بالأرشيف!' : 'Invoice PDF downloaded and archived!');
+        try {
+          const numRetainer = parseInt(budget.replace(/\D/g, ''), 10) || 0;
+          const grandTotal = numRetainer + (invoiceAdCredit || 0);
+          const today = new Date().toISOString().split('T')[0];
+          const invNum = `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${client.id.replace(/\D/g, '').slice(-3) || '101'}`;
+          const existing = (data.invoices || []).find((i) => i.invoiceNumber === invNum);
+          if (!existing) {
+            addInvoice({
+              invoiceNumber: invNum,
+              clientId: client.id,
+              clientName: client.name,
+              clientCompany: client.company,
+              clientPhone: client.phone,
+              sector: client.sector,
+              issueDate: contractStartDate || today,
+              dueDate: renewalDate,
+              packageName: packageName || client.packageName || 'باقة تسويق رقمي',
+              retainerAmount: numRetainer,
+              adCreditAmount: invoiceAdCredit,
+              grandTotal,
+              billingCycle,
+              paymentStatus: paymentStatus || 'paid',
+              deliverables: { posts: targetPosts, reels: targetReels, stories: targetStories },
+            });
+          }
+        } catch {}
       }
     } catch (err) {
       console.error('Invoice download error:', err);
     } finally {
       setIsDirectDownloading(false);
     }
+  };
+
+  // Confirm invoice payment & deposit ad credit into client wallet
+  const handleCollectAndDepositAdCredit = () => {
+    if (!client) return;
+    if (invoiceAdCredit <= 0) {
+      showNotification(isAr ? 'لا يوجد رصيد إعلاني معلق في الفاتورة لإيداعه.' : 'No pending ad credit to deposit.');
+      return;
+    }
+
+    const depositedAmount = invoiceAdCredit;
+    const newBalance = adCreditBalance + depositedAmount;
+    const newFundedTotal = adCreditFundedTotal + depositedAmount;
+
+    setAdCreditBalance(newBalance);
+    setAdCreditFundedTotal(newFundedTotal);
+    setInvoiceAdCredit(0);
+    setPaymentStatus('paid');
+
+    const depositNote: ClientAccountNote = {
+      id: `note-${Date.now()}`,
+      text: isAr
+        ? `💵 تم تأكيد تحصيل الفاتورة رسمياً وإيداع مبلغ ${depositedAmount.toLocaleString()} ج.م في الرصيد الإعلاني للعميل. (الرصيد المتاح الحالي: ${newBalance.toLocaleString()} ج.م).`
+        : `💵 Invoice collected and ${depositedAmount.toLocaleString()} EGP deposited into client ad credit balance. (New balance: ${newBalance.toLocaleString()} EGP).`,
+      createdAt: new Date().toISOString(),
+      type: 'payment',
+      author: isAr ? 'الإدارة المالية' : 'Finance Dept',
+    };
+
+    const updatedNotes = [depositNote, ...(client.clientNotes || [])];
+
+    const updates: Partial<Inquiry> = {
+      paymentStatus: 'paid',
+      adCreditBalance: newBalance,
+      pendingInvoiceAdCredit: 0,
+      adCreditFundedTotal: newFundedTotal,
+      clientNotes: updatedNotes,
+    };
+
+    updateInquiry(client.id, updates);
+    if (onClientUpdated) {
+      onClientUpdated({ ...client, ...updates });
+    }
+
+    showNotification(
+      isAr 
+        ? `✅ تم تحصيل الفاتورة وإيداع ${depositedAmount.toLocaleString()} ج.م رصيد إعلاني بنجاح!` 
+        : `✅ Invoice collected and ${depositedAmount.toLocaleString()} EGP ad credit deposited!`
+    );
+  };
+
+  // Deduct ad campaign spend
+  const handleDeductAdSpend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    const amount = parseFloat(spendAmountInput);
+    if (!amount || amount <= 0) return;
+
+    if (amount > adCreditBalance) {
+      showNotification(isAr ? 'المبلغ المطلوب صرفه يتجاوز الرصيد الإعلاني المتاح!' : 'Spend amount exceeds available ad balance!');
+      return;
+    }
+
+    const newBalance = adCreditBalance - amount;
+    const newSpentTotal = adCreditSpentTotal + amount;
+
+    setAdCreditBalance(newBalance);
+    setAdCreditSpentTotal(newSpentTotal);
+    setSpendAmountInput('');
+    setIsDeductingSpendOpen(false);
+
+    const spendNote: ClientAccountNote = {
+      id: `note-${Date.now()}`,
+      text: isAr
+        ? `📢 تم صرف مبلغ ${amount.toLocaleString()} ج.م من الرصيد الإعلاني في حملات (${spendCampaignPlatform}). الرصيد الإعلاني المتبقي: ${newBalance.toLocaleString()} ج.م.`
+        : `📢 Spent ${amount.toLocaleString()} EGP from ad credit on (${spendCampaignPlatform}). Remaining balance: ${newBalance.toLocaleString()} EGP.`,
+      createdAt: new Date().toISOString(),
+      type: 'update',
+      author: isAr ? 'فريق إدارة الإعلانات الممولة' : 'Media Buying Team',
+    };
+
+    const updatedNotes = [spendNote, ...(client.clientNotes || [])];
+
+    const updates: Partial<Inquiry> = {
+      adCreditBalance: newBalance,
+      adCreditSpentTotal: newSpentTotal,
+      clientNotes: updatedNotes,
+    };
+
+    updateInquiry(client.id, updates);
+    if (onClientUpdated) {
+      onClientUpdated({ ...client, ...updates });
+    }
+
+    showNotification(
+      isAr 
+        ? `تم تسجيل صرف ${amount.toLocaleString()} ج.م من الرصيد الإعلاني بنجاح!` 
+        : `Logged ${amount.toLocaleString()} EGP ad spend successfully!`
+    );
   };
 
   // Two-way real-time sync: cycle stage status and propagate instantly to context and parent
@@ -213,6 +354,10 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
       storiesDelivered,
       workflowStages,
       todayTaskTitle,
+      adCreditBalance,
+      pendingInvoiceAdCredit: invoiceAdCredit,
+      adCreditFundedTotal,
+      adCreditSpentTotal,
     };
 
     updateInquiry(client.id, updates);
@@ -427,6 +572,19 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
               }`}
             >
               {isAr ? 'المالية والتجديد' : 'Billing & Retainer'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('statement')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'statement'
+                  ? 'bg-emerald-600 text-white shadow-sm font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-emerald-300" />
+              <span>{isAr ? 'كشف الحساب والفواتير 📄' : 'Statement & Invoices 📄'}</span>
             </button>
 
             <button
@@ -851,14 +1009,25 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   <p className="text-xs text-slate-500">{isAr ? 'تعديل قيمة العقد، مواعيد التجديد، ودورة الدفعات، وإصدار الفواتير الرسمية.' : 'Adjust retainer value, renewal cycles, and export official client invoices.'}</p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsInvoiceModalOpen(true)}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95 border border-blue-400/30"
-                >
-                  <FileText className="w-4 h-4 text-blue-200" />
-                  <span>{isAr ? 'إصدار الفاتورة وبيان الحساب (PDF)' : 'Generate Invoice Statement (PDF)'}</span>
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setIsStatementModalOpen(true)}
+                    className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 border border-emerald-400/30"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-200" />
+                    <span>{isAr ? 'كشف حساب عن فترة (PDF)' : 'Statement of Account (PDF)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsInvoiceModalOpen(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95 border border-blue-400/30"
+                  >
+                    <FileText className="w-4 h-4 text-blue-200" />
+                    <span>{isAr ? 'إصدار الفاتورة وبيان الحساب (PDF)' : 'Generate Invoice Statement (PDF)'}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
@@ -908,6 +1077,251 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                     />
                   </div>
                 </div>
+
+                {/* Ad Spend Credit Input for Invoicing */}
+                <div className="pt-3 border-t border-slate-200">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <CreditCard className="w-4 h-4 text-blue-600" />
+                        <span>{isAr ? 'إضافة رصيد إعلاني ممول للفاتورة (Ad Spend Credit):' : 'Add Ad Campaign Spend Credit to Invoice:'}</span>
+                      </label>
+                      <span className="text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg">
+                        {isAr ? 'ينزل تلقائياً في حساب العميل فور التحصيل' : 'Auto-credited to wallet once paid'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1000"
+                          value={invoiceAdCredit || ''}
+                          placeholder={isAr ? 'اكتب مبلغ الرصيد الإعلاني (مثال: 10000)...' : 'Enter ad credit amount (e.g. 10000)...'}
+                          onChange={(e) => setInvoiceAdCredit(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          className="w-full text-xs font-bold p-2.5 bg-white rounded-xl border border-slate-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 pl-14"
+                        />
+                        <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">
+                          {isAr ? 'ج.م' : 'EGP'}
+                        </span>
+                      </div>
+
+                      {/* Quick preset chips */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceAdCredit((prev) => prev + 5000)}
+                          className="px-2.5 py-1.5 text-[11px] font-bold bg-white hover:bg-blue-50 text-blue-700 border border-slate-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                        >
+                          +5,000
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceAdCredit((prev) => prev + 10000)}
+                          className="px-2.5 py-1.5 text-[11px] font-bold bg-white hover:bg-blue-50 text-blue-700 border border-slate-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                        >
+                          +10,000
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceAdCredit((prev) => prev + 20000)}
+                          className="px-2.5 py-1.5 text-[11px] font-bold bg-white hover:bg-blue-50 text-blue-700 border border-slate-200 rounded-lg cursor-pointer transition-colors shadow-2xs"
+                        >
+                          +20,000
+                        </button>
+                        {invoiceAdCredit > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setInvoiceAdCredit(0)}
+                            className="px-2 py-1.5 text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg cursor-pointer transition-colors"
+                            title={isAr ? 'تفريغ الرصيد الإعلاني' : 'Clear ad credit'}
+                          >
+                            {isAr ? 'إلغاء' : 'Clear'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      {isAr
+                        ? '💡 يُدرج هذا المبلغ كبند مستقل في الفاتورة الرسمية (ميزانية إعلانات ممولة)، وعند تحصيل الفاتورة سيتم إيداعه فورياً في رصيد العميل الإعلاني المتاح.'
+                        : '💡 This amount will be added as an itemized ad campaign budget in the invoice. Once collected, it is deposited into the client ad balance.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Ad Credit Wallet Card */}
+              <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white p-4 sm:p-5 rounded-2xl border border-blue-800/80 shadow-md relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-blue-800/60">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h5 className="text-sm font-black text-white">
+                          {isAr ? 'محفظة الرصيد الإعلاني للعميل (Ad Credit Wallet)' : 'Client Ad Campaign Wallet'}
+                        </h5>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                          {isAr ? 'حساب إعلاني نشط' : 'Active Wallet'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-blue-200/80">
+                        {isAr ? 'إدارة الميزانيات الممولة المودعة، التحصيل، ومتابعة رصيد الحملات الإعلانية.' : 'Manage deposited ad budgets, invoice collections, and campaign spends.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions: Collect & Deposit or Deduct Spend */}
+                  <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                    {invoiceAdCredit > 0 && paymentStatus !== 'paid' && (
+                      <button
+                        type="button"
+                        onClick={handleCollectAndDepositAdCredit}
+                        className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 animate-pulse"
+                        title={isAr ? 'تأكيد تحصيل الفاتورة وإيداع الرصيد الإعلاني فورياً' : 'Collect invoice and deposit ad credit now'}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{isAr ? `تحصيل وإيداع (${invoiceAdCredit.toLocaleString()} ج.م)` : `Deposit Ad Credit`}</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setIsDeductingSpendOpen(!isDeductingSpendOpen)}
+                      className="px-3 py-1.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{isAr ? 'تسجيل صرف إعلاني' : 'Log Ad Spend'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3 Wallet Metrics */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 text-xs">
+                  {/* Metric 1: Available Ad Balance */}
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-blue-500/30">
+                    <span className="text-[11px] text-slate-400 block mb-1 font-bold">
+                      {isAr ? 'الرصيد الإعلاني المتاح حالياً:' : 'Available Ad Balance:'}
+                    </span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl sm:text-2xl font-black text-emerald-400 tabular-nums">
+                        {adCreditBalance.toLocaleString()}
+                      </span>
+                      <span className="text-xs font-bold text-emerald-300/80">{isAr ? 'ج.م' : 'EGP'}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      {adCreditBalance > 0 
+                        ? (isAr ? '✅ جاهز لتمويل حملات Meta و Google و TikTok' : 'Ready for active campaigns')
+                        : (isAr ? '⚠️ لا يوجد رصيد إعلاني متاح حالياً' : 'Zero available balance')}
+                    </span>
+                  </div>
+
+                  {/* Metric 2: Pending Ad Credit in Invoice */}
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <span className="text-[11px] text-slate-400 block mb-1 font-bold">
+                      {isAr ? 'رصيد الفاتورة قيد التحصيل:' : 'Pending Invoice Ad Credit:'}
+                    </span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={`text-xl sm:text-2xl font-black tabular-nums ${invoiceAdCredit > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
+                        {invoiceAdCredit.toLocaleString()}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">{isAr ? 'ج.م' : 'EGP'}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      {invoiceAdCredit > 0 
+                        ? (isAr ? '⏳ سينزل في الحساب فور تحصيل الفاتورة' : 'Deposited upon payment collection')
+                        : (isAr ? 'لا توجد مبالغ إعلانية معلقة بالفاتورة' : 'No pending ad credit')}
+                    </span>
+                  </div>
+
+                  {/* Metric 3: Total Funded vs Total Spent */}
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60">
+                    <span className="text-[11px] text-slate-400 block mb-1 font-bold">
+                      {isAr ? 'حركة المحفظة الإجمالية:' : 'Lifetime Ad Spending:'}
+                    </span>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between text-slate-300">
+                        <span>{isAr ? 'إجمالي المشحون:' : 'Total Funded:'}</span>
+                        <span className="font-bold text-white tabular-nums">{adCreditFundedTotal.toLocaleString()} ج.م</span>
+                      </div>
+                      <div className="flex justify-between text-slate-400">
+                        <span>{isAr ? 'إجمالي المصروف:' : 'Total Spent:'}</span>
+                        <span className="font-bold text-rose-300 tabular-nums">{adCreditSpentTotal.toLocaleString()} ج.م</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Deduct Spend Inline Form (Collapsible) */}
+                {isDeductingSpendOpen && (
+                  <form onSubmit={handleDeductAdSpend} className="mt-3.5 p-3.5 bg-slate-950 rounded-xl border border-slate-800 space-y-2.5 animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>{isAr ? 'تسجيل خصم ميزانية مصروفة في الحملات الإعلانية:' : 'Deduct Campaign Ad Spend:'}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsDeductingSpendOpen(false)}
+                        className="text-slate-400 hover:text-white text-xs cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-400">{isAr ? 'المبلغ المصروف:' : 'Amount Spent:'}</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="1"
+                            max={adCreditBalance}
+                            required
+                            value={spendAmountInput}
+                            onChange={(e) => setSpendAmountInput(e.target.value)}
+                            placeholder={isAr ? 'المبلغ بالجنيه...' : 'Amount in EGP...'}
+                            className="w-full text-xs font-bold p-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                          />
+                          <span className="absolute left-2.5 top-2 text-[11px] text-slate-400">ج.م</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-400">{isAr ? 'المنصة الإعلانية:' : 'Platform:'}</label>
+                        <select
+                          value={spendCampaignPlatform}
+                          onChange={(e) => setSpendCampaignPlatform(e.target.value)}
+                          className="w-full text-xs font-bold p-2 bg-slate-900 border border-slate-700 rounded-lg text-white cursor-pointer"
+                        >
+                          <option value="Meta Ads (Facebook & Instagram)">Meta Ads (Facebook & Instagram)</option>
+                          <option value="TikTok Ads">TikTok Ads</option>
+                          <option value="Google Ads & YouTube">Google Ads & YouTube</option>
+                          <option value="Snapchat Ads">Snapchat Ads</option>
+                          <option value="LinkedIn Ads">LinkedIn Ads</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsDeductingSpendOpen(false)}
+                        className="px-3 py-1 text-xs text-slate-400 hover:text-white"
+                      >
+                        {isAr ? 'إلغاء' : 'Cancel'}
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors cursor-pointer"
+                      >
+                        {isAr ? 'خصم وتحديث الرصيد' : 'Deduct & Update'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
               {/* Official Invoice Statement Preview Card */}
@@ -932,7 +1346,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                           </span>
                         </div>
                         <h5 className="text-sm font-black text-white mt-0.5">
-                          {isAr ? 'وثيقة استحقاق باقة التسويق الرقمي' : 'Digital Marketing Retainer Invoice'}
+                          {isAr ? 'وثيقة استحقاق باقة التسويق ورصيد الإعلانات' : 'Digital Marketing & Ad Spend Invoice'}
                         </h5>
                       </div>
                     </div>
@@ -957,8 +1371,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                     </div>
                   </div>
 
-                  {/* Three Key Pillars: Package Title, Deliverables, Cost */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  {/* Key Pillars: Package Title, Deliverables, Retainer, Ad Credit */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                     {/* 1. Package Name as Invoice Title */}
                     <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
                       <div className="text-[11px] text-slate-400 mb-1 flex items-center gap-1.5 font-bold">
@@ -980,15 +1394,15 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                         {targetPosts} {isAr ? 'منشور' : 'Posts'} • {targetReels} {isAr ? 'ريلز' : 'Reels'} • {targetStories} {isAr ? 'ستوري' : 'Stories'}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
-                        {isAr ? '+ إدارة حملات ممولة وتقارير دورية' : '+ Ads management & reporting'}
+                        {isAr ? '+ إدارة الحملات والتقارير' : '+ Ads management & reports'}
                       </p>
                     </div>
 
-                    {/* 3. Cost / Fee */}
+                    {/* 3. Retainer Cost */}
                     <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
                       <div className="text-[11px] text-slate-400 mb-1 flex items-center gap-1.5 font-bold">
                         <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>{isAr ? 'قيمة الاشتراك والتكلفة:' : 'Retainer Cost / Fee:'}</span>
+                        <span>{isAr ? 'اشتراك إدارة الباقة:' : 'Retainer Management Fee:'}</span>
                       </div>
                       <p className="font-black text-emerald-400 text-sm">
                         {budget}
@@ -997,6 +1411,32 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                         {billingCycle === 'monthly' ? (isAr ? 'دورة شهرية' : 'Monthly') : billingCycle === 'quarterly' ? (isAr ? 'دورة ربع سنوية' : 'Quarterly') : (isAr ? 'دورة سنوية' : 'Annual')}
                       </p>
                     </div>
+
+                    {/* 4. Added Ad Spend Credit */}
+                    <div className="bg-slate-900/90 p-3 rounded-xl border border-blue-500/40">
+                      <div className="text-[11px] text-blue-300 mb-1 flex items-center gap-1.5 font-bold">
+                        <CreditCard className="w-3.5 h-3.5 text-blue-400" />
+                        <span>{isAr ? 'الرصيد الإعلاني المضاف:' : 'Added Ad Spend Credit:'}</span>
+                      </div>
+                      <p className="font-black text-blue-300 text-sm tabular-nums">
+                        {invoiceAdCredit > 0 ? `+${invoiceAdCredit.toLocaleString()} ج.م` : (isAr ? '0 ج.م' : '0 EGP')}
+                      </p>
+                      <p className="text-[10px] text-blue-200/70 mt-0.5">
+                        {invoiceAdCredit > 0 ? (isAr ? 'مخصص بالكامل للحملات' : 'Dedicated campaign spend') : (isAr ? 'لا يوجد رصيد إعلاني مضاف' : 'No ad credit added')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Combined Grand Total Due Banner */}
+                  <div className="p-3 bg-blue-950/60 rounded-xl border border-blue-800/70 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <span className="font-bold text-slate-300">
+                      {isAr ? 'المبلغ الإجمالي المستحق بالفاتورة (اشتراك الباقة + الرصيد الإعلاني):' : 'Total Invoice Due (Retainer + Ad Credit):'}
+                    </span>
+                    <span className="text-base sm:text-lg font-black text-emerald-400 tabular-nums">
+                      {(parseInt(budget.replace(/\D/g, ''), 10) || 0) + (invoiceAdCredit || 0) > 0
+                        ? `${((parseInt(budget.replace(/\D/g, ''), 10) || 0) + (invoiceAdCredit || 0)).toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
+                        : budget}
+                    </span>
                   </div>
 
                   {/* Footer Action Bar */}
@@ -1034,6 +1474,144 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: CLIENT STATEMENT OF ACCOUNT & INVOICES ARCHIVE */}
+          {activeTab === 'statement' && client && (
+            <div className="space-y-4">
+              {/* Header Box */}
+              <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 p-4 rounded-2xl text-white flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <h4 className="text-sm font-bold text-white">
+                      {isAr ? 'كشف الحساب المالي وفواتير العميل' : 'Statement of Account & Invoices'}
+                    </h4>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    {isAr 
+                      ? 'متابعة الفواتير المصدرة لحساب العميل، المسدد منها، واستخراج كشف حساب رسمي معتمد لأي فترة.' 
+                      : 'Track client invoices, payments, and export verified ledger statements for any period.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setIsStatementModalOpen(true)}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>{isAr ? 'استخراج كشف حساب مالي (PDF)' : 'Statement (PDF)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsInvoiceModalOpen(true)}
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>{isAr ? 'إصدار فاتورة جديدة' : 'New Invoice'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Client Invoices List */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Receipt className="w-4 h-4 text-blue-600" />
+                    <span>{isAr ? 'الفواتير المصدرة لحساب هذا العميل:' : 'Client Issued Invoices:'}</span>
+                  </h5>
+                  <span className="text-[11px] text-slate-400">
+                    {((data.invoices || []).filter(inv => inv.clientId === client.id)).length} {isAr ? 'فاتورة' : 'invoices'}
+                  </span>
+                </div>
+
+                {((data.invoices || []).filter(inv => inv.clientId === client.id)).length === 0 ? (
+                  <div className="p-8 text-center bg-slate-50 border border-slate-200 rounded-2xl text-slate-400 space-y-2">
+                    <FileText className="w-8 h-8 mx-auto text-slate-300" />
+                    <p className="text-xs font-medium">{isAr ? 'لم يتم إصدار فواتير سابقة لهذا العميل بعد.' : 'No invoices issued for this client yet.'}</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsInvoiceModalOpen(true)}
+                      className="px-3.5 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>{isAr ? 'إصدار أول فاتورة الآن' : 'Issue First Invoice'}</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {(data.invoices || [])
+                      .filter(inv => inv.clientId === client.id)
+                      .map((inv) => {
+                        const isPaid = inv.paymentStatus === 'paid';
+                        return (
+                          <div
+                            key={inv.id}
+                            className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 transition-all flex items-center justify-between gap-3 flex-wrap shadow-2xs"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                  {inv.invoiceNumber}
+                                </span>
+                                <span className="text-xs font-bold text-slate-800">{inv.packageName}</span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {isPaid ? (isAr ? 'مدفوع' : 'Paid') : (isAr ? 'قيد التحصيل' : 'Pending')}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                                <span>{isAr ? 'تاريخ الإصدار:' : 'Issued:'} {inv.issueDate}</span>
+                                {inv.dueDate && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{isAr ? 'الاستحقاق:' : 'Due:'} {inv.dueDate}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <div className="text-left font-mono">
+                                <div className="text-sm font-black text-slate-900">
+                                  {inv.grandTotal.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                                </div>
+                                {inv.adCreditAmount ? (
+                                  <div className="text-[10px] text-purple-700 font-bold">
+                                    {isAr ? `(تشمل ${inv.adCreditAmount.toLocaleString()} إعلانات)` : `(incl. ${inv.adCreditAmount.toLocaleString()} ads)`}
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await generateClientInvoicePdf({
+                                    client,
+                                    packageName: inv.packageName,
+                                    totalCost: `${inv.retainerAmount.toLocaleString()} ج.م`,
+                                    adCreditAmount: inv.adCreditAmount || 0,
+                                    invoiceNumber: inv.invoiceNumber,
+                                    isAr,
+                                  });
+                                  showNotification(isAr ? 'تم تحميل الفاتورة بنجاح!' : 'Invoice downloaded!');
+                                }}
+                                className="p-2 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors cursor-pointer"
+                                title={isAr ? 'تحميل الفاتورة PDF' : 'Download PDF'}
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1166,6 +1744,17 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           targetPosts={targetPosts}
           targetReels={targetReels}
           targetStories={targetStories}
+          adCreditAmount={invoiceAdCredit}
+          isAr={isAr}
+        />
+      )}
+
+      {/* Official Account Statement Modal (كشف حساب مالي عن فترة معينة) */}
+      {isStatementModalOpen && client && (
+        <AccountStatementModal
+          isOpen={isStatementModalOpen}
+          onClose={() => setIsStatementModalOpen(false)}
+          initialClient={client}
           isAr={isAr}
         />
       )}

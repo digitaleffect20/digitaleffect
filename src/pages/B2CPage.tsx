@@ -428,6 +428,7 @@ export const B2CPage: React.FC = () => {
                 const industry = isAr ? study.industry : study.industryEn;
                 const solution = isAr ? study.solution : study.solutionEn;
                 const mainMetric = study.metrics[0];
+                const isPenguinWeb = study.id === 'cs-b2c-penguin-web';
                 const isBinaryracks = study.id === 'cs-b2c-binaryracks';
                 const isGimoka = study.id === 'cs-b2c-gimoka';
                 const isLashin = study.id === 'cs-b2c-memar-lashin';
@@ -438,13 +439,15 @@ export const B2CPage: React.FC = () => {
                 const isSiltal = study.id === 'cs-b2c-siltal';
                 const isPassap = study.id === 'cs-b2c-passap';
                 const isAlwaad = study.id === 'cs-b2c-alwaad-travel';
-                const hasDedicatedPage = isBinaryracks || isGimoka || isLashin || isConcrete || isHamburg || isActon || isYoken || isSiltal || isPassap || isAlwaad;
+                const hasDedicatedPage = isPenguinWeb || isBinaryracks || isGimoka || isLashin || isConcrete || isHamburg || isActon || isYoken || isSiltal || isPassap || isAlwaad;
 
                 return (
                   <div
                     key={study.id}
                     onClick={() => {
-                      if (isBinaryracks) {
+                      if (isPenguinWeb) {
+                        setCurrentPage('penguin-web-case-study');
+                      } else if (isBinaryracks) {
                         setCurrentPage('binaryracks-case-study');
                       } else if (isGimoka) {
                         setCurrentPage('gimoka-case-study');
@@ -469,7 +472,9 @@ export const B2CPage: React.FC = () => {
                       }
                     }}
                     className={`bg-white rounded-3xl border shadow-sm hover:shadow-xl transition-all p-6 sm:p-7 flex flex-col justify-between text-start cursor-pointer group overflow-hidden ${
-                      isAlwaad
+                      isPenguinWeb
+                        ? 'border-cyan-400 ring-2 ring-cyan-500/20 hover:border-cyan-500'
+                        : isAlwaad
                         ? 'border-sky-300 ring-2 ring-sky-400/20 hover:border-sky-500'
                         : isPassap
                         ? 'border-amber-300 ring-2 ring-amber-400/20 hover:border-amber-500'

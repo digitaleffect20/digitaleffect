@@ -60,7 +60,9 @@ import {
   UserPlus,
   UserCheck,
   AlertTriangle,
-  BellRing
+  BellRing,
+  CreditCard,
+  Wallet
 } from 'lucide-react';
 import { CrmAnalyticsHub } from '../components/CrmAnalyticsHub';
 import { SeoGeneratorWidget } from '../components/SeoGeneratorWidget';
@@ -72,6 +74,8 @@ import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from '../components/Cl
 import { ClientPackageDeliverablesCard } from '../components/ClientPackageDeliverablesCard';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
 import { generateClientInvoicePdf } from '../utils/invoicePdfGenerator';
+import { InvoicesArchiveHub } from '../components/InvoicesArchiveHub';
+import { AccountStatementModal } from '../components/AccountStatementModal';
 
 export const AdminPortalPage: React.FC = () => {
   const { 
@@ -117,7 +121,7 @@ export const AdminPortalPage: React.FC = () => {
   });
 
   // Dashboard Active Tab
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'clients' | 'analytics' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'clients' | 'invoices' | 'analytics' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
   const [showAnalyticsInInquiriesTab, setShowAnalyticsInInquiriesTab] = useState(true);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [selectedClientForAccount, setSelectedClientForAccount] = useState<Inquiry | null>(null);
@@ -136,6 +140,7 @@ export const AdminPortalPage: React.FC = () => {
     try {
       const res = await generateClientInvoicePdf({
         client,
+        adCreditAmount: client.pendingInvoiceAdCredit || 0,
         isAr,
       });
       if (res.success) {
@@ -1133,6 +1138,23 @@ export const AdminPortalPage: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('invoices')}
+              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'invoices'
+                  ? 'border-blue-400 text-blue-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-blue-400" />
+              <span>{isAr ? `أرشيف الفواتير وكشوف الحساب (${data.invoices?.length || 0})` : `Invoices & Statements (${data.invoices?.length || 0})`}</span>
+              {(data.invoices?.length || 0) > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full font-bold">
+                  {data.invoices?.length || 0}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={() => setActiveTab('analytics')}
               className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'analytics'
@@ -1904,14 +1926,25 @@ export const AdminPortalPage: React.FC = () => {
                 </select>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsAddClientOpen(true)}
-                className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>{isAr ? 'إضافة عميل وتحديد باقة' : 'Add Client & Scope'}</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('invoices')}
+                  className="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <span>{isAr ? 'أرشيف الفواتير وكشوف الحساب' : 'Invoices & Statements'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsAddClientOpen(true)}
+                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{isAr ? 'إضافة عميل وتحديد باقة' : 'Add Client & Scope'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Clients Cards Grid */}
@@ -2088,6 +2121,36 @@ export const AdminPortalPage: React.FC = () => {
                           className="mb-3"
                         />
 
+                        {/* Client Ad Spend Wallet Strip */}
+                        {((client.adCreditBalance !== undefined && client.adCreditBalance > 0) || (client.pendingInvoiceAdCredit !== undefined && client.pendingInvoiceAdCredit > 0)) && (
+                          <div className="mb-3 p-2.5 rounded-xl bg-purple-50/90 border border-purple-200/90 flex items-center justify-between text-xs gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                                <CreditCard className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                                {client.adCreditBalance !== undefined && client.adCreditBalance > 0 && (
+                                  <span className="font-bold text-purple-950">
+                                    {isAr ? 'رصيد إعلاني متاح:' : 'Available Ad Credit:'}{' '}
+                                    <span className="font-black text-purple-700">
+                                      {client.adCreditBalance.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                                    </span>
+                                  </span>
+                                )}
+                                {client.pendingInvoiceAdCredit !== undefined && client.pendingInvoiceAdCredit > 0 && (
+                                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80">
+                                    {isAr ? 'قيد التحصيل بالفاتورة:' : 'Pending Invoice:'}{' '}
+                                    {client.pendingInvoiceAdCredit.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-purple-700 font-bold bg-white px-2 py-0.5 rounded-md border border-purple-200 shadow-2xs shrink-0">
+                              {isAr ? 'محفظة الإعلانات الممولة' : 'Ad Wallet'}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Interactive Workflow Tasks Stepper with Timestamps */}
                         <div className={`mt-3.5 rounded-2xl p-3.5 space-y-2 border ${
                           overdueInfo.isOverdue 
@@ -2171,6 +2234,13 @@ export const AdminPortalPage: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB: INVOICES ARCHIVE & ACCOUNT STATEMENTS                         */}
+        {/* ================================================================== */}
+        {activeTab === 'invoices' && (
+          <InvoicesArchiveHub isAr={isAr} />
         )}
 
         {/* ================================================================== */}

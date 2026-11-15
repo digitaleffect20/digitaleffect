@@ -105,7 +105,7 @@ export const CaseStudyModal: React.FC = () => {
         </div>
 
         {/* Dedicated Page Jump Banner if applicable */}
-        {(selectedCaseStudy.id === 'cs-b2b-bsizia' || selectedCaseStudy.id === 'cs-b2c-penguin' || selectedCaseStudy.id === 'cs-med-ipt' || selectedCaseStudy.id === 'cs-b2c-binaryracks' || selectedCaseStudy.id === 'cs-b2c-gimoka' || selectedCaseStudy.id === 'cs-b2c-memar-lashin' || selectedCaseStudy.id === 'cs-b2c-concrete' || selectedCaseStudy.id === 'cs-b2c-hamburg' || selectedCaseStudy.id === 'cs-b2c-acton' || selectedCaseStudy.id === 'cs-b2c-yoken' || selectedCaseStudy.id === 'cs-b2c-siltal' || selectedCaseStudy.id === 'cs-b2c-passap' || selectedCaseStudy.id === 'cs-b2c-alwaad-travel') && (
+        {(selectedCaseStudy.id === 'cs-b2b-bsizia' || selectedCaseStudy.id === 'cs-b2c-penguin' || selectedCaseStudy.id === 'cs-b2c-penguin-web' || selectedCaseStudy.id === 'cs-med-ipt' || selectedCaseStudy.id === 'cs-b2c-binaryracks' || selectedCaseStudy.id === 'cs-b2c-gimoka' || selectedCaseStudy.id === 'cs-b2c-memar-lashin' || selectedCaseStudy.id === 'cs-b2c-concrete' || selectedCaseStudy.id === 'cs-b2c-hamburg' || selectedCaseStudy.id === 'cs-b2c-acton' || selectedCaseStudy.id === 'cs-b2c-yoken' || selectedCaseStudy.id === 'cs-b2c-siltal' || selectedCaseStudy.id === 'cs-b2c-passap' || selectedCaseStudy.id === 'cs-b2c-alwaad-travel') && (
           <div className="bg-sky-50 px-6 py-3 border-b border-sky-100 flex items-center justify-between gap-3 text-xs">
             <span className="text-sky-800 font-medium">
               {isAr ? 'تتوفر دراسة الحالة هذه في صفحة مستقلة تعرض كافة التصاميم بالحجم الكامل والوضوح الفائق.' : 'This case study has a dedicated standalone page displaying all high-resolution visuals.'}
@@ -115,6 +115,7 @@ export const CaseStudyModal: React.FC = () => {
                 const targetPage = 
                   selectedCaseStudy.id === 'cs-b2b-bsizia' ? 'bsizia-case-study' :
                   selectedCaseStudy.id === 'cs-b2c-penguin' ? 'penguin-case-study' :
+                  selectedCaseStudy.id === 'cs-b2c-penguin-web' ? 'penguin-web-case-study' :
                   selectedCaseStudy.id === 'cs-b2c-binaryracks' ? 'binaryracks-case-study' :
                   selectedCaseStudy.id === 'cs-b2c-gimoka' ? 'gimoka-case-study' :
                   selectedCaseStudy.id === 'cs-b2c-memar-lashin' ? 'lashin-case-study' :

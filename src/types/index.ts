@@ -1,6 +1,7 @@
 export type SectorType = 'all' | 'b2b' | 'b2c' | 'medical';
+export type PortfolioCategoryFilter = SectorType | 'social' | 'social-b2b' | 'social-b2c' | 'social-medical' | 'identity' | 'web';
 export type Language = 'ar' | 'en';
-export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'custom-package' | 'ipt-case-study' | 'penguin-case-study' | 'bsizia-case-study' | 'binaryracks-case-study' | 'gimoka-case-study' | 'lashin-case-study' | 'concrete-case-study' | 'hamburg-case-study' | 'acton-case-study' | 'yoken-case-study' | 'siltal-case-study' | 'passap-case-study' | 'alwaad-case-study' | 'admin';
+export type PageRoute = 'home' | 'b2b' | 'b2c' | 'medical' | 'case-studies' | 'about' | 'custom-package' | 'ipt-case-study' | 'penguin-case-study' | 'penguin-web-case-study' | 'bsizia-case-study' | 'binaryracks-case-study' | 'gimoka-case-study' | 'lashin-case-study' | 'concrete-case-study' | 'hamburg-case-study' | 'acton-case-study' | 'yoken-case-study' | 'siltal-case-study' | 'passap-case-study' | 'alwaad-case-study' | 'agu-case-study' | 'premium-case-study' | 'business-partner-case-study' | 'overview-case-study' | 'oro-case-study' | 'afro-energy-case-study' | 'sadko-case-study' | 'ufar-case-study' | 'siltal-identity-case-study' | 'bilton-case-study' | 'admin';
 
 export interface CustomPackageConfig {
   sector?: 'b2b' | 'b2c' | 'medical';
@@ -221,6 +222,57 @@ export interface Inquiry {
   workflowStages?: ClientWorkflowStage[];
   currentWorkflowDay?: number;
   todayTaskTitle?: string;
+  // Ad Credit & Campaign Wallet (الرصيد الإعلاني وميزانية الحملات)
+  adCreditBalance?: number;
+  pendingInvoiceAdCredit?: number;
+  adCreditFundedTotal?: number;
+  adCreditSpentTotal?: number;
+  // Client Invoices History
+  clientInvoices?: ClientInvoiceRecord[];
+}
+
+export interface ClientInvoiceRecord {
+  id: string; // e.g. 'INV-2026-101-01'
+  invoiceNumber: string; // e.g. 'DE-INV-202611-101'
+  clientId: string;
+  clientName: string;
+  clientCompany?: string;
+  clientPhone?: string;
+  sector?: SectorType;
+  issueDate: string; // YYYY-MM-DD
+  dueDate?: string; // YYYY-MM-DD
+  packageName: string;
+  retainerAmount: number;
+  adCreditAmount?: number;
+  discountAmount?: number;
+  grandTotal: number;
+  billingCycle?: 'monthly' | 'quarterly' | 'annual';
+  contractPeriod?: string;
+  paymentStatus: 'paid' | 'pending' | 'partially_paid' | 'overdue' | 'cancelled';
+  paidAt?: string;
+  paymentMethod?: string; // e.g. 'تحويل بنكي', 'فودافون كاش', 'إنستاباي'
+  deliverables?: {
+    posts?: number;
+    reels?: number;
+    stories?: number;
+    notes?: string;
+  };
+  notes?: string;
+  createdAt: string;
+}
+
+export interface AccountLedgerEntry {
+  id: string;
+  date: string; // YYYY-MM-DD or ISO
+  type: 'invoice' | 'payment' | 'ad_deposit' | 'ad_spend' | 'adjustment';
+  title: string;
+  titleEn?: string;
+  reference?: string; // e.g. invoice # or payment ref
+  debit?: number; // مدين (مستحق على العميل / مصروف)
+  credit?: number; // دائن (مدفوع من العميل)
+  balance: number; // الرصيد التراكمي بعد الحركة
+  platform?: string; // e.g. Meta Ads, TikTok
+  notes?: string;
 }
 
 export interface SectorUnitRates {
@@ -260,5 +312,7 @@ export interface AgencyDataState {
     addressEn: string;
   };
   inquiries?: Inquiry[];
+  invoices?: ClientInvoiceRecord[];
 }
+
 

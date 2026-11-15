@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 export const CaseStudiesSection: React.FC = () => {
-  const { data, activeSector, setActiveSector, setSelectedCaseStudy } = useAgencyData();
+  const { data, activeSector, setActiveSector, setSelectedCaseStudy, setCurrentPage } = useAgencyData();
 
   // Filter case studies by active sector
   const filteredStudies = data.caseStudies.filter((study) => {
@@ -20,7 +20,93 @@ export const CaseStudiesSection: React.FC = () => {
     return study.sector === activeSector;
   });
 
-  const getSectorMeta = (sector: string) => {
+  const handleCardClick = (study: CaseStudy) => {
+    if (study.id === 'cs-b2b-agu') {
+      setCurrentPage('agu-case-study');
+    } else if (study.id === 'cs-b2b-premium') {
+      setCurrentPage('premium-case-study');
+    } else if (study.id === 'cs-b2b-business-partner') {
+      setCurrentPage('business-partner-case-study');
+    } else if (study.id === 'cs-b2b-overview') {
+      setCurrentPage('overview-case-study');
+    } else if (study.id === 'cs-b2b-oro') {
+      setCurrentPage('oro-case-study');
+    } else if (study.id === 'cs-b2b-afro-energy') {
+      setCurrentPage('afro-energy-case-study');
+    } else if (study.id === 'cs-b2b-sadko') {
+      setCurrentPage('sadko-case-study');
+    } else if (study.id === 'cs-b2b-ufar') {
+      setCurrentPage('ufar-case-study');
+    } else if (study.id === 'cs-b2b-siltal-identity') {
+      setCurrentPage('siltal-identity-case-study');
+    } else if (study.id === 'cs-b2b-bilton') {
+      setCurrentPage('bilton-case-study');
+    } else if (study.id === 'cs-med-ipt') {
+      setCurrentPage('ipt-case-study');
+    } else if (study.id === 'cs-b2c-penguin') {
+      setCurrentPage('penguin-case-study');
+    } else if (study.id === 'cs-b2c-penguin-web') {
+      setCurrentPage('penguin-web-case-study');
+    } else if (study.id === 'cs-b2b-bsizia') {
+      setCurrentPage('bsizia-case-study');
+    } else if (study.id === 'cs-b2c-binaryracks') {
+      setCurrentPage('binaryracks-case-study');
+    } else if (study.id === 'cs-b2c-gimoka') {
+      setCurrentPage('gimoka-case-study');
+    } else if (study.id === 'cs-b2c-memar-lashin') {
+      setCurrentPage('lashin-case-study');
+    } else if (study.id === 'cs-b2c-concrete') {
+      setCurrentPage('concrete-case-study');
+    } else if (study.id === 'cs-b2c-hamburg') {
+      setCurrentPage('hamburg-case-study');
+    } else if (study.id === 'cs-b2c-acton') {
+      setCurrentPage('acton-case-study');
+    } else if (study.id === 'cs-b2c-yoken') {
+      setCurrentPage('yoken-case-study');
+    } else if (study.id === 'cs-b2c-siltal') {
+      setCurrentPage('siltal-case-study');
+    } else if (study.id === 'cs-b2c-passap') {
+      setCurrentPage('passap-case-study');
+    } else if (study.id === 'cs-b2c-alwaad-travel') {
+      setCurrentPage('alwaad-case-study');
+    } else {
+      setSelectedCaseStudy(study);
+    }
+  };
+
+  const getSectorMeta = (sector: string, studyId?: string) => {
+    if (studyId === 'cs-b2c-penguin-web') {
+      return {
+        label: 'متاجر ومواقع إلكترونية (E-Commerce Web)',
+        icon: <ShoppingBag className="w-3.5 h-3.5 text-cyan-600" />,
+        colorClass: 'text-cyan-700 bg-cyan-50 border-cyan-200/60',
+      };
+    }
+    if (studyId === 'cs-b2b-agu' || studyId === 'cs-b2b-premium' || studyId === 'cs-b2b-business-partner' || studyId === 'cs-b2b-overview' || studyId === 'cs-b2b-oro' || studyId === 'cs-b2b-afro-energy' || studyId === 'cs-b2b-sadko' || studyId === 'cs-b2b-ufar' || studyId === 'cs-b2b-siltal-identity' || studyId === 'cs-b2b-bilton') {
+      return {
+        label: 'الهوية المؤسسية (Corporate Identity)',
+        icon: <Briefcase className="w-3.5 h-3.5 text-amber-600" />,
+        colorClass: studyId === 'cs-b2b-premium'
+          ? 'text-rose-700 bg-rose-50 border-rose-200/60'
+          : studyId === 'cs-b2b-business-partner'
+          ? 'text-amber-700 bg-amber-50 border-amber-200/60'
+          : studyId === 'cs-b2b-overview'
+          ? 'text-sky-700 bg-sky-50 border-sky-200/60'
+          : studyId === 'cs-b2b-oro'
+          ? 'text-red-700 bg-red-50 border-red-200/60'
+          : studyId === 'cs-b2b-afro-energy'
+          ? 'text-emerald-700 bg-emerald-50 border-emerald-200/60'
+          : studyId === 'cs-b2b-sadko'
+          ? 'text-lime-700 bg-lime-50 border-lime-200/60'
+          : studyId === 'cs-b2b-ufar'
+          ? 'text-indigo-700 bg-indigo-50 border-indigo-200/60'
+          : studyId === 'cs-b2b-siltal-identity'
+          ? 'text-red-700 bg-red-50 border-red-200/60'
+          : studyId === 'cs-b2b-bilton'
+          ? 'text-blue-800 bg-blue-50 border-blue-200/60'
+          : 'text-blue-700 bg-blue-50 border-blue-200/60',
+      };
+    }
     switch (sector) {
       case 'b2b':
         return {
@@ -98,13 +184,13 @@ export const CaseStudiesSection: React.FC = () => {
         {/* Case Studies Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredStudies.map((study) => {
-            const meta = getSectorMeta(study.sector);
+            const meta = getSectorMeta(study.sector, study.id);
             const mainMetric = study.metrics[0];
 
             return (
               <div
                 key={study.id}
-                onClick={() => setSelectedCaseStudy(study)}
+                onClick={() => handleCardClick(study)}
                 className="group bg-white rounded-3xl border border-slate-200/90 shadow-sm hover:shadow-xl hover:border-sky-300 transition-all duration-300 flex flex-col overflow-hidden text-right cursor-pointer"
               >
                 {/* Sector Graphic / Visual Header */}

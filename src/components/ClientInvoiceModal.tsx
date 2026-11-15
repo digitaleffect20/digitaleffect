@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Inquiry } from '../types';
+import { useAgencyData } from '../context/AgencyDataContext';
 import {
   X,
   Download,
@@ -30,6 +31,7 @@ interface ClientInvoiceModalProps {
   client: Inquiry;
   packageName: string;
   budget: string;
+  adCreditAmount?: number;
   billingCycle?: Inquiry['billingCycle'];
   contractStartDate?: string;
   renewalDate?: string;
@@ -46,6 +48,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   client,
   packageName,
   budget,
+  adCreditAmount = 0,
   billingCycle = 'quarterly',
   contractStartDate,
   renewalDate,
@@ -55,6 +58,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   targetStories,
   isAr = true,
 }) => {
+  const { data, addInvoice } = useAgencyData();
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -75,8 +79,11 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       : 'Thank you for choosing Digital Effect. This invoice constitutes an official statement of agreed marketing services.'
   );
 
+  const [adCredit, setAdCredit] = useState<number>(adCreditAmount || client.pendingInvoiceAdCredit || 0);
+
   // Financial calculations
   const numericBudget = parseInt(budget.replace(/\D/g, ''), 10) || 15000;
+  const numericGrandTotal = numericBudget + (adCredit || 0);
   const cycleTextAr =
     billingCycle === 'annual'
       ? 'سنوي'
@@ -157,6 +164,33 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       const cleanCompany = (client.company || client.name).replace(/\s+/g, '_');
       const filename = `فاتورة_${cleanCompany}_${invoiceNumber}.pdf`;
 
+      // Automatically record & persist into invoices archive
+      try {
+        const existing = (data.invoices || []).find((i) => i.invoiceNumber === invoiceNumber);
+        if (!existing) {
+          addInvoice({
+            invoiceNumber,
+            clientId: client.id,
+            clientName: client.name,
+            clientCompany: client.company,
+            clientPhone: client.phone,
+            sector: client.sector,
+            issueDate,
+            dueDate,
+            packageName,
+            retainerAmount: numericBudget,
+            adCreditAmount: adCredit,
+            grandTotal: numericGrandTotal,
+            billingCycle,
+            paymentStatus,
+            notes,
+            deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
+          });
+        }
+      } catch (archErr) {
+        console.warn('Could not archive invoice:', archErr);
+      }
+
       if (action === 'download') {
         pdf.save(filename);
         setDownloadSuccess(true);
@@ -200,8 +234,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const waPhone = cleanPhone.startsWith('0') ? `20${cleanPhone.slice(1)}` : cleanPhone;
   const waInvoiceText = encodeURIComponent(
     isAr
-      ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nالقيمة: ${budget} (${cycleTextAr})\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
-      : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}) totaling ${budget} (${cycleTextEn}). Due: ${dueDate}.\n\nDigital Effect Team.`
+      ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nاشتراك الباقة: ${budget} (${cycleTextAr})${adCredit > 0 ? `\nرصيد إعلاني ممول: +${adCredit.toLocaleString()} ج.م` : ''}\nإجمالي المستحق: ${numericGrandTotal.toLocaleString()} ج.م\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
+      : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}). Retainer: ${budget}${adCredit > 0 ? ` + Ad Credit: ${adCredit.toLocaleString()} EGP` : ''}. Total Due: ${numericGrandTotal.toLocaleString()} EGP. Due: ${dueDate}.\n\nDigital Effect Team.`
   );
 
   return (
@@ -343,6 +377,23 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                 onChange={(e) => setDueDate(e.target.value)}
                 className="font-bold text-xs px-2 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-blue-50/80 px-2.5 py-1 rounded-lg border border-blue-200">
+              <span className="font-bold text-blue-800 flex items-center gap-1">
+                <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                <span>{isAr ? 'رصيد إعلاني مضاف:' : 'Ad Credit:'}</span>
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="500"
+                value={adCredit || ''}
+                placeholder="0"
+                onChange={(e) => setAdCredit(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                className="font-mono font-bold text-xs px-2 py-0.5 bg-white border border-blue-300 rounded text-blue-800 w-24 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span className="text-[10px] font-bold text-blue-600">ج.م</span>
             </div>
           </div>
 
@@ -637,6 +688,34 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                         </span>
                       </td>
                     </tr>
+
+                    {/* Item 6: Ad Spend Credit (If added) */}
+                    {adCredit > 0 && (
+                      <tr className="bg-blue-50/80 border-t-2 border-blue-300">
+                        <td className="p-3">
+                          <span className="font-black text-blue-950 flex items-center gap-1.5">
+                            <CreditCard className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span>{isAr ? 'شحن رصيد إعلاني ممول (ميزانية الحملات)' : 'Funded Ad Campaign Spend Budget'}</span>
+                          </span>
+                          <span className="text-[11px] text-blue-800 block mt-0.5">
+                            {isAr
+                              ? 'ميزانية إعلانية مدفوعة ومخصصة بالكامل لحملات العميل الممولة (Meta / TikTok / Google) تُودع في المحفظة الإعلانية للعميل فور التحصيل'
+                              : '100% dedicated paid advertising budget, deposited into client ad wallet upon invoice collection'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center font-bold text-blue-700 tabular-nums">
+                          {adCredit.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                        </td>
+                        <td className="p-3 text-center font-black text-blue-900 tabular-nums">
+                          {adCredit.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                        </td>
+                        <td className="p-3 text-end">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                            {isAr ? 'رصيد إعلاني' : 'Ad Credit'}
+                          </span>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -672,12 +751,22 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                   <span className="font-bold text-emerald-700">{isAr ? 'معفاة / مشمولة' : '0% Included'}</span>
                 </div>
 
+                {adCredit > 0 && (
+                  <div className="flex justify-between text-xs text-blue-700 font-bold">
+                    <span className="flex items-center gap-1">
+                      <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{isAr ? 'الرصيد الإعلاني الممول المضاف:' : 'Added Ad Spend Credit:'}</span>
+                    </span>
+                    <span className="tabular-nums font-black">+{adCredit.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}</span>
+                  </div>
+                )}
+
                 <div className="pt-2 border-t border-slate-300 flex justify-between items-baseline">
                   <span className="text-sm font-black text-slate-950">
                     {isAr ? 'الإجمالي المستحق:' : 'Total Amount Due:'}
                   </span>
                   <span className="text-xl sm:text-2xl font-black text-blue-700 tabular-nums">
-                    {budget}
+                    {numericGrandTotal.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 font-medium">

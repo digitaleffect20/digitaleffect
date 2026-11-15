@@ -178,6 +178,7 @@ export const CaseStudyMediaManager: React.FC<CaseStudyMediaManagerProps> = ({
       'cs-b2c-binaryracks': 'binaryracks-case-study',
       'cs-b2b-bsizia': 'bsizia-case-study',
       'cs-b2c-penguin': 'penguin-case-study',
+      'cs-b2c-penguin-web': 'penguin-web-case-study',
       'cs-med-ipt': 'ipt-case-study',
     };
     return map[id] || null;

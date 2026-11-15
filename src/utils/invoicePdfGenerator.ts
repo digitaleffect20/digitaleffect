@@ -13,6 +13,7 @@ export interface GenerateInvoicePdfOptions {
     stories: number;
   };
   totalCost?: string;
+  adCreditAmount?: number;
   billingCycle?: Inquiry['billingCycle'];
   contractStartDate?: string;
   renewalDate?: string;
@@ -32,11 +33,19 @@ export async function generateClientInvoicePdf(
     client,
     packageName = client.packageName || (options.isAr !== false ? 'باقة تسويق رقمي مخصصة' : 'Custom Digital Marketing Package'),
     totalCost = client.budget || (options.isAr !== false ? '15,000 ج.م' : '15,000 EGP'),
+    adCreditAmount = options.adCreditAmount ?? client.pendingInvoiceAdCredit ?? 0,
     billingCycle = client.billingCycle || 'monthly',
     contractStartDate = client.contractStartDate || client.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
     renewalDate = client.renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     isAr = true,
   } = options;
+
+  // Calculate numeric grand total including ad credit
+  const numericRetainer = parseInt(totalCost.replace(/\D/g, ''), 10) || 0;
+  const grandTotalNumeric = numericRetainer + (adCreditAmount || 0);
+  const finalGrandTotalStr = grandTotalNumeric > 0 
+    ? `${grandTotalNumeric.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
+    : totalCost;
 
   // Resolve deliverables count
   const resolvedTargets = options.deliverables
@@ -248,7 +257,7 @@ export async function generateClientInvoicePdf(
               </td>
             </tr>
 
-            <tr style="border-bottom: 2px solid #cbd5e1;">
+            <tr style="border-bottom: ${adCreditAmount > 0 ? '1px solid #e2e8f0' : '2px solid #cbd5e1'};">
               <td style="padding: 10px 12px; font-weight: 800; color: #0f172a;">
                 📊 ${isAr ? 'التقارير التحليلية وجلسات المتابعة' : 'Monthly Performance Analytics'}
               </td>
@@ -262,24 +271,49 @@ export async function generateClientInvoicePdf(
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dcfce7; color: #166534; font-weight: 800; font-size: 9.5px;">${isAr ? 'مشمول' : 'Included'}</span>
               </td>
             </tr>
+
+            ${adCreditAmount > 0 ? `
+            <tr style="border-bottom: 2px solid #2563eb; background-color: #eff6ff;">
+              <td style="padding: 10px 12px; font-weight: 800; color: #1e3a8a;">
+                💳 ${isAr ? 'شحن رصيد إعلاني ممول (Ad Spend Budget)' : 'Funded Ad Campaign Spend Budget'}
+              </td>
+              <td style="padding: 10px 12px; color: #1e40af;">
+                ${isAr ? 'ميزانية إعلانية مدفوعة ومخصصة بالكامل لحملات العميل الممولة (Meta / TikTok / Google) تُودع في المحفظة فور التحصيل' : '100% dedicated paid advertising campaign budget, deposited into client ad wallet upon payment'}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 900; color: #2563eb;">
+                ${adCreditAmount.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}
+              </td>
+              <td style="padding: 10px 12px; text-align: center;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dbeafe; color: #1e40af; font-weight: 800; font-size: 9.5px;">${isAr ? 'رصيد إعلاني' : 'Ad Credit'}</span>
+              </td>
+            </tr>
+            ` : ''}
           </tbody>
         </table>
       </div>
 
       <!-- Financial Total Box -->
       <div style="display: flex; justify-content: flex-end; margin-top: 18px;">
-        <div style="width: 290px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; font-size: 11px;">
+        <div style="width: 310px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; font-size: 11px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #64748b;">
             <span>${isAr ? 'قيمة باقة التسويق الرقمي:' : 'Package Subtotal:'}</span>
             <span style="font-weight: 700; color: #0f172a;">${totalCost}</span>
           </div>
+
+          ${adCreditAmount > 0 ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #1d4ed8; font-weight: 800;">
+            <span>${isAr ? 'الرصيد الإعلاني الممول المضاف:' : 'Added Ad Spend Credit:'}</span>
+            <span>+${adCreditAmount.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}</span>
+          </div>
+          ` : ''}
+
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #64748b;">
             <span>${isAr ? 'الضرائب ومصاريف الإشراف:' : 'Taxes & Management:'}</span>
             <span style="font-weight: 700; color: #16a34a;">${isAr ? 'مشمولة بالكامل' : '0.00 (Included)'}</span>
           </div>
           <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 2px solid #0f172a; font-weight: 900; font-size: 13px; color: #0f172a;">
             <span>${isAr ? 'المبلغ الإجمالي المستحق:' : 'Total Amount Due:'}</span>
-            <span style="color: #2563eb;">${totalCost}</span>
+            <span style="color: #2563eb;">${finalGrandTotalStr}</span>
           </div>
         </div>
       </div>

@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 
@@ -18,13 +19,70 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 const DATA_STORE_PATH = path.resolve(__dirname, 'data-store.json');
+const UPLOADS_DIR = path.resolve(__dirname, 'public', 'assets', 'uploads');
+
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Serve uploaded media directly in both dev and production
+app.use('/assets/uploads', express.static(UPLOADS_DIR));
+
+function offloadDataUrls<T>(input: T): { data: T; changed: boolean } {
+  let changed = false;
+
+  const walk = (val: any): any => {
+    if (typeof val === 'string' && val.startsWith('data:')) {
+      const match = val.match(/^data:(image|video)\/([a-zA-Z0-9.+-]+);base64,(.+)$/);
+      if (match && match[3].length > 2048) {
+        try {
+          let ext = match[2].toLowerCase().replace('jpeg', 'jpg').replace('svg+xml', 'svg');
+          if (ext.includes('quicktime')) ext = 'mov';
+          const buffer = Buffer.from(match[3], 'base64');
+          const hash = crypto.createHash('sha1').update(buffer).digest('hex').slice(0, 16);
+          const filename = `media-${hash}.${ext}`;
+          const filePath = path.join(UPLOADS_DIR, filename);
+          if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, buffer);
+          }
+          changed = true;
+          return `/assets/uploads/${filename}`;
+        } catch (err) {
+          console.warn('Failed to offload data URL:', err);
+          return val;
+        }
+      }
+      return val;
+    }
+    if (Array.isArray(val)) {
+      return val.map(walk);
+    }
+    if (val && typeof val === 'object') {
+      const out: Record<string, any> = {};
+      for (const key of Object.keys(val)) {
+        out[key] = walk(val[key]);
+      }
+      return out;
+    }
+    return val;
+  };
+
+  return { data: walk(input), changed };
+}
 
 // Endpoint: Get persisted agency data (case studies, packages, etc.)
 app.get('/api/agency-data', (_req, res) => {
   try {
     if (fs.existsSync(DATA_STORE_PATH)) {
       const content = fs.readFileSync(DATA_STORE_PATH, 'utf-8');
-      return res.json(JSON.parse(content));
+      const parsed = JSON.parse(content);
+      const { data: cleaned, changed } = offloadDataUrls(parsed);
+      if (changed) {
+        try {
+          fs.writeFileSync(DATA_STORE_PATH, JSON.stringify(cleaned, null, 2), 'utf-8');
+        } catch {}
+      }
+      return res.json(cleaned);
     }
   } catch (err) {
     console.warn('Error reading data-store.json:', err);
@@ -35,11 +93,62 @@ app.get('/api/agency-data', (_req, res) => {
 // Endpoint: Save / update persisted agency data on the server
 app.post('/api/agency-data', (req, res) => {
   try {
-    const payload = req.body;
-    if (!payload || !payload.caseStudies) {
+    let payload = req.body;
+    if (!payload || !payload.caseStudies || !Array.isArray(payload.caseStudies)) {
       return res.status(400).json({ error: 'Invalid payload structure' });
     }
-    fs.writeFileSync(DATA_STORE_PATH, JSON.stringify(payload, null, 2), 'utf-8');
+    // Safeguard canonical case studies: If existing store has canonical studies and incoming doesn't, preserve them
+    if (fs.existsSync(DATA_STORE_PATH)) {
+      try {
+        const existing = JSON.parse(fs.readFileSync(DATA_STORE_PATH, 'utf-8'));
+        const existingAgu = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-agu');
+        if (existingAgu && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-agu')) {
+          payload.caseStudies.splice(1, 0, existingAgu);
+        }
+        const existingPremium = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-premium');
+        if (existingPremium && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-premium')) {
+          payload.caseStudies.splice(2, 0, existingPremium);
+        }
+        const existingBp = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-business-partner');
+        if (existingBp && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-business-partner')) {
+          payload.caseStudies.splice(3, 0, existingBp);
+        }
+        const existingOverview = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-overview');
+        if (existingOverview && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-overview')) {
+          payload.caseStudies.splice(4, 0, existingOverview);
+        }
+        const existingOro = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-oro');
+        if (existingOro && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-oro')) {
+          payload.caseStudies.splice(5, 0, existingOro);
+        }
+        const existingAfro = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-afro-energy');
+        if (existingAfro && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-afro-energy')) {
+          payload.caseStudies.splice(6, 0, existingAfro);
+        }
+        const existingSadko = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-sadko');
+        if (existingSadko && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-sadko')) {
+          payload.caseStudies.splice(7, 0, existingSadko);
+        }
+        const existingUfar = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-ufar');
+        if (existingUfar && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-ufar')) {
+          payload.caseStudies.splice(8, 0, existingUfar);
+        }
+        const existingSiltalId = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-siltal-identity');
+        if (existingSiltalId && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-siltal-identity')) {
+          payload.caseStudies.splice(9, 0, existingSiltalId);
+        }
+        const existingBilton = existing.caseStudies?.find((c: any) => c.id === 'cs-b2b-bilton');
+        if (existingBilton && !payload.caseStudies.some((c: any) => c.id === 'cs-b2b-bilton')) {
+          payload.caseStudies.splice(10, 0, existingBilton);
+        }
+        const existingPenguinWeb = existing.caseStudies?.find((c: any) => c.id === 'cs-b2c-penguin-web');
+        if (existingPenguinWeb && !payload.caseStudies.some((c: any) => c.id === 'cs-b2c-penguin-web')) {
+          payload.caseStudies.splice(11, 0, existingPenguinWeb);
+        }
+      } catch {}
+    }
+    const { data: cleaned } = offloadDataUrls(payload);
+    fs.writeFileSync(DATA_STORE_PATH, JSON.stringify(cleaned, null, 2), 'utf-8');
     res.json({ success: true, message: 'Agency data persisted to server successfully' });
   } catch (err: any) {
     console.error('Error saving data-store.json:', err);

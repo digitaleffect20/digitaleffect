@@ -406,7 +406,31 @@ export const B2BPage: React.FC = () => {
               return (
                 <div
                   key={study.id}
-                  onClick={() => setSelectedCaseStudy(study)}
+                  onClick={() => {
+                    if (study.id === 'cs-b2b-agu') {
+                      setCurrentPage('agu-case-study');
+                    } else if (study.id === 'cs-b2b-premium') {
+                      setCurrentPage('premium-case-study');
+                    } else if (study.id === 'cs-b2b-business-partner') {
+                      setCurrentPage('business-partner-case-study');
+                    } else if (study.id === 'cs-b2b-overview') {
+                      setCurrentPage('overview-case-study');
+                    } else if (study.id === 'cs-b2b-oro') {
+                      setCurrentPage('oro-case-study');
+                    } else if (study.id === 'cs-b2b-afro-energy') {
+                      setCurrentPage('afro-energy-case-study');
+                    } else if (study.id === 'cs-b2b-sadko') {
+                      setCurrentPage('sadko-case-study');
+                    } else if (study.id === 'cs-b2b-ufar') {
+                      setCurrentPage('ufar-case-study');
+                    } else if (study.id === 'cs-b2b-siltal-identity') {
+                      setCurrentPage('siltal-identity-case-study');
+                    } else if (study.id === 'cs-b2b-bilton') {
+                      setCurrentPage('bilton-case-study');
+                    } else {
+                      setSelectedCaseStudy(study);
+                    }
+                  }}
                   className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-sky-300 transition-all p-6 sm:p-8 flex flex-col justify-between text-start cursor-pointer group"
                 >
                   <div className="space-y-4">

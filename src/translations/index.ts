@@ -4,11 +4,12 @@ export const TRANSLATIONS = {
   ar: {
     nav: {
       home: 'الرئيسية',
+      sectors: 'قطاعات الأعمال',
       b2b: 'قطاع B2B (الشركات)',
       b2c: 'قطاع B2C (التجزئة)',
       medical: 'القطاع الطبي (Medical)',
-      caseStudies: 'دراسات الحالة',
-      about: 'عن إيجنسي إفكت',
+      caseStudies: 'سابقة الأعمال',
+      about: 'من نحن',
       adminCms: 'إدارة المحتوى والعروض',
       bookCall: 'طلب استشارة مجانية',
     },
@@ -145,11 +146,12 @@ export const TRANSLATIONS = {
   en: {
     nav: {
       home: 'Home',
+      sectors: 'Business Sectors',
       b2b: 'B2B Enterprise',
       b2c: 'B2C & E-Com',
       medical: 'Medical Sector',
-      caseStudies: 'Case Studies',
-      about: 'About Agency',
+      caseStudies: 'Portfolio',
+      about: 'About Us',
       adminCms: 'CMS & Offers',
       bookCall: 'Book Strategy Call',
     },

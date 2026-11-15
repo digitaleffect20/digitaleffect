@@ -1,0 +1,3052 @@
+{
+  "agencyInfo": {
+    "name": "Digital Effect",
+    "nameEn": "Digital Effect",
+    "foundedYears": 12,
+    "experienceYears": 20,
+    "phone": "01505000349",
+    "email": "Sales@digitaleffect.net",
+    "whatsapp": "201505000349",
+    "address": "العاشر من رمضان - مصر",
+    "addressEn": "10th of Ramadan City - Egypt"
+  },
+  "banner": {
+    "enabled": true,
+    "tag": "عرض خاص",
+    "tagEn": "Special Offer",
+    "text": "وفر حتى ١٧,٧٠٠ ج.م عند الاشتراك الربع سنوي في باقات القطاع الطبي، وخصومات حصرية على باقات B2C و B2B",
+    "textEn": "Save up to 17,700 EGP on quarterly medical retainers, with exclusive savings across B2C & B2B packages",
+    "linkText": "احجز باقتك الآن",
+    "linkTextEn": "Book Your Package Now"
+  },
+  "caseStudies": [
+    {
+      "id": "cs-med-ipt",
+      "thumbnailUrl": "/assets/portfolio_crops/card_ipt.png",
+      "title": "دراسة حالة مركز IPT للعلاج الطبيعي — من مجرد التواجد إلى بناء أثر رقمي حقيقي ومبيعات",
+      "titleEn": "IPT Physiotherapy Center — Scaled Digital Reach & Record Patient Inquiries",
+      "subtitle": "من مجرد التواجد على منصات التواصل إلى بناء أثر رقمي حقيقي وملموس",
+      "subtitleEn": "From simply being present on social media to building measurable digital impact",
+      "sector": "medical",
+      "client": "مركز IPT للعلاج الطبيعي",
+      "clientEn": "IPT Physiotherapy Center",
+      "industry": "العلاج الطبيعي والتأهيل الحركي",
+      "industryEn": "Physical Therapy & Movement Rehabilitation",
+      "duration": "٦ أشهر",
+      "durationEn": "6 Months",
+      "challenge": "كان المركز يعاني من مجرد تواجد تقليدي شكلي على منصات التواصل الاجتماعي، مع ضعف شديد في الوصول للمرضى المستهدفين، وغياب التفاعل الحقيقي أو القدرة على إبراز خبرات الأخصائيين وأجهزة التأهيل الحديثة لجذب حالات مؤهلة لعلاج آلام العمود الفقري والمفاصل.",
+      "challengeEn": "The center suffered from passive social media presence with near-zero patient resonance, failing to showcase specialized rehabilitation equipment and clinical expertise to prospective patients.",
+      "solution": "صياغة استراتيجية تسويق طبي تفاعلية: إنتاج فيديوهات ريلز تعليمية وتوعوية تشرح التمارين وأسباب الألم، تصاميم كاروسيل طبية جاذبة، إعلانات دقيقة على فيسبوك وإنستغرام تستهدف النطاق الجغرافي للمركز، مع بناء مسار تواصل فوري يحول المشاهدات إلى استشارات وحجوزات حقيقية.",
+      "solutionEn": "Engineered a high-impact medical social strategy: produced high-converting educational video reels, clinical carousel visuals, hyper-local Facebook & Instagram ad funnels, and an automated patient inquiry system converting views into physical clinic appointments.",
+      "metrics": [
+        {
+          "label": "مشاهدات الحملات التوعوية",
+          "labelEn": "Targeted Video Impressions",
+          "value": "2.4M+",
+          "hint": "وصول موجه بدقة لمرضى التأهيل الحركي",
+          "hintEn": "hyper-targeted audience reach"
+        },
+        {
+          "label": "نمو معدل التفاعل الإجمالي",
+          "labelEn": "Engagement Growth Rate",
+          "value": "+43,576%",
+          "hint": "قفزة استثنائية في تفاعل المتابعين",
+          "hintEn": "explosive patient interaction"
+        },
+        {
+          "label": "مشاهدات فيديو لأكثر من ٣ ثوانٍ",
+          "labelEn": "3-Sec Video Views",
+          "value": "654K+",
+          "hint": "نمو استثنائي بنسبة +120,522%",
+          "hintEn": "+120,522% video watch growth"
+        },
+        {
+          "label": "تفاعل حقيقي مع المحتوى",
+          "labelEn": "Total Patient Engagements",
+          "value": "73K+",
+          "hint": "١٢.٧ ألف إعجاب و ٢.٧ ألف تعليق",
+          "hintEn": "12.7K reactions & 2.7K inquiries"
+        }
+      ],
+      "services": [
+        "إدارة حسابات التواصل الطبي (Social Media Management)",
+        "إنتاج وتصوير مقاطع ريلز وفيديوهات توعوية طبية",
+        "إعلانات ميتا المدفوعة (Facebook & Instagram Ads)",
+        "كتابة المحتوى الطبي المتخصص وتصميم المنشورات",
+        "إدارة الردود وتحويل التفاعل لحجوزات عيادة مؤكدة"
+      ],
+      "servicesEn": [
+        "Medical Social Media Management",
+        "Clinical Reels & Educational Video Production",
+        "Targeted Meta Ads (Facebook & Instagram)",
+        "Specialized Medical Copywriting & Creative Design",
+        "Patient Inquiry & Appointment Conversion Funnel"
+      ],
+      "tags": [
+        "IPT Physiotherapy",
+        "Medical Reels",
+        "Meta Ads Growth",
+        "Patient Booking"
+      ],
+      "tagsEn": [
+        "IPT Physiotherapy",
+        "Medical Reels",
+        "Meta Ads Growth",
+        "Patient Booking"
+      ],
+      "image": "/assets/ipt/ipt_hero_banner.png",
+      "logoUrl": "/assets/ipt/ipt_logo.png",
+      "statsImage": "/assets/ipt/ipt_stats_banner.jpg",
+      "gallery": [
+        "/assets/ipt/ipt_hero_banner.png",
+        "/assets/ipt/ipt_stats_banner.jpg",
+        "/assets/ipt/ipt_creative_1.jpg",
+        "/assets/ipt/ipt_creative_2.jpg",
+        "/assets/ipt/ipt_creative_3.jpg",
+        "/assets/ipt/ipt_creative_4.jpg",
+        "/assets/uploads/media-38b4c6f27f484216.jpg",
+        "/assets/uploads/media-ee288c6667106db0.jpg",
+        "/assets/uploads/media-3e5b97e231bec552.jpg",
+        "/assets/uploads/media-b2f66e7cffa03c2b.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/ipt/",
+      "quote": {
+        "text": "النتائج تخطت كل توقعاتنا؛ تحولنا من صفحة هادئة إلى مركز طبي يثق به الآلاف، وأصبح جدول المواعيد في المركز ممتلئاً بفضل الحملات الاحترافية لديجيتال إفكت.",
+        "textEn": "The results surpassed all benchmarks. We transformed from an idle page into a vibrant regional physiotherapy destination with fully booked treatment rooms thanks to Digital Effect.",
+        "author": "إدارة مركز IPT",
+        "authorEn": "IPT Medical Administration",
+        "role": "مركز IPT للعلاج الطبيعي والتأهيل الحركي",
+        "roleEn": "IPT Physiotherapy & Movement Rehab"
+      },
+      "featured": true,
+      "customCreatives": [
+        {
+          "id": "ipt-c-1",
+          "url": "/assets/ipt/ipt_creative_1.jpg",
+          "title": "حملة التوعية بآلام العمود الفقري والعلاج الطبيعي التخصصي",
+          "titleEn": "Spine Rehabilitation & Specialized Physical Therapy Awareness",
+          "tag": "التوعية الطبية",
+          "tagEn": "Medical Education",
+          "desc": "منشورات طبية تشرح أسباب الانزلاق الغضروفي وتمارين التأهيل الحديثة بإشراف الأخصائيين المعتمدين.",
+          "descEn": "Educational clinical infographics illustrating disc herniation recovery and guided rehabilitation protocols."
+        },
+        {
+          "id": "ipt-c-2",
+          "url": "/assets/ipt/ipt_creative_2.jpg",
+          "title": "تصاميم توثيق نتائج المرضى والتحسن الحركي بعد جلسات العلاج",
+          "titleEn": "Clinical Outcomes & Mobility Improvement Patient Showcases",
+          "tag": "نتائج العلاج",
+          "tagEn": "Clinical Results",
+          "desc": "استعراض قصص نجاح حقيقية لمرضى استعادوا قدرتهم على الحركة الطبيعية بدون جراحة بفضل برامج المركز.",
+          "descEn": "Real patient mobility testimonials and non-surgical recovery journeys building deep community trust."
+        },
+        {
+          "id": "ipt-c-3",
+          "url": "/assets/ipt/ipt_creative_3.jpg",
+          "title": "إعلانات استهداف الحالات الطبية وحجز مواعيد الكشف والتقييم",
+          "titleEn": "Targeted Patient Booking Ads & Diagnostic Consultation Funnels",
+          "tag": "حجوزات العيادة",
+          "tagEn": "Patient Bookings",
+          "desc": "مسارات إعلانية مخصصة للمناطق الجغرافية المحيطة بالمركز لتسهيل حجز الجلسات التشخيصية والعلاجية.",
+          "descEn": "Hyper-local geographic ad funnels driving qualified appointment bookings for physiotherapy sessions."
+        },
+        {
+          "id": "ipt-c-4",
+          "url": "/assets/ipt/ipt_creative_4.jpg",
+          "title": "إبراز أحدث أجهزة العلاج بالموجات والليزر والتأهيل الرياضي",
+          "titleEn": "Advanced Laser, Shockwave & Sports Rehab Equipment Spotlight",
+          "tag": "الأجهزة الحديثة",
+          "tagEn": "Medical Technology",
+          "desc": "تسليط الضوء على تقنيات المركز المتطورة التي تسرع التعافي وتخفف الألم من الجلسة الأولى.",
+          "descEn": "Showcasing state-of-the-art shockwave and therapeutic laser technologies providing rapid pain relief."
+        },
+        {
+          "id": "cs-med-ipt-batch-1794051249265-0",
+          "url": "/assets/uploads/media-38b4c6f27f484216.jpg",
+          "title": "تصميم وخطة إعلانية استراتيجية — مركز IPT للعلاج الطبيعي",
+          "titleEn": "Strategic Ad Creative & Plan — مركز IPT للعلاج الطبيعي",
+          "tag": "خطة تسويقية",
+          "tagEn": "Marketing Plan",
+          "desc": "تصميم إعلاني وخطة تسويقية متكاملة لمشروع مركز IPT للعلاج الطبيعي تهدف لترسيخ المكانة السوقية وزيادة التحويل والمبيعات.",
+          "descEn": "Integrated ad creative and marketing plan asset for مركز IPT للعلاج الطبيعي designed to maximize conversions and brand authority.",
+          "type": "image"
+        },
+        {
+          "id": "cs-med-ipt-batch-1794051249265-1",
+          "url": "/assets/uploads/media-ee288c6667106db0.jpg",
+          "title": "مركز IPT: تخلص من آلامك واستعد جودة حياتك ونشاطك اليومي",
+          "titleEn": "IPT Center: Eliminate your pain and regain your quality of life",
+          "tag": "توعية طبية",
+          "tagEn": "Medical Awareness",
+          "desc": "يستهدف هذا الإعلان التوعوي العملاء الذين يعانون من آلام مزمنة تؤثر على أنشطتهم اليومية مثل النوم أو العمل أو الرياضة. يستخدم التصميم أسلوباً بصرياً يربط بين المظهر الخارجي الخالي من الألم وبين المعاناة الجسدية الداخلية لتحفيز المريض على طلب الاستشارة. يركز الإعلان بوضوح على حل المشكلة ويدعو لاتخاذ إجراء عبر أرقام التواصل في فروع المهندسين ومصر الجديدة.",
+          "descEn": "This awareness ad targets individuals suffering from chronic pain that disrupts daily activities like sleeping, working, or exercising. The design effectively contrasts an outward appearance of normalcy with hidden physical suffering to encourage patients to seek professional consultation. It focuses on offering a solution and provides a clear call to action through contact numbers for the Mohandessin and Heliopolis branches.",
+          "type": "image"
+        },
+        {
+          "id": "cs-med-ipt-batch-1794051249265-2",
+          "url": "/assets/uploads/media-3e5b97e231bec552.jpg",
+          "title": "تخلص من آلام القدم الصباحية مع مركز IPT للعلاج الطبيعي",
+          "titleEn": "Eliminate Morning Foot Pain with IPT Physical Therapy Center",
+          "tag": "توعية طبية",
+          "tagEn": "Medical Awareness",
+          "desc": "يستهدف هذا التصميم الإعلاني الأشخاص الذين يعانون من آلام القدم المزمنة عند الاستيقاظ، حيث يربط المشكلة بأهمية العلاج الطبيعي. يبرز التصميم بوضوح مراكز IPT كوسيلة فعالة لتشخيص وعلاج أسباب هذه الآلام، مع توفير أرقام التواصل لسهولة حجز المواعيد. يهدف الإعلان إلى بناء الثقة في المركز وتحويل المتابعين إلى مراجعين فعليين.",
+          "descEn": "This advertisement targets individuals suffering from chronic morning foot pain, effectively connecting the problem to the importance of physical therapy. The design highlights IPT Centers as a reliable solution for diagnosing and treating the root causes of such pain, while providing clear contact numbers to facilitate booking. The campaign aims to establish trust in the clinic and convert viewers into patients.",
+          "type": "image"
+        },
+        {
+          "id": "cs-med-ipt-batch-1794051249265-3",
+          "url": "/assets/uploads/media-b2f66e7cffa03c2b.jpg",
+          "title": "مركز IPT يقدم حلول علاجية مبتكرة لتصحيح المشي وتخفيف الآلام المزمنة",
+          "titleEn": "IPT Center offers innovative therapeutic solutions for gait correction and chronic pain relief",
+          "tag": "توعية طبية",
+          "tagEn": "Medical Awareness",
+          "desc": "تصميم إعلاني توعوي لمركز IPT للعلاج الطبيعي يستهدف الأفراد الذين يعانون من مشاكل في المشي نتيجة آلام خفية. يعتمد التصميم على رسوم توضيحية تشريحية لجذب الانتباه وتوضيح القيمة العلاجية، مما يعزز ثقة الجمهور ويحفزهم على التواصل لحجز استشارة. الهدف هو تحويل الوعي بالمشكلة إلى إجراء فعلي بزيارة المركز عبر توفير قنوات اتصال واضحة.",
+          "descEn": "An awareness-focused ad design for IPT Physical Therapy, targeting individuals experiencing gait changes due to underlying pain. The design utilizes anatomical illustrations to grab attention and highlight the therapeutic value, building audience trust and encouraging appointment bookings. The goal is to convert problem awareness into action by clearly displaying contact channels.",
+          "type": "image"
+        }
+      ]
+    },
+    {
+      "id": "cs-b2b-agu",
+      "thumbnailUrl": "/assets/case-studies/agu/hero.jpg",
+      "title": "دراسة حالة الاتحاد العربي الخليجي (AGU) — تصميم الهوية المؤسسية والمعايير البصرية لعملاق المقاولات والتجارة الدولية",
+      "titleEn": "Arab Gulf United Co. Ltd (AGU) — Complete Corporate Identity & Visual Brand Architecture",
+      "subtitle": "بناء هوية مؤسسية وبصرية رائدة تعكس القوة والشراكة العربية الخليجية وتطبق بانسجام على أسطول السيارات والمعدات الهندسية وأجنحة المعارض الدولية",
+      "subtitleEn": "Crafting a commanding corporate visual identity system reflecting regional engineering excellence, fleet branding, and high-tier exhibition presence",
+      "sector": "b2b",
+      "client": "شركة الاتحاد العربي الخليجي المحدودة (AGU)",
+      "clientEn": "Arab Gulf United Co. Ltd (AGU)",
+      "industry": "المقاولات الكبرى، الهندسة، التوريدات والتجارة الإقليمية",
+      "industryEn": "General Contracting, Heavy Engineering & Regional Trade",
+      "duration": "٣ أشهر (تصميم شامل وتطبيقات)",
+      "durationEn": "3 Months (Complete Identity & Rollout)",
+      "challenge": "احتاجت شركة الاتحاد العربي الخليجي (AGU) إلى هوية مؤسسية عصرية ومرنة تعكس حجم مشروعاتها الكبرى ومكانتها المرموقة في مصر ودول مجلس التعاون الخليجي، وتملك القدرة على الظهور بقوة وهيبة عبر كافة نقاط الاتصال الواقعية: من خوذات وزي مهندسي المواقع الميدانية إلى تجليد أسطول السيارات الفاخرة وأجنحة المعارض الاستثمارية والكتالوجات الرسمية.",
+      "challengeEn": "Arab Gulf United (AGU) required a prestigious corporate visual identity system worthy of its strategic infrastructure projects and Gulf partnerships, capable of seamless implementation across harsh field engineering environments, executive luxury fleets, international trade pavilions, and corporate investment portfolios.",
+      "solution": "صمم فريق ديجيتال إفكت منظومة هوية مؤسسية (Corporate Identity System) معمارية متقدمة: بناء شعار هندسي فريد يدمج حركية الدوائر المتدفقة التي ترمز للنمو الإقليمي والتكامل العربي، مع لوحة ألوان ملكية (Royal Navy & Cyan Blue)، ودليل معايير بصرية تفصيلي (Brand Guidelines Manual) يشمل بطاقات العمل، الزي الميداني للسلامة، تصميم جناح المعرض ثلاثي الأبعاد، وتجليد الأسطول.",
+      "solutionEn": "Digital Effect architected a full-spectrum Corporate Identity system: engineered an iconic logomark combining dynamic geometric droplets symbolizing regional expansion, selected an authoritative marine blue palette, and delivered a 60+ page Brand Guidelines Manual encompassing executive stationery, field safety apparel, 3D exhibition booth architecture, and vehicle fleet wraps.",
+      "metrics": [
+        {
+          "label": "تغطية نقاط الاتصال المؤسسية",
+          "labelEn": "Brand Touchpoints Coverage",
+          "value": "100%",
+          "hint": "من زي مهندسي المواقع وحتى أجنحة المعارض والأسطول",
+          "hintEn": "from field gear to expo pavilions"
+        },
+        {
+          "label": "تميز الحضور المؤسسي بالمعارض",
+          "labelEn": "Exhibition Brand Authority",
+          "value": "+450%",
+          "hint": "حضور بصري طاغٍ في المحافل الاستثمارية الدولية",
+          "hintEn": "unrivaled presence at regional expos"
+        },
+        {
+          "label": "اعتماد العروض الفنية والمناقصات",
+          "labelEn": "Tender & Proposal Win Rate",
+          "value": "+210%",
+          "hint": "ارتفاع معدلات قبول الملفات لدى كبرى الجهات",
+          "hintEn": "surge in institutional client confidence"
+        },
+        {
+          "label": "دليل معايير الهوية المتكامل",
+          "labelEn": "Brand Guidelines Scope",
+          "value": "60+ صفحة",
+          "hint": "كتيب معايير تفصيلي للألوان والخطوط والاستخدامات",
+          "hintEn": "comprehensive standards & usage manual"
+        }
+      ],
+      "services": [
+        "تصميم الهوية المؤسسية (Corporate Identity Design)",
+        "تصميم الشعار والشبكة الهندسية (Logo Grid & Geometry)",
+        "دليل معايير الهوية والعلامة التجارية (Brand Guidelines Manual)",
+        "تصميم المطبوعات والقرطاسية الفاخرة (Stationery & Collateral)",
+        "تصميم أجنحة المعارض ثلاثية الأبعاد (3D Exhibition Booth Design)",
+        "تجليد أسطول سيارات ومعدات الشركة (Fleet & Uniform Branding)",
+        "تصميم البروفايل والكتالوج المؤسسي (Company Profile & Catalogue)"
+      ],
+      "servicesEn": [
+        "Corporate Identity & Visual Branding",
+        "Logo Geometry & Construction Grid",
+        "Brand Guidelines & Standards Manual",
+        "Executive Stationery & Collateral Suite",
+        "3D Trade Show & Exhibition Booth Architecture",
+        "Fleet Livery & Site PPE Engineering Branding",
+        "Corporate Profile & Capabilities Catalogue"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "AGU",
+        "Arab Gulf United",
+        "تصميم الشعار",
+        "Brand Guidelines",
+        "B2B Enterprise"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "AGU",
+        "Arab Gulf United",
+        "Logo Design",
+        "Brand Guidelines",
+        "B2B Enterprise"
+      ],
+      "image": "/assets/case-studies/agu/hero.jpg",
+      "logoUrl": "/assets/case-studies/agu/hero.jpg",
+      "statsImage": "/assets/case-studies/agu/guidelines.png",
+      "gallery": [
+        "/assets/case-studies/agu/hero.jpg",
+        "/assets/case-studies/agu/guidelines.png",
+        "/assets/case-studies/agu/business-card.png",
+        "/assets/case-studies/agu/logo-grid.png",
+        "/assets/case-studies/agu/stationery.png",
+        "/assets/case-studies/agu/hard-hat-1.png",
+        "/assets/case-studies/agu/hard-hat-2.png",
+        "/assets/case-studies/agu/exhibition-booth.png",
+        "/assets/case-studies/agu/company-car.png",
+        "/assets/case-studies/agu/catalogue.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/agu/",
+      "quote": {
+        "text": "الهوية التي صممتها ديجيتال إفكت نقلت حضورنا المؤسسي إلى مستوى عالمي. أصبحت علامتنا التجارية تعكس بدقة هيبة مشروعاتنا وشراكاتنا في مصر والخليج، ولاقت إشادة واسعة في كل معرض دولي شاركنا فيه.",
+        "textEn": "The corporate identity designed by Digital Effect elevated our brand to global enterprise standards. It commands unmatched prestige across Egypt and the GCC, receiving exceptional feedback at international exhibitions.",
+        "author": "مجلس إدارة الاتحاد العربي الخليجي",
+        "authorEn": "Executive Board of AGU",
+        "role": "شركة الاتحاد العربي الخليجي المحدودة (AGU)",
+        "roleEn": "Arab Gulf United Co. Ltd"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-premium",
+      "thumbnailUrl": "/assets/case-studies/premium/hero-logo.png",
+      "title": "دراسة حالة بريميوم (Premium Machinery) — تصميم الهوية المؤسسية المتكاملة لرواد حلول التعبئة وماكينات الأغذية",
+      "titleEn": "Premium Machinery & Equipment — Full Corporate Identity & Industrial Brand Design",
+      "subtitle": "بناء هوية بصرية صناعية وهندسية مبتكرة تدمج مسار التروس والحركة الميكانيكية وتنعكس على كافة المطبوعات والمراسلات والكتالوج التعريفي",
+      "subtitleEn": "Architecting an industrial visual identity system embodying mechanical precision, conveyor geometry, and enterprise corporate collateral",
+      "sector": "b2b",
+      "client": "شركة بريميوم لمعدات وآلات التعبئة والتغليف (Premium Machinery & Equipment)",
+      "clientEn": "Premium Machinery & Equipment",
+      "industry": "ماكينات ومعدات الصناعات الغذائية والتعبئة والتغليف والتصنيع الدوائي",
+      "industryEn": "Food Machinery, Packaging Equipment & Industrial Engineering",
+      "duration": "شهران ونصف (تصميم وتطبيقات متكاملة)",
+      "durationEn": "2.5 Months (Design & Full Implementation)",
+      "challenge": "انطلقت شركة بريميوم في عام 2020 كشركة هندسية متخصصة في خدمات وماكينات التعبئة والتغليف والصناعات الغذائية، واحتاجت إلى بناء هوية مؤسسية قوية ورصينة تميزها عن المنافسين وتعكس تخصصها التكنولوجي الدقيق وشراكاتها الدولية، مع تصميم منظومة متكاملة من المطبوعات الرسمية والمراسلات والكتالوجات الترويجية لخطوط الإنتاج.",
+      "challengeEn": "Founded in 2020, Premium Machinery & Equipment grew rapidly into a top-tier supplier of food machinery and packaging automation. They required a distinguished industrial corporate identity that projects engineering precision, international supplier partnerships, and comprehensive corporate collateral for major factory tenders and technical clients.",
+      "solution": "ابتكر فريق ديجيتال إفكت هوية بصرية ميكانيكية استثنائية: دمج شكل حرف (P) مع مسار حركة تروس صناعية وسير ناقل يرمز للإنتاجية والاستمرارية، مع اختيار لوحة ألوان صناعية عصرية من الرمادي الداكن الحاد (Industrial Slate Navy) والأحمر القرمزي الميكانيكي (Mechanical Crimson Red)، وتطوير حزمة متكاملة من كروت العمل، أظرف المراسلات، فولدرات العروض الفنية، والكتالوج التعريفي الشامل لخطوط الإنتاج.",
+      "solutionEn": "Digital Effect developed a high-impact mechanical brand identity: transforming the letter \"P\" into an integrated industrial gear and conveyor track symbolizing automation and non-stop productivity. Paired with a bold Industrial Slate and Crimson Red palette, we delivered a comprehensive corporate suite including executive business cards, technical proposal folders, stationery, correspondence envelopes, and an in-depth product catalogue.",
+      "metrics": [
+        {
+          "label": "تكامل المطبوعات والمراسلات",
+          "labelEn": "Collateral Consistency",
+          "value": "100%",
+          "hint": "تناسق كامل بين الكروت والفولدر والكتالوج والخطابات",
+          "hintEn": "complete uniformity across corporate suite"
+        },
+        {
+          "label": "زيادة ثقة مصانع الأغذية",
+          "labelEn": "Industrial Client Trust",
+          "value": "+340%",
+          "hint": "انطباع احترافي قوي لدى أصحاب المصانع ومديري الإنتاج",
+          "hintEn": "authoritative impression with plant directors"
+        },
+        {
+          "label": "سرعة توقيع عقود التوريد",
+          "labelEn": "Contract Closing Speed",
+          "value": "+180%",
+          "hint": "قبول قياسي للملفات الفنية والعروض المقدمة",
+          "hintEn": "expedited acceptance for engineering tenders"
+        },
+        {
+          "label": "دليل المعايير والبروفايل الهندسي",
+          "labelEn": "Catalog & Guidelines Scope",
+          "value": "40+ صفحة",
+          "hint": "كتالوج متكامل لخطوط التعبئة ودليل استخدام الهوية",
+          "hintEn": "full packaging catalogue and usage manual"
+        }
+      ],
+      "services": [
+        "تصميم الهوية المؤسسية الصناعية (Industrial Corporate Identity)",
+        "تصميم الشعار والرمز الميكانيكي المبتكر (Logomark & Gear Iconography)",
+        "تصميم وتطوير الكتالوج الفني وبروفايل الشركة (Technical Catalogue & Profile)",
+        "تصميم منظومة المطبوعات والمراسلات الرسمية (Executive Stationery & Envelopes)",
+        "تصميم فولدر العروض الفنية والتعاقدات (Corporate Proposals Folder)",
+        "بطاقات العمل الذكية للمهندسين والمديرين (Business Cards & Direct QR)"
+      ],
+      "servicesEn": [
+        "Industrial Corporate Identity Design",
+        "Innovative Gear & Conveyor Logomark",
+        "Technical Product Catalogue & Corporate Profile",
+        "Executive Stationery & Envelopes Suite",
+        "Corporate Proposal & Contract Presentation Folders",
+        "Smart QR Executive Business Cards"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "Premium",
+        "Premium Machinery",
+        "تصميم الشعار",
+        "Industrial B2B",
+        "كتالوج وماكينات"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "Premium",
+        "Premium Machinery",
+        "Logo Design",
+        "Industrial B2B",
+        "Equipment & Packaging"
+      ],
+      "image": "/assets/case-studies/premium/hero-logo.png",
+      "logoUrl": "/assets/case-studies/premium/hero-logo.png",
+      "statsImage": "/assets/case-studies/premium/catalog.png",
+      "gallery": [
+        "/assets/case-studies/premium/hero-logo.png",
+        "/assets/case-studies/premium/business-card.png",
+        "/assets/case-studies/premium/folder.png",
+        "/assets/case-studies/premium/stationery.png",
+        "/assets/case-studies/premium/envelopes.jpg",
+        "/assets/case-studies/premium/catalog.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/premium/",
+      "quote": {
+        "text": "تصميم الهوية والكتالوج من ديجيتال إفكت أعطى شركتنا وزناً وثقة كبرى أمام كبار مصنعي الأغذية والأدوية. الأيقونة الميكانيكية عكست جوهر عملنا بدقة فائقة والمطبوعات تركت انطباعاً مبهراً في كافة الاجتماعات.",
+        "textEn": "The corporate identity and product catalogue developed by Digital Effect gave us immense authority in front of major food and pharmaceutical manufacturers. The mechanical icon perfectly captured our core engineering excellence.",
+        "author": "الإدارة التنفيذية — بريميوم للماكينات",
+        "authorEn": "Executive Management — Premium Machinery",
+        "role": "شركة بريميوم للمعدات والآلات الصناعية",
+        "roleEn": "Premium Machinery & Equipment"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-business-partner",
+      "thumbnailUrl": "/assets/case-studies/business-partner/hero-logo.png",
+      "title": "دراسة حالة بيزنس بارتنرز (Business Partners) — تصميم الهوية المؤسسية الراقية للاستشارات وحلول الأعمال الدولية",
+      "titleEn": "Business Partners — Corporate Identity & Global Management Consulting Brand Design",
+      "subtitle": "بناء هوية بصرية فاخرة تعكس الثقة والشراكة الاستراتيجية من خلال مونوغرام الحروف المتداخلة (bp) ومنظومة مطبوعات ومراسلات استشارية رفيعة المستوى",
+      "subtitleEn": "Crafting an elite consulting visual identity centered around continuous interlocking monogram geometry, luxury stationery, and executive presentation folders",
+      "sector": "b2b",
+      "client": "شركة بيزنس بارتنرز للاستشارات وتطوير الأعمال (Business Partners)",
+      "clientEn": "Business Partners Management & Consulting",
+      "industry": "الاستشارات الإدارية، تطوير الأعمال، والحلول الاستثمارية الدولية",
+      "industryEn": "Management Consulting, Strategic Advisory & Business Development",
+      "duration": "شهران (تصميم الهوية وتطبيقات المطبوعات)",
+      "durationEn": "2 Months (Identity Architecture & Collateral Rollout)",
+      "challenge": "احتاجت شركة بيزنس بارتنرز (بوسطن / دولياً) إلى هوية مؤسسية مرموقة تعكس الشراكة الاستراتيجية والثقة المالية والاستشارية لكبرى المؤسسات ورواد الأعمال، مع تصميم هوية تجمع بين الحداثة والوقار وتبرز في العقود الرسمية والمجلدات التنفيذية وكروت العمل.",
+      "challengeEn": "Business Partners required a distinguished, high-credibility corporate visual identity capable of projecting strategic authority, financial trust, and executive partnership for institutional corporate clients and global investors across the US and international markets.",
+      "solution": "ابتكرت ديجيتال إفكت منظومة هوية بصرية أيقونية تعتمد على مونوغرام متصل يدمج الحرفين (b) و(p) بخطوط انسيابية مستمرة ترمز للشراكة والنمو الدائم، مع لوحة ألوان ملكية من الكحلي الليلي الفاخر (Midnight Navy) والذهب الدافئ (Warm Gold)، وتطوير حزمة متكاملة من كروت العمل التنفيذية، أظرف المراسلات، فولدرات العروض، والأوراق الرسمية المائية.",
+      "solutionEn": "Digital Effect engineered a minimalist, high-end visual system centered around an interlocking continuous-line monogram of lowercase \"b\" and \"p\", reflecting seamless partnership and mutual expansion. Supported by a prestigious Midnight Navy and Warm Gold palette, we delivered complete executive stationery, tender presentation folders, and corporate correspondence suites.",
+      "metrics": [
+        {
+          "label": "انطباع الثقة والمصداقية",
+          "labelEn": "Institutional Trust Rating",
+          "value": "+380%",
+          "hint": "انطباع مهيب لدى مجالس الإدارة والمستثمرين",
+          "hintEn": "boardroom authority and partner confidence"
+        },
+        {
+          "label": "تكامل المطبوعات الرسمية",
+          "labelEn": "Collateral Uniformity",
+          "value": "100%",
+          "hint": "تناغم تام بين المجلدات والكروت والمراسلات",
+          "hintEn": "cohesive corporate collateral ecosystem"
+        },
+        {
+          "label": "قبول العروض الاستشارية",
+          "labelEn": "Advisory Proposal Acceptance",
+          "value": "+195%",
+          "hint": "نمو ملحوظ في إبرام صفقات التطوير والاستشارات",
+          "hintEn": "surge in high-ticket consulting wins"
+        },
+        {
+          "label": "دليل المعايير والمونوغرام",
+          "labelEn": "Monogram Guidelines Scope",
+          "value": "35+ صفحة",
+          "hint": "كتيب معايير تفصيلي للأبعاد وتطبيقات الهوية",
+          "hintEn": "detailed identity geometry & usage rules"
+        }
+      ],
+      "services": [
+        "تصميم الهوية المؤسسية والاستشارية (Consulting Corporate Identity)",
+        "تصميم المونوغرام الهندسي المتصل (Interlocking Monogram b+p)",
+        "تصميم فولدرات الملفات والعروض التنفيذية (Executive Presentation Folders)",
+        "تصميم منظومة المراسلات والخطابات الرسمية (Corporate Letterhead & Stationery)",
+        "بطاقات العمل التنفيذية لكبار المستشارين (Executive Consultant Business Cards)",
+        "أظرف المراسلات والمستندات السرية (Confidential Document Envelopes)"
+      ],
+      "servicesEn": [
+        "Management Consulting Corporate Identity",
+        "Continuous Interlocking Monogram (b+p)",
+        "Executive Proposal & Agreement Presentation Folders",
+        "Official Corporate Letterhead & Document Suite",
+        "Executive Consultant Business Cards",
+        "Confidential Advisory Mailing Envelopes"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "Business Partners",
+        "بيزنس بارتنرز",
+        "استشارات أعمال",
+        "Monogram Design",
+        "B2B Consulting"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "Business Partners",
+        "Management Consulting",
+        "Monogram Design",
+        "B2B Enterprise",
+        "Executive Stationery"
+      ],
+      "image": "/assets/case-studies/business-partner/hero-logo.png",
+      "logoUrl": "/assets/case-studies/business-partner/hero-logo.png",
+      "statsImage": "/assets/case-studies/business-partner/folder.png",
+      "gallery": [
+        "/assets/case-studies/business-partner/hero-logo.png",
+        "/assets/case-studies/business-partner/business-card.png",
+        "/assets/case-studies/business-partner/folder.png",
+        "/assets/case-studies/business-partner/stationery.png",
+        "/assets/case-studies/business-partner/envelopes.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/business-partner/",
+      "quote": {
+        "text": "الهوية التي صممتها ديجيتال إفكت لشركتنا جسدت معنى \"الشراكة\" بدقة وجمال استثنائي. المونوغرام الانسيابي ومزيج الكحلي والذهب منح مستنداتنا وعروضنا الاستشارية هيبة غير مسبوقة في اجتماعات مجالس الإدارة.",
+        "textEn": "The identity created by Digital Effect captured the true essence of strategic partnership. The fluid monogram and navy-gold harmony bring undeniable prestige to our board-level presentations and international advisory files.",
+        "author": "فريق الشركاء التنفيذيين — بيزنس بارتنرز",
+        "authorEn": "Executive Partners — Business Partners",
+        "role": "بيزنس بارتنرز للاستشارات وتطوير الأعمال",
+        "roleEn": "Business Partners Management & Consulting"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-overview",
+      "thumbnailUrl": "/assets/case-studies/overview/hero-logo.png",
+      "title": "دراسة حالة أوفرفيو لأعمال الديكور (OVERVIEW For decoration work) — تصميم الهوية المؤسسية الراقية بالرياض",
+      "titleEn": "OVERVIEW For Decoration Work — Architectural Corporate Identity & Executive Brand Architecture",
+      "subtitle": "بناء هوية بصرية معمارية مبتكرة تدمج رمز العين البصرية متعددة الأطياف مع المقطع المثمن للجوهرة الهندسية، وتنعكس على كافة المطبوعات والملفات التنفيذية بالمملكة",
+      "subtitleEn": "Architecting an iconic spectral-eye corporate identity with faceted octagonal iris geometry and refined executive stationery for Riyadh’s premier interior decor firm",
+      "sector": "b2b",
+      "client": "شركة أوفرفيو لأعمال الديكور (OVERVIEW For decoration work)",
+      "clientEn": "OVERVIEW For Decoration Work",
+      "industry": "الديكور والتصميم الداخلي، الستائر المعمارية، وتجهيز المشاريع الفاخرة بالرياض",
+      "industryEn": "Architectural Decor, Smart Shading Systems & Interior Fit-Out (Riyadh, KSA)",
+      "duration": "شهران (تصميم الهوية وتطبيقات المطبوعات)",
+      "durationEn": "2 Months (Identity System & Stationery Rollout)",
+      "challenge": "انطلقت أوفرفيو لأعمال الديكور بالرياض كشريك معتمد لكبرى العلامات العالمية في أنظمة التظليل والستائر والأقمشة الهندسية (مثل Somfy و Serge Ferrari و Alkenz)، واحتاجت إلى هوية مؤسسية معمارية تعبر عن دقة الرؤية الهندسية وتعدد الخامات اللونية وتمنح ملفاتها وعقودها في السوق السعودي هيبة بصرية فائقة.",
+      "challengeEn": "Operating from Riyadh as an authorized partner for global architectural brands including Somfy, Serge Ferrari, Alkenz, Nevalu, and Standard Textile, OVERVIEW needed an upscale corporate identity expressing clear visual foresight, material richness, and institutional credibility across Saudi commercial and hospitality tenders.",
+      "solution": "صمم فريق ديجيتال إفكت منظومة هوية بصرية معمارية متكاملة: بناء أيقونة العين البصرية متعددة الأطياف اللونية (الأزرق المعماري، الأخضر الزمردي، والذهبي العنبري) التي تحيط بمقطع مثمن للجوهرة الهندسية يشكل حرف (O)، مع حزمة مطبوعات تنفيذية تشمل البطاقات الشخصية، الفولدرات الرسمية المدمجة بأسماء الشركاء العالميين، الورق الرسمي، وأظرف المراسلات المطبوعة.",
+      "solutionEn": "Digital Effect created an authoritative architectural brand identity featuring the stylized Spectral Eye symbol with layered azure, emerald mint, and amber arcs surrounding a faceted octagonal iris letter \"O\", deployed seamlessly across metallic-grade business cards, global-partner presentation folders, laser-clean letterheads, and executive correspondence envelopes.",
+      "metrics": [
+        {
+          "label": "تكامل نقاط الاتصال والمطبوعات",
+          "labelEn": "Collateral System Uniformity",
+          "value": "100%",
+          "hint": "انسجام كامل بين الشعار والبطاقات والفولدر والمراسلات",
+          "hintEn": "total visual alignment across print assets"
+        },
+        {
+          "label": "ثقة مشاريع الضيافة والشركات",
+          "labelEn": "Commercial Project Authority",
+          "value": "+320%",
+          "hint": "تعزيز الحضور المؤسسي في مناقصات الرياض والمملكة",
+          "hintEn": "elevated presence in Riyadh commercial tenders"
+        },
+        {
+          "label": "قبول ملفات الاعتماد والمقاولات",
+          "labelEn": "Vendor Qualification Rate",
+          "value": "+185%",
+          "hint": "انطباع احترافي رفيع أمام المكاتب الاستشارية والمطورين",
+          "hintEn": "higher approval with architectural consultants"
+        },
+        {
+          "label": "تكامل الشركاء الدوليين بالملف",
+          "labelEn": "Global Partner Showcase",
+          "value": "5 علامات",
+          "hint": "إبراز شراكات Somfy و Serge Ferrari و Alkenz بفولدر الشركة",
+          "hintEn": "harmonized presentation of 5 global partners"
+        }
+      ],
+      "services": [
+        "تصميم الهوية المؤسسية المعمارية (Architectural Corporate Identity)",
+        "تصميم أيقونة العين الطيفية والجوهرة المثمنة (Spectral Eye Logomark)",
+        "تصميم فولدرات العروض والاعتماد التجاري (Partner Presentation Folders)",
+        "تصميم منظومة المراسلات والأوراق الرسمية (Official Letterhead & Envelopes)",
+        "بطاقات العمل التنفيذية للإدارة بالرياض (Riyadh Executive Business Cards)",
+        "دليل الألوان الطيفية والتطبيقات المؤسسية (Spectrum Palette Guidelines)"
+      ],
+      "servicesEn": [
+        "Architectural Corporate Identity Design",
+        "Spectral Eye & Octagonal Iris Logomark",
+        "Partner-Branded Presentation Folders",
+        "Official Letterhead & Envelope Stationery Suite",
+        "Riyadh Executive Business Cards",
+        "Spectrum Color & Brand Usage Guidelines"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "OVERVIEW",
+        "أوفرفيو",
+        "تصميم داخلي وديكور",
+        "Riyadh KSA",
+        "B2B Architecture"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "OVERVIEW",
+        "Interior Decor",
+        "Architectural Shading",
+        "Riyadh KSA",
+        "Stationery Design"
+      ],
+      "image": "/assets/case-studies/overview/hero-logo.png",
+      "logoUrl": "/assets/case-studies/overview/hero-logo.png",
+      "statsImage": "/assets/case-studies/overview/folder.png",
+      "gallery": [
+        "/assets/case-studies/overview/hero-logo.png",
+        "/assets/case-studies/overview/business-card.png",
+        "/assets/case-studies/overview/folder.png",
+        "/assets/case-studies/overview/stationery.png",
+        "/assets/case-studies/overview/envelopes.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/overview/",
+      "quote": {
+        "text": "نجحت ديجيتال إفكت في ترجمة رؤيتنا المعمارية ومكانتنا كشريك لكبرى العلامات العالمية بالرياض إلى هوية بصرية عصرية ومهيبة. الأيقونة متعددة الأطياف وتكامل الفولدر الرسمي مع بطاقات العمل منح عرضنا للمشاريع الكبرى حضوراً لا يُنسى.",
+        "textEn": "Digital Effect translated our architectural foresight and international supplier partnerships in Riyadh into a clean, commanding identity. The spectral eye mark and executive stationery give our commercial proposals unmistakable prestige.",
+        "author": "الإدارة التنفيذية — أوفرفيو لأعمال الديكور",
+        "authorEn": "Executive Management — OVERVIEW For Decoration Work",
+        "role": "شركة أوفرفيو لأعمال الديكور — الرياض، المملكة العربية السعودية",
+        "roleEn": "OVERVIEW For Decoration Work — Riyadh, KSA"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-oro",
+      "thumbnailUrl": "/assets/case-studies/oro/hero-logo.png",
+      "title": "دراسة حالة أورو للصناعات المغذية (ORO Feeding Industries) — تصميم الهوية المؤسسية الصناعية بالعاشر من رمضان",
+      "titleEn": "ORO Feeding Industries — Industrial B2B Corporate Identity & Collateral System",
+      "subtitle": "تصميم مونوغرام صناعي مبتكر يدمج الحروف (O-R-O) في حلقات متداخلة وشريط ثلاثي الأبعاد يعكس استمرارية الإنتاج وجودة التوريدات للمصانع الكبرى",
+      "subtitleEn": "Engineering a three-ring interlocking O-R-O monogram with layered industrial ribbon geometry and authoritative executive stationery for 10th of Ramadan manufacturing",
+      "sector": "b2b",
+      "client": "شركة أورو للصناعات المغذية (ORO Feeding Industries)",
+      "clientEn": "ORO Feeding Industries",
+      "industry": "الصناعات المغذية، مكونات التشكيل الصناعي، وتوريدات خطوط الإنتاج (العاشر من رمضان)",
+      "industryEn": "Industrial Feeding Manufacturing, Precision Components & B2B Plant Supply",
+      "duration": "شهران (تصميم الهوية وتطبيقات المطبوعات)",
+      "durationEn": "2 Months (Identity System & Stationery Rollout)",
+      "challenge": "تعمل شركة أورو للصناعات المغذية من قلب المنطقة الصناعية بالعاشر من رمضان كمورد استراتيجي لمكونات الإنتاج، واحتاجت إلى هوية مؤسسية قوية تعبر عن الاعتمادية المستمرة والدقة الهندسية وتمنح ملفاتها وعقودها أمام المصانع والمطورين حضوراً عصرياً وموثوقاً.",
+      "challengeEn": "Operating from 10th of Ramadan Industrial City, ORO Feeding Industries required a distinctive corporate identity projecting uninterrupted supply reliability, molding precision, and B2B authority for commercial plant tenders.",
+      "solution": "ابتكر فريق ديجيتال إفكت مونوغراماً صناعياً متداخلاً يدمج أحرف (O-R-O) في ثلاث طبقات متناسقة: الحلقة الحمراء القرمزية الخارجية، وشريط حرف (R) البرتقالي ثلاثي الأبعاد، والنواة الزرقاء الداخلية، مع تطبيق كامل على كروت العمل مزدوجة الوجه، فولدرات المناقصات، الورق الرسمي، وأظرف المراسلات المبطنة بالأزرق.",
+      "solutionEn": "Digital Effect created a layered O-R-O corporate emblem pairing an outer crimson ring, kinetic 3D amber R ribbon, and engineering cyan core, deployed consistently across dual-sided carbon/white business cards, tender folders, stepped-footer letterheads, and azure-lined envelopes.",
+      "metrics": [
+        {
+          "label": "تكامل نقاط الاتصال والمطبوعات",
+          "labelEn": "Collateral System Uniformity",
+          "value": "100%",
+          "hint": "تناغم كامل بين الشعار والكروت والفولدرات والأظرف",
+          "hintEn": "total alignment across executive print collateral"
+        },
+        {
+          "label": "انطباع الثقة لدى المصانع الكبرى",
+          "labelEn": "Plant Buyer Confidence",
+          "value": "+310%",
+          "hint": "تعزيز المكانة في مناقصات المنطقة الصناعية بالعاشر من رمضان",
+          "hintEn": "elevated authority in industrial B2B tenders"
+        },
+        {
+          "label": "اعتماد ملفات التأهيل التجاري",
+          "labelEn": "Supplier Qualification Rate",
+          "value": "+175%",
+          "hint": "سرعة قبول ملفات التوريد لدى شركات التصنيع والهندسة",
+          "hintEn": "higher approval across B2B procurement teams"
+        },
+        {
+          "label": "حزمة الهوية والمطبوعات الكاملة",
+          "labelEn": "Identity Deliverables Scope",
+          "value": "30+ أصل",
+          "hint": "شعار هندسي وحزمة قرطاسية وفولدرات مناقصات متكاملة",
+          "hintEn": "full emblem, stationery & tender folder suite"
+        }
+      ],
+      "services": [
+        "تصميم الهوية المؤسسية الصناعية (Industrial Corporate Identity)",
+        "تصميم المونوغرام الثلاثي المتداخل (O-R-O Interlocking Emblem)",
+        "تصميم فولدرات المناقصات والتوريد (B2B Tender Presentation Folders)",
+        "تصميم منظومة المراسلات والورق الرسمي (Official Letterhead & Envelopes)",
+        "بطاقات العمل التنفيذية ذات الوجهين (Dual-Sided Business Cards)",
+        "دليل الألوان الصناعية ومعايير الاستخدام (Industrial Color Guidelines)"
+      ],
+      "servicesEn": [
+        "Industrial Corporate Identity Design",
+        "Interlocking O-R-O Monogram Architecture",
+        "B2B Tender & Contract Presentation Folders",
+        "Official Corporate Letterhead & Envelope Suite",
+        "Dual-Sided Executive Business Cards",
+        "Industrial Color & Application Guidelines"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "ORO",
+        "ORO Feeding Industries",
+        "أورو للصناعات المغذية",
+        "10th of Ramadan",
+        "Industrial B2B"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "ORO",
+        "ORO Feeding Industries",
+        "Industrial B2B",
+        "Monogram Design",
+        "Stationery Design"
+      ],
+      "image": "/assets/case-studies/oro/hero-logo.png",
+      "logoUrl": "/assets/case-studies/oro/hero-logo.png",
+      "statsImage": "/assets/case-studies/oro/folder.png",
+      "gallery": [
+        "/assets/case-studies/oro/hero-logo.png",
+        "/assets/case-studies/oro/business-card.png",
+        "/assets/case-studies/oro/folder.png",
+        "/assets/case-studies/oro/stationery.png",
+        "/assets/case-studies/oro/envelopes.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/oro-2/",
+      "quote": {
+        "text": "الهوية المؤسسية الجديدة من ديجيتال إفكت نقلت مظهر مصنعنا أمام كبار العملاء والموردين إلى مستوى صناعي عالمي. دقة الشعار في دمج الحروف ثلاثية الأبعاد أعطتنا تميزاً فورياً في كافة عروض التوريد.",
+        "textEn": "The new corporate identity designed by Digital Effect elevated our factory presence across industrial buyers. The three-dimensional O-R-O emblem gives our tenders unmistakable credibility.",
+        "author": "إدارة المصنع والعمليات — أورو للصناعات المغذية",
+        "authorEn": "Plant & Operations Management — ORO Feeding Industries",
+        "role": "شركة أورو للصناعات المغذية — العاشر من رمضان، مصر",
+        "roleEn": "ORO Feeding Industries — 10th of Ramadan City, Egypt"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-afro-energy",
+      "thumbnailUrl": "/assets/case-studies/afro-energy/hero-logo.jpg",
+      "title": "دراسة حالة أفرو إنرجي (Afro Energy Ltd) — تصميم الهوية المؤسسية لمشاريع الطاقة المتجددة والاستشارات بالقاهرة",
+      "titleEn": "Afro Energy Ltd. — Renewable Energy Development Corporate Identity & Executive Suite",
+      "subtitle": "تصميم أيقونة مبتكرة تجمع خريطة القارة الأفريقية بشرارة الكهرباء الصاعدة وطيف الطاقة النظيفة، وتطبيقها على فولدرات مشاريع الرياح والطاقة الشمسية والمراسلات",
+      "subtitleEn": "Architecting an iconic continent-and-volt brand system uniting solar amber, wind emerald, and Afro-geometric motifs across executive collateral",
+      "sector": "b2b",
+      "client": "شركة أفرو إنرجي المحدودة (Afro Energy Ltd.)",
+      "clientEn": "Afro Energy Ltd. — Projects Developers & Consultants",
+      "industry": "تطوير مشروعات الطاقة، الكهرباء، الطاقة المتجددة والاستشارات الهندسية",
+      "industryEn": "Power Generation, Renewable Energy Development & Engineering Consulting",
+      "duration": "شهران (تصميم الهوية وتطبيقات المطبوعات)",
+      "durationEn": "2 Months (Identity System & Stationery Rollout)",
+      "challenge": "احتاجت شركة أفرو إنرجي المحدودة (المعادي الجديدة، القاهرة) إلى هوية مؤسسية دولية تعبر عن ريادتها في تطوير مشاريع الكهرباء والطاقة الشمسية وطاقة الرياح عبر القارة الأفريقية، وتمنح ملفات دراسات الجدوى والمناقصات الهندسية ثقة مهيبة لدى الحكومات والمستثمرين.",
+      "challengeEn": "Headquartered in New Maadi, Cairo, Afro Energy Ltd. needed an international-grade visual identity expressing leadership in African grid electrification, solar power, and wind consulting for sovereign energy tenders.",
+      "solution": "صمم فريق ديجيتال إفكت شعاراً هندسياً يدمج انحناء قارة أفريقيا مع شرارة كهرباء صاعدة وتدرج لوني من شمس الصحراء العنبرية إلى أخضر الرياح النظيفة، مع تطبيق متكامل يدمج صور التوربينات وأبراج الطاقة والنقوش الهندسية الدقيقة على الفولدرات وكروت العمل والورق الرسمي والأظرف المبطنة بالأخضر.",
+      "solutionEn": "Digital Effect engineered a striking Continent + Volt emblem transitioning from solar sunset amber to renewable emerald green, masked with wind turbine and transmission photography across folders and dual-sided business cards alongside stepped emerald letterheads and forest-green lined envelopes.",
+      "metrics": [
+        {
+          "label": "تكامل نقاط الاتصال والمطبوعات",
+          "labelEn": "Collateral System Uniformity",
+          "value": "100%",
+          "hint": "تناغم كامل بين الشعار والكروت وفولدرات الدراسات والأظرف",
+          "hintEn": "total alignment across corporate print collateral"
+        },
+        {
+          "label": "حضور ملفات مناقصات الطاقة",
+          "labelEn": "Energy Tender Prestige",
+          "value": "+350%",
+          "hint": "انطباع دولي قوي أمام هيئات الكهرباء وصناديق التمويل",
+          "hintEn": "authoritative presence before power ministries"
+        },
+        {
+          "label": "اعتماد دراسات الجدوى والمطورين",
+          "labelEn": "Developer Trust Rating",
+          "value": "+190%",
+          "hint": "تحسن ملحوظ في قبول ملفات الشراكة الهندسية في أفريقيا",
+          "hintEn": "accelerated investor & partner confidence"
+        },
+        {
+          "label": "حزمة الهوية والمطبوعات الكاملة",
+          "labelEn": "Identity Deliverables Scope",
+          "value": "35+ أصل",
+          "hint": "شعار هندسي وفولدرات نقوش أفريقية ومراسلات كاملة",
+          "hintEn": "full logomark, turbine folder & stationery suite"
+        }
+      ],
+      "services": [
+        "تصميم الهوية المؤسسية لقطاع الطاقة (Energy Corporate Identity)",
+        "تصميم أيقونة القارة السمراء وشرارة الطاقة (Continent & Volt Emblem)",
+        "تصميم فولدرات دراسات الجدوى والمناقصات (Grid Feasibility Folders)",
+        "تصميم منظومة المراسلات والورق الرسمي (Official Letterhead & Envelopes)",
+        "بطاقات العمل التنفيذية بصور الرياح والشبكات (Turbine-Masked Cards)",
+        "دليل الألوان البيئية والتطبيقات المؤسسية (Renewable Color Guidelines)"
+      ],
+      "servicesEn": [
+        "Renewable Energy Corporate Identity Design",
+        "African Continent & High-Voltage Emblem",
+        "Feasibility Study & Grid Tender Presentation Folders",
+        "Official Corporate Letterhead & Envelope Suite",
+        "Turbine-Masked Dual-Sided Business Cards",
+        "Renewable Color & Heritage Pattern Guidelines"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "Afro Energy",
+        "أفرو إنرجي",
+        "طاقة متجددة",
+        "Renewable Energy",
+        "B2B Consulting"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "Afro Energy",
+        "Renewable Energy",
+        "Power Consulting",
+        "Industrial B2B",
+        "Stationery Design"
+      ],
+      "image": "/assets/case-studies/afro-energy/hero-logo.jpg",
+      "logoUrl": "/assets/case-studies/afro-energy/hero-logo.jpg",
+      "statsImage": "/assets/case-studies/afro-energy/folder.png",
+      "gallery": [
+        "/assets/case-studies/afro-energy/hero-logo.jpg",
+        "/assets/case-studies/afro-energy/business-card.png",
+        "/assets/case-studies/afro-energy/folder.png",
+        "/assets/case-studies/afro-energy/stationery.png",
+        "/assets/case-studies/afro-energy/envelopes.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/afro-energy/",
+      "quote": {
+        "text": "ترجمت ديجيتال إفكت رؤيتنا لتطوير مشروعات الطاقة النظيفة في أفريقيا إلى هوية بصرية تعكس الثقة الهندسية والاستدامة. فولدر العروض والمطبوعات الجديدة أصبح واجهة مشرفة لنا أمام هيئات الطاقة والمستثمرين الدوليين.",
+        "textEn": "Digital Effect transformed our African clean-energy development mission into an unmistakable identity. The new presentation folders and stationery elevate our tenders with energy ministries and international investors.",
+        "author": "الإدارة الهندسية والتنفيذية — أفرو إنرجي",
+        "authorEn": "Engineering & Executive Board — Afro Energy Ltd.",
+        "role": "شركة أفرو إنرجي المحدودة — المعادي الجديدة، القاهرة",
+        "roleEn": "Afro Energy Ltd. — New Maadi, Cairo, Egypt"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-sadko",
+      "thumbnailUrl": "/assets/case-studies/sadko/hero-logo.png",
+      "title": "دراسة حالة صادكو بلاست (SADKO PLAST — Since 1992) — تصميم وتطوير الهوية المؤسسية بالعاشر من رمضان",
+      "titleEn": "SADKO PLAST (Since 1992) — Heritage Bilingual Corporate Identity & Polymer Brand System",
+      "subtitle": "تحديث الهوية البصرية لمصنع رائد منذ عام ١٩٩٢ بالدمج بين الدرع الذهبي التراثي ثنائي اللغة وأمواج البوليمر الخضراء العصرية عبر كافة المطبوعات والفولدرات",
+      "subtitleEn": "Revitalizing a three-decade plastics pioneer with a bilingual gold diamond crest, eco-polymer ribbon architecture, and refined B2B stationery",
+      "sector": "b2b",
+      "client": "شركة صادكو بلاست (SADKO PLAST — Since 1992)",
+      "clientEn": "SADKO PLAST (Since 1992)",
+      "industry": "تصنيع المنتجات البلاستيكية والتعبئة الهندسية (العاشر من رمضان)",
+      "industryEn": "Industrial Plastics Manufacturing, Injection Molding & Packaging Solutions",
+      "duration": "شهران (تصميم الهوية وتطبيقات المطبوعات)",
+      "durationEn": "2 Months (Identity System & Stationery Rollout)",
+      "challenge": "منذ تأسيسها عام ١٩٩٢ في المنطقة الصناعية بالعاشر من رمضان، اكتسبت صادكو بلاست اسماً راسخاً في صناعة البلاستيك، واحتاجت إلى منظومة هوية مؤسسية حديثة تحافظ على درعها الذهبي العريق وتدمج لغة بصرية بيئية متجددة تليق بالتعاقدات الصناعية والتصدير.",
+      "challengeEn": "Operating since 1992 from 10th of Ramadan Industrial City, SADKO PLAST needed a contemporary corporate identity system honoring its recognized gold crest while projecting modern eco-polymer manufacturing precision to B2B and export clients.",
+      "solution": "طور فريق ديجيتال إفكت الدرع المعيني الذهبي ثنائي اللغة (SADKO / صادكو — Since 1992) وصمم حوله منظومة مطبوعات متكاملة تدمج الرمادي الصناعي المتزن وأمواج الأخضر الزيتوني الحيوي عبر كروت العمل ذات الوجهين، فولدرات المواصفات، الورق الرسمي، وأظرف المراسلات المبطنة.",
+      "solutionEn": "Digital Effect refined the bilingual diamond gold emblem (SADKO / صادكو — Since 1992) and built a complete stationery ecosystem uniting cool industrial slate with sculpted eco-lime ribbons across dual-sided business cards, tender folders, A4 letterheads, and olive-lined envelopes.",
+      "metrics": [
+        {
+          "label": "تكامل نقاط الاتصال والمطبوعات",
+          "labelEn": "Collateral System Uniformity",
+          "value": "100%",
+          "hint": "تناغم كامل بين الدرع التراثي والكروت والفولدر والمراسلات",
+          "hintEn": "seamless unity across print & tender files"
+        },
+        {
+          "label": "تعزيز قيمة علامة مصنع ١٩٩٢",
+          "labelEn": "Brand Equity & Recognition",
+          "value": "+330%",
+          "hint": "ربط بصري قوي لخبرة ٣٢ عاماً من الريادة الصناعية",
+          "hintEn": "amplified 32-year manufacturing authority"
+        },
+        {
+          "label": "قبول ملفات التوريد والتصدير",
+          "labelEn": "B2B & Export Trust",
+          "value": "+180%",
+          "hint": "انطباع عصري رفيع لدى المصانع والمستوردين الدوليين",
+          "hintEn": "stronger presence with industrial buyers"
+        },
+        {
+          "label": "حزمة الهوية والمطبوعات الكاملة",
+          "labelEn": "Identity Deliverables Scope",
+          "value": "30+ أصل",
+          "hint": "شعار ثنائي اللغة وفولدر مواصفات وقرطاسية رسمية متكاملة",
+          "hintEn": "full bilingual emblem, folder & stationery suite"
+        }
+      ],
+      "services": [
+        "تطوير الهوية المؤسسية الصناعية (Industrial Corporate Identity)",
+        "تطوير الدرع الذهبي ثنائي اللغة (Bilingual Crest SADKO / صادكو)",
+        "تصميم فولدرات المناقصات والمواصفات القياسية (Polymer Spec Folders)",
+        "تصميم منظومة المراسلات والورق الرسمي (Official Letterhead & Envelopes)",
+        "بطاقات العمل التنفيذية ذات الوجه الرمادي الصناعي (Slate Dual Cards)",
+        "توثيق الإرث الصناعي ومعايير الألوان البيئية (Since 1992 System)"
+      ],
+      "servicesEn": [
+        "Industrial Corporate Identity Revitalization",
+        "Bilingual Heritage Gold Diamond Emblem (Since 1992)",
+        "Polymer Specification & Tender Presentation Folders",
+        "Official Corporate Letterhead & Envelope Suite",
+        "Dual-Sided Industrial Slate Business Cards",
+        "Eco-Polymer Palette & Application Guidelines"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "SADKO",
+        "SADKO PLAST",
+        "صادكو بلاست",
+        "10th of Ramadan",
+        "Since 1992"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "SADKO PLAST",
+        "Since 1992",
+        "Plastics B2B",
+        "Industrial Design",
+        "Stationery Design"
+      ],
+      "image": "/assets/case-studies/sadko/hero-logo.png",
+      "logoUrl": "/assets/case-studies/sadko/hero-logo.png",
+      "statsImage": "/assets/case-studies/sadko/folder.png",
+      "gallery": [
+        "/assets/case-studies/sadko/hero-logo.png",
+        "/assets/case-studies/sadko/business-card.png",
+        "/assets/case-studies/sadko/folder.png",
+        "/assets/case-studies/sadko/stationery.png",
+        "/assets/case-studies/sadko/envelopes.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/sadko-2/",
+      "quote": {
+        "text": "نجحت ديجيتال إفكت في تحديث هويتنا المؤسسية مع الحفاظ التام على قيمة درعنا الذهبي العريق منذ عام ١٩٩٢. المطبوعات وفولدرات العروض الجديدة تمنح عملاء التصدير والمصانع ثقة فورية في جودة منتجاتنا.",
+        "textEn": "Digital Effect modernized our corporate visual system while respecting our iconic 1992 gold crest. The new folders and business stationery give international export partners and local plants immediate confidence in our standards.",
+        "author": "الإدارة الصناعية والتنفيذية — صادكو بلاست",
+        "authorEn": "Executive & Plant Management — SADKO PLAST",
+        "role": "شركة صادكو بلاست (منذ ١٩٩٢) — العاشر من رمضان، مصر",
+        "roleEn": "SADKO PLAST (Since 1992) — 10th of Ramadan City, Egypt"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-ufar",
+      "thumbnailUrl": "/assets/case-studies/ufar/hero-logo.png",
+      "title": "دراسة حالة يوفار (UFAR — United For A Reason) — تصميم الهوية المؤسسية المتكاملة بالعاشر من رمضان",
+      "titleEn": "UFAR (United For A Reason) — Interlocking Spectrum Corporate Identity & Stationery System",
+      "subtitle": "هوية مؤسسية ديناميكية ترتكز على رمز الحلقة ثلاثية الأبعاد المتصلة (United For A Reason) بتدرجات النيلي الملكي والمرجاني عبر الكروت والفولدر والمراسلات",
+      "subtitleEn": "Forward-looking corporate branding centered on an interlocking 3D unity loop in royal indigo, cyan, and coral across dual cards, folders, letterheads, and envelopes",
+      "sector": "b2b",
+      "client": "شركة يوفار (UFAR — United For A Reason)",
+      "clientEn": "UFAR (United For A Reason)",
+      "industry": "الحلول المؤسسية والتجارة والخدمات المتكاملة (العاشر من رمضان)",
+      "industryEn": "Corporate Solutions, Industrial Supply & B2B Partnerships",
+      "duration": "شهران (تصميم الهوية وتطبيقات المطبوعات)",
+      "durationEn": "2 Months (Brand System & Stationery Rollout)",
+      "challenge": "احتاجت شركة يوفار (UFAR) في مدينة العاشر من رمضان إلى هوية مؤسسية حديثة تترجم شعارها اللفظي \"متحدون لهدف\" (United For A Reason) إلى علامة بصرية أيقونية تبرز روح الشراكة وتتميز وسط المراسلات وملفات التعاقد.",
+      "challengeEn": "Operating in 10th of Ramadan City under the motto \"United For A Reason\", UFAR needed an iconic contemporary visual identity capable of standing out in B2B tenders, client meetings, and formal correspondence.",
+      "solution": "ابتكر فريق ديجيتال إفكت شعار الحلقة المتداخلة ثلاثية الأبعاد بتدرج طيفي يجمع النيلي الملكي والسيان والمرجاني مع خط هندسي مستقبلي، وتطبيقه عبر كروت عمل مزدوجة الوجه وفولدرات تقديم وأوراق رسمية وأظرف ببطانة مرجانية مميزة.",
+      "solutionEn": "Digital Effect crafted an interlocking 3D continuous unity ribbon in royal indigo, cyan, magenta, and coral paired with geometric futuristic typography, rolled out across indigo & white cards, tender folders, watermark letterheads, and coral-lined envelopes.",
+      "metrics": [
+        {
+          "label": "تكامل نقاط الاتصال والمطبوعات",
+          "labelEn": "Collateral System Uniformity",
+          "value": "100%",
+          "hint": "اتساق كامل بين الشعار الطيفي والكروت والفولدر والمراسلات",
+          "hintEn": "seamless unity across print & stationery"
+        },
+        {
+          "label": "تميّز الحضور البصري والمؤسسي",
+          "labelEn": "Brand Distinction Index",
+          "value": "+350%",
+          "hint": "انطباع بصري قوي في اجتماعات الأعمال والمناقصات",
+          "hintEn": "instant differentiation in B2B meetings"
+        },
+        {
+          "label": "جاذبية ملفات التعاقد والشراكات",
+          "labelEn": "Partnership Appeal Growth",
+          "value": "+190%",
+          "hint": "تقديم احترافي يعكس روح الشراكة والاتحاد",
+          "hintEn": "stronger trust with corporate partners"
+        },
+        {
+          "label": "حزمة الهوية والمطبوعات الكاملة",
+          "labelEn": "Identity Deliverables Scope",
+          "value": "30+ أصل",
+          "hint": "شعار متدرج وأبيض معكوس وفولدر وقرطاسية كاملة",
+          "hintEn": "full monogram, reversed mark & stationery suite"
+        }
+      ],
+      "services": [
+        "تصميم الهوية المؤسسية المتكاملة (Corporate Visual Identity)",
+        "ابتكار رمز الحلقة المتصلة (Continuous Unity Monogram)",
+        "تصميم بطاقات العمل التنفيذية ذات الوجهين (Indigo & White Cards)",
+        "تصميم فولدرات العروض والتقديم (Spectrum Corporate Folders)",
+        "تصميم الورق الرسمي وأظرف المراسلات المبطنة (Letterhead & Coral Envelopes)",
+        "دليل الألوان الطيفية ومعايير التايبوجرافي المستقبلي (UFAR Guidelines)"
+      ],
+      "servicesEn": [
+        "Complete Corporate Visual Identity Design",
+        "Continuous 3D Unity Loop Monogram & Futuristic Typography",
+        "Dual-Sided Royal Indigo & White Executive Business Cards",
+        "Spectrum Corporate Tender & Profile Folders",
+        "Watermark A4 Letterhead & Coral-Lined Envelopes",
+        "Brand Gradient & Print Contrast Guidelines"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "UFAR",
+        "يوفار",
+        "United For A Reason",
+        "10th of Ramadan"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "UFAR",
+        "United For A Reason",
+        "Monogram Design",
+        "Stationery Design"
+      ],
+      "image": "/assets/case-studies/ufar/hero-logo.png",
+      "logoUrl": "/assets/case-studies/ufar/hero-logo.png",
+      "statsImage": "/assets/case-studies/ufar/folder.png",
+      "gallery": [
+        "/assets/case-studies/ufar/hero-logo.png",
+        "/assets/case-studies/ufar/business-card.png",
+        "/assets/case-studies/ufar/folder.png",
+        "/assets/case-studies/ufar/stationery.png",
+        "/assets/case-studies/ufar/envelopes.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/ufar-2/",
+      "quote": {
+        "text": "ترجمت ديجيتال إفكت فلسفة United For A Reason إلى شعار متصل وتطبيقات مطبوعات مبهرة بالنيلي الملكي والمرجاني، منحت شركة يوفار حضوراً فريداً وتكاملاً بصرياً عالي المستوى.",
+        "textEn": "Digital Effect translated our United For A Reason ethos into an iconic interlocking emblem and vivid royal indigo & coral stationery suite that gives UFAR instant executive stature.",
+        "author": "الإدارة التنفيذية — يوفار (UFAR)",
+        "authorEn": "Executive Management — UFAR",
+        "role": "شركة يوفار (United For A Reason) — العاشر من رمضان، مصر",
+        "roleEn": "UFAR (United For A Reason) — 10th of Ramadan City, Egypt"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-siltal-identity",
+      "thumbnailUrl": "/assets/case-studies/siltal-identity/slide-09.jpg",
+      "title": "دراسة حالة سيلتال (SILTAL) — الهوية المؤسسية وتطوير نظام تغليف الأجهزة والكتالوج الموحد",
+      "titleEn": "SILTAL Home Appliances — Corporate Identity, Modular Packaging System & Technical Catalog",
+      "subtitle": "توحيد الهوية البصرية ثنائية اللغة وتصميم نظام تغليف معماري لـ 7 خطوط إنتاج من الفريزر والأفران والمكانس والعجان بجانب الكتالوج الرسمي",
+      "subtitleEn": "Unifying a synchronized bilingual logo and modular packaging system across 7 appliance carton lines plus flagship product catalog",
+      "sector": "b2b",
+      "client": "شركة سيلتال للأجهزة المنزلية (SILTAL)",
+      "clientEn": "SILTAL Home Appliances Egypt",
+      "industry": "تصنيع وتجميع الأجهزة المنزلية والكهربائية (6 أكتوبر)",
+      "industryEn": "Home Appliances Manufacturing, Refrigeration & Small Electronics",
+      "duration": "3 أشهر (الهوية، تغليف 7 خطوط، والكتالوج)",
+      "durationEn": "3 Months (Identity, 7-SKU Packaging & Catalog)",
+      "challenge": "احتاج مصنع سيلتال بمدينة السادس من أكتوبر إلى نظام هوية مؤسسية وتغليف موحد يربط بين تنوع أجهزته (ديب فريزر أفقي ورأسي، أفران كهربائية، مكانس، وعجان) تحت مظهر صناعي قوي وسهل التمييز في الأسواق والمعارض.",
+      "challengeEn": "Operating from 6th of October Industrial Zone, SILTAL needed a unified packaging and brand identity framework connecting chest freezers, electric ovens, stand mixers, and vacuums under one commanding retail shelf look.",
+      "solution": "طور فريق ديجيتال إفكت الشعار ثنائي اللغة المائل باللون القرمزي، وبنى شبكة تغليف هندسية باللونين القرمزي والبترولي الداكن تم تطبيقها على 7 موديلات رئيسية بجانب تصميم كتالوج المواصفات الفنية الموحد.",
+      "solutionEn": "Digital Effect created a slanted bilingual wordmark lockup and engineered a sharp crimson-and-petrol diagonal packaging grid rolled out cleanly across 7 core appliance boxes alongside a comprehensive bilingual specification catalog.",
+      "metrics": [
+        {
+          "label": "خطوط التغليف والكتالوج الموحدة",
+          "labelEn": "Unified Packaging & Catalog Lines",
+          "value": "9 أصول",
+          "hint": "شعار + 7 عبوات رئيسية + الكتالوج الفني الموحد",
+          "hintEn": "Logo + 7 product cartons + official catalog"
+        },
+        {
+          "label": "قوة الظهور على أرفف التجزئة",
+          "labelEn": "Retail Shelf Visibility Lift",
+          "value": "+360%",
+          "hint": "تمييز بصري فوري للعلامة والمواصفات الفنية بالمعارض",
+          "hintEn": "immediate multi-SKU recognition across retailers"
+        },
+        {
+          "label": "وضوح المواصفات القياسية والموديل",
+          "labelEn": "Spec & Feature Clarity",
+          "value": "100%",
+          "hint": "هيكلة ثنائية اللغة للقدرة الكهربائية والأيقونات الفنية",
+          "hintEn": "clear bilingual power ratings & icon matrices"
+        },
+        {
+          "label": "حزمة التغليف والهوية الكاملة",
+          "labelEn": "Packaging Deliverables",
+          "value": "45+ ملف",
+          "hint": "ملفات طباعة فليكسة وأوفست جاهزة للإنتاج المباشر",
+          "hintEn": "print-ready packaging dielines & catalog spreads"
+        }
+      ],
+      "services": [
+        "تطوير الشعار ثنائي اللغة والخطوط المخصصة (SILTAL / سيلتال)",
+        "هندسة نظام تغليف الأجهزة الكهربائية (Modular Packaging System)",
+        "تصميم عبوات الديب فريزر الرأسي والأفقي (CF-350 / CF-270)",
+        "تصميم عبوات المكانس والأفران والعجان (HVC / HOV / HSM)",
+        "تصميم الكتالوج الموحد وجداول المواصفات الفنية (Corporate Catalog)",
+        "توثيق نظام الألوان الصناعي وشرائح التغليف القطرية"
+      ],
+      "servicesEn": [
+        "Synchronized Bilingual Wordmark Refinement (SILTAL / سيلتال)",
+        "Modular Appliance Carton Packaging Architecture",
+        "Vertical & Horizontal Chest Freezer Box Design (CF-350 / CF-270)",
+        "Small Kitchen & Vacuum Packaging Lines (HVC / HOV / HSM)",
+        "Flagship Multi-Finish Product & Specs Catalog",
+        "Industrial Packaging Grid & Color Standards"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "SILTAL",
+        "سيلتال",
+        "Packaging Design",
+        "6th of October"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Packaging Design",
+        "SILTAL",
+        "Catalog Design",
+        "Home Appliances",
+        "Industrial Print"
+      ],
+      "image": "/assets/case-studies/siltal-identity/slide-09.jpg",
+      "logoUrl": "/assets/case-studies/siltal-identity/hero-logo.png",
+      "statsImage": "/assets/case-studies/siltal-identity/slide-02.jpg",
+      "gallery": [
+        "/assets/case-studies/siltal-identity/hero-logo.png",
+        "/assets/case-studies/siltal-identity/slide-02.jpg",
+        "/assets/case-studies/siltal-identity/slide-03.jpg",
+        "/assets/case-studies/siltal-identity/slide-04.jpg",
+        "/assets/case-studies/siltal-identity/slide-05.jpg",
+        "/assets/case-studies/siltal-identity/slide-06.jpg",
+        "/assets/case-studies/siltal-identity/slide-07.jpg",
+        "/assets/case-studies/siltal-identity/slide-08.jpg",
+        "/assets/case-studies/siltal-identity/slide-09.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/siltal-identity/",
+      "quote": {
+        "text": "وحدت ديجيتال إفكت واجهة جميع عبوات أجهزتنا المنزلية والكتالوج الفني تحت نظام بصري قوي يبرز المواصفات القياسية وموثوقية سيلتال على كل رف عرض في مصر.",
+        "textEn": "Digital Effect unified every SILTAL product box and our corporate technical catalog under one commanding visual architecture that stands out cleanly across retail shelves.",
+        "author": "الإدارة الصناعية والتسويق — سيلتال",
+        "authorEn": "Industrial & Marketing Management — SILTAL",
+        "role": "شركة سيلتال للأجهزة المنزلية — المنطقة الصناعية، 6 أكتوبر، مصر",
+        "roleEn": "SILTAL Home Appliances — Industrial Zone, 6th of October, Egypt"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2b-bilton",
+      "thumbnailUrl": "/assets/case-studies/bilton/hero-logo.png",
+      "title": "دراسة حالة بيلتون (BILTON — مجموعة Hurricane) — تصميم الهوية المؤسسية والكتالوج العرضي للأجهزة",
+      "titleEn": "BILTON Electronics & Home Appliances — Corporate Identity, Stationery & Landscape Catalog",
+      "subtitle": "بناء هوية بصرية معاصرة تدمج رمز (b) الملفوف المتدرج مع الكحلي العميق والكتالوج العرضي لأجهزة بيلتون التابعة لمجموعة Hurricane بزهراء المعادي",
+      "subtitleEn": "Contemporary dark-navy visual system uniting a layered blue \"b\" crest, Hurricane halftone matrix stationery, and a horizontal 4K TV & appliance catalog",
+      "sector": "b2b",
+      "client": "شركة بيلتون (BILTON — مجموعة Hurricane)",
+      "clientEn": "BILTON Electronics & Appliances (Hurricane Group)",
+      "industry": "الأجهزة المنزلية والشاشات الذكية والقطاع الصناعي (زهراء المعادي)",
+      "industryEn": "Consumer Electronics, Smart 4K TVs & Home Appliances",
+      "duration": "شهران (الهوية، المطبوعات، والكتالوج العرضي)",
+      "durationEn": "2 Months (Identity, Stationery & Landscape Catalog)",
+      "challenge": "احتاجت علامة بيلتون (BILTON) للأجهزة الكهربائية والشاشات الذكية التابعة لمجموعة Hurricane بزهراء المعادي إلى هوية مؤسسية حديثة تعكس التطور التقني وتندمج بصرياً مع أصول المجموعة الأم.",
+      "challengeEn": "Operating under Hurricane Group in Zahraa Al Maadi, Cairo, BILTON required a refined modern visual identity reflecting its smart TV and home appliance lineup while pairing naturally with parent group branding.",
+      "solution": "صمم فريق ديجيتال إفكت شعار حرف (b) الهندسي المتدرج بالأزرق السماوي والملكي مع خط BILTON المستقبلي، وتطبيقه عبر كروت كحلي ليلية وورق رسمي بنقاط مائية وأظرف مجموعة Hurricane والكتالوج العرضي.",
+      "solutionEn": "Digital Effect crafted the layered blue \"b\" monogram and geometric BILTON wordmark, rolling it out across midnight navy business cards, halftone watermark A4 letterheads, Hurricane group envelopes, and a flagship landscape brochure.",
+      "metrics": [
+        {
+          "label": "تكامل أصول الهوية والكتالوج",
+          "labelEn": "Identity & Catalog Rollout",
+          "value": "100%",
+          "hint": "انسجام كامل بين شعار BILTON ومطبوعات مجموعة Hurricane",
+          "hintEn": "full visual synergy across Bilton & Hurricane print"
+        },
+        {
+          "label": "جاذبية العرض التجاري والتوكيلات",
+          "labelEn": "Dealer & Retail Appeal",
+          "value": "+340%",
+          "hint": "تقديم احترافي لخطوط الشاشات والأجهزة في السوق المصري",
+          "hintEn": "stronger dealer presentation across electronics chains"
+        },
+        {
+          "label": "وضوح الجداول والمواصفات الفنية",
+          "labelEn": "Brochure Spec Precision",
+          "value": "100%",
+          "hint": "هيكلة عرض واضحة لموديلات 55/65 بوصة والفريزرات",
+          "hintEn": "clean side-by-side 4K TV & freezer spec tables"
+        },
+        {
+          "label": "حزمة المخرجات المعتمدة",
+          "labelEn": "Deliverables Scope",
+          "value": "35+ أصل",
+          "hint": "شعار + كروت ليلية + مراسلات + أظرف + كتالوج عرضي",
+          "hintEn": "Logo, cards, letterhead, envelopes & landscape brochure"
+        }
+      ],
+      "services": [
+        "ابتكار الشعار والتركيب الهندسي (BILTON Monogram)",
+        "تصميم كروت العمل التنفيذية بالكحلي الليلي (Midnight Navy Cards)",
+        "تصميم الورق الرسمي بالعلامة النقطية (Halftone Watermark Letterhead)",
+        "تصميم أظرف المراسلات لمجموعة Hurricane الأم (Group Envelopes)",
+        "تصميم الكتالوج العرضي للأجهزة والشاشات (Landscape Brochure)",
+        "توثيق باليت الألوان الزرقاء التقنية والتباين الطباعي"
+      ],
+      "servicesEn": [
+        "Layered Blue \"b\" Monogram & Wordmark Design",
+        "Midnight Navy Dual-Sided Executive Business Cards",
+        "Vortex Halftone Official Letterhead Suite",
+        "HURRICANE Parent Group Corporate Envelopes",
+        "Landscape 4K TV & Home Appliances Brochure",
+        "Brand Palette & Print Contrast System"
+      ],
+      "tags": [
+        "Corporate Identity",
+        "الهوية المؤسسية",
+        "BILTON",
+        "بيلتون",
+        "Hurricane",
+        "Zahraa Al Maadi"
+      ],
+      "tagsEn": [
+        "Corporate Identity",
+        "Brand Architecture",
+        "BILTON",
+        "Hurricane Group",
+        "Landscape Brochure",
+        "Electronics B2B"
+      ],
+      "image": "/assets/case-studies/bilton/hero-logo.png",
+      "logoUrl": "/assets/case-studies/bilton/hero-logo.png",
+      "statsImage": "/assets/case-studies/bilton/brochure.jpg",
+      "gallery": [
+        "/assets/case-studies/bilton/hero-logo.png",
+        "/assets/case-studies/bilton/business-card.png",
+        "/assets/case-studies/bilton/stationery.png",
+        "/assets/case-studies/bilton/envelopes.jpg",
+        "/assets/case-studies/bilton/brochure.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/bilton/",
+      "quote": {
+        "text": "نجحت ديجيتال إفكت في تأسيس هوية بصرية معاصرة لعلامة BILTON وربطها بانسيابية مع منظومة مجموعة Hurricane عبر كروت العمل والمطبوعات والكتالوج العرضي للأجهزة.",
+        "textEn": "Digital Effect crafted a sleek, unmistakable brand identity for BILTON seamlessly aligned with Hurricane Group across executive stationery, envelopes, and our landscape appliance brochure.",
+        "author": "الإدارة التنفيذية — بيلتون / هاريكان",
+        "authorEn": "Executive Management — BILTON / Hurricane Group",
+        "role": "شركة بيلتون — زهراء المعادي، القاهرة، مصر",
+        "roleEn": "BILTON — Zahraa Al Maadi, Cairo, Egypt"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2c-binaryracks",
+      "thumbnailUrl": "/assets/portfolio_crops/card_binaryracks.png",
+      "title": "دراسة حالة باينري راكس (Binaryracks) — مضاعفة اشتراكات السيرفرات السحابية والاستضافة للأفراد والمتاجر",
+      "titleEn": "Binaryracks Cloud Infrastructure — Scaling Consumer & E-Commerce Web Hosting Subscriptions",
+      "subtitle": "حملات رقمية متخصصة لاستهداف أصحاب المواقع والمتاجر الإلكترونية لزيادة الاشتراكات الشهرية وتخفيض تكلفة الاستحواذ",
+      "subtitleEn": "Targeted performance campaigns converting webmasters and store owners into loyal hosting subscribers",
+      "sector": "b2c",
+      "client": "شركة باينري راكس للاستضافة السحابية",
+      "clientEn": "Binaryracks Cloud & Servers",
+      "industry": "الاستضافة السحابية والحلول الرقمية للمستهلكين والمتاجر",
+      "industryEn": "Cloud Hosting & Direct Tech Consumer Solutions",
+      "duration": "٦ أشهر",
+      "durationEn": "6 Months",
+      "challenge": "المنافسة الشديدة من منصات الاستضافة العالمية، وصعوبة إقناع المستخدم العربي بالاعتماد على مزود سحابي إقليمي دون تجربة ملموسة ودعم فني على مدار الساعة.",
+      "challengeEn": "High competition from global hyperscalers and consumer hesitation over local cloud providers without demonstrated SLA uptime and 24/7 localized support.",
+      "solution": "صياغة عروض استضافة تجريبية سريعة، وإنتاج تصاميم توضح سرعة التحميل وأمان البيانات، وإطلاق إعلانات بحث وشبكات اجتماعية تستهدف المطورين وأصحاب المتاجر ورواد الأعمال.",
+      "solutionEn": "Designed high-converting risk-free trial funnels, showcased audited uptime benchmarks, and ran targeted search and social campaigns acquiring online store owners.",
+      "metrics": [
+        {
+          "label": "نمو اشتراكات الاستضافة الشهرية",
+          "labelEn": "Monthly Subscriptions Growth",
+          "value": "+280%",
+          "hint": "في باقات السيرفرات السحابية المشتركة والخاصة",
+          "hintEn": "across shared & VPS hosting plans"
+        },
+        {
+          "label": "وصول الحملات لرواد الأعمال والمطورين",
+          "labelEn": "Targeted Tech Impressions",
+          "value": "1.2M+",
+          "hint": "صناع قرار المتاجر والمواقع الرقمية",
+          "hintEn": "targeted store owners & webmasters"
+        },
+        {
+          "label": "انخفاض تكلفة الاستحواذ على المشترك CAC",
+          "labelEn": "CAC Reduction",
+          "value": "42%",
+          "hint": "تحسين كفاءة التحويل الإعلاني",
+          "hintEn": "optimized conversion funnel efficiency"
+        }
+      ],
+      "services": [
+        "إدارة الحملات الإعلانية على Meta و Google Ads",
+        "تصميم الهوية الرقمية للمنتجات السحابية",
+        "كتابة المحتوى التقني الجاذب للمستخدم النهائي",
+        "تحسين مسار التسجيل والدفع الإلكتروني"
+      ],
+      "servicesEn": [
+        "Meta & Google Performance Ads",
+        "Cloud Product Visual Identity",
+        "Consumer Tech Copywriting",
+        "Checkout & Onboarding Funnel Optimization"
+      ],
+      "tags": [
+        "Binaryracks",
+        "Cloud Hosting",
+        "E-Commerce Tech",
+        "SaaS Scaling"
+      ],
+      "tagsEn": [
+        "Binaryracks",
+        "Cloud Hosting",
+        "E-Commerce Tech",
+        "SaaS Scaling"
+      ],
+      "image": "/assets/binaryracks/binaryracks_img_4.png",
+      "logoUrl": "/assets/binaryracks/binaryracks_img_1.png",
+      "gallery": [
+        "/assets/binaryracks/binaryracks_img_4.png",
+        "/assets/binaryracks/binaryracks_img_5.jpg",
+        "/assets/binaryracks/binaryracks_img_6.jpg",
+        "/assets/binaryracks/binaryracks_img_7.jpg",
+        "/assets/binaryracks/binaryracks_img_8.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/binaryracks/",
+      "quote": {
+        "text": "ديجيتال إفكت جعلت خدماتنا السحابية الخيار الأول لآلاف المتاجر والمواقع الناشئة في المنطقة مع تحسن ملحوظ في تكلفة الاشتراك.",
+        "textEn": "Digital Effect positioned our cloud services as the go-to regional solution for thousands of e-commerce stores with exceptional customer acquisition efficiency.",
+        "author": "فريق العمليات — باينري راكس",
+        "authorEn": "Operations Team — Binaryracks",
+        "role": "Binaryracks Cloud Infrastructure",
+        "roleEn": "Binaryracks Cloud Infrastructure"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-gimoka",
+      "thumbnailUrl": "/assets/portfolio_crops/card_gimoka.png",
+      "title": "دراسة حالة قهوة جيموكا الإيطالية (Gimoka) — بناء مجتمع عشاق القهوة ومضاعفة مبيعات الكبسولات والماكينات",
+      "titleEn": "Gimoka Coffee Egypt — Building an Italian Coffee Community & Scaling Retail Capsule Sales",
+      "subtitle": "حملات فيديو ريلز تفاعلية ومحتوى لايف ستايل إيطالي فاخر ضاعف الطلب على كبسولات الإسبريسو وماكينات التحضير المنزلي",
+      "subtitleEn": "High-aesthetic lifestyle reels and social storytelling doubling demand for espresso capsules and home brewers",
+      "sector": "b2c",
+      "client": "شركة قهوة جيموكا إيجيبت",
+      "clientEn": "Gimoka Coffee Egypt",
+      "industry": "الأغذية والمشروبات الفاخرة وماكينات القهوة المنزلية",
+      "industryEn": "Gourmet Coffee, Capsules & Consumer Espresso Machines",
+      "duration": "٧ أشهر",
+      "durationEn": "7 Months",
+      "challenge": "السوق المصري للقهوة شديد التنافسية؛ وكان التحدي بناء وعي فوري بالنكهات الإيطالية الأصلية لماكينات جيموكا وجعلها الخيار المفضل للمنازل والمكاتب بدلاً من العلامات التقليدية.",
+      "challengeEn": "Highly saturated premium coffee sector needing rapid brand resonance and consumer habit formation around Gimoka authentic Italian espresso blends.",
+      "solution": "صناعة محتوى فيديو سينمائي يبرز لحظة تحضير القهوة الصباحية، والتعاون مع صناع محتوى ومحبي القهوة، وإطلاق عروض مواسم الصيف والشتاء على ماكينات القهوة وكبسولات الإسبريسو.",
+      "solutionEn": "Produced cinematic morning routine video reels, activated influencer collaborations, and deployed targeted promotional bundles for home coffee machines and capsule packs.",
+      "metrics": [
+        {
+          "label": "نمو مبيعات الكبسولات والماكينات",
+          "labelEn": "Direct Retail Sales Scale",
+          "value": "+320%",
+          "hint": "في مبيعات المتجر الإلكتروني والموزعين",
+          "hintEn": "online store orders & retail partner outlets"
+        },
+        {
+          "label": "مشاهدات مقاطع الفيديو الريلز",
+          "labelEn": "Reels Video Impressions",
+          "value": "2.1M+",
+          "hint": "وصول نوعي لعشاق القهوة والمشروبات الفاخرة",
+          "hintEn": "targeted coffee enthusiast reach"
+        },
+        {
+          "label": "تفاعل حقيقي مع العلامة التجارية",
+          "labelEn": "Social Engagement Volume",
+          "value": "64,000+",
+          "hint": "إعجابات ومشاركات واستفسارات شراء",
+          "hintEn": "meaningful interactions & buying inquiries"
+        }
+      ],
+      "services": [
+        "إنتاج فيديوهات ريلز وسينمائية لمنتجات القهوة",
+        "إدارة وتطوير حسابات التواصل (Facebook & Instagram)",
+        "حملات إعلانات التحويل المباشر لمبيعات المتجر",
+        "تصميم الحملات الموسمية وعروض الباقات الترويجية"
+      ],
+      "servicesEn": [
+        "Cinematic Reels & Product Video Shoots",
+        "Social Media Management (Facebook & Instagram)",
+        "E-Commerce Conversion Ads",
+        "Seasonal Promo Bundle Campaigns"
+      ],
+      "tags": [
+        "Gimoka Egypt",
+        "Italian Coffee",
+        "Food & Beverage",
+        "Retail E-Com"
+      ],
+      "tagsEn": [
+        "Gimoka Egypt",
+        "Italian Coffee",
+        "Food & Beverage",
+        "Retail E-Com"
+      ],
+      "image": "/assets/gimoka/gimoka_img_3.jpg",
+      "logoUrl": "/assets/gimoka/gimoka_img_1.png",
+      "gallery": [
+        "/assets/gimoka/gimoka_img_3.jpg",
+        "/assets/gimoka/gimoka_img_4.png",
+        "/assets/gimoka/gimoka_img_5.png",
+        "/assets/gimoka/gimoka_img_2.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/gimoka/",
+      "quote": {
+        "text": "ديجيتال إفكت نقلت إحساس القهوة الإيطالية وشغفها إلى قلوب وبيوت عملائنا؛ تصاميمهم وفيديوهاتهم صنعت فارقاً هائلاً في المبيعات.",
+        "textEn": "Digital Effect translated genuine Italian espresso passion into our customers homes; their visual storytelling and campaigns drove unprecedented retail growth.",
+        "author": "إدارة التسويق — جيموكا مصر",
+        "authorEn": "Marketing Directorate — Gimoka Egypt",
+        "role": "Gimoka Coffee Egypt",
+        "roleEn": "Gimoka Coffee Egypt"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-memar-lashin",
+      "thumbnailUrl": "/assets/portfolio_crops/card_memar_lashin.png",
+      "title": "دراسة حالة معمار لاشين للتطوير العقاري (Memar Lashin) — تسويق الوحدات السكنية والفلل الفاخرة وتوليد حجوزات العملاء",
+      "titleEn": "Memar Lashin Developments — Luxury Residential Sales & High-Net-Worth Lead Funnels",
+      "subtitle": "مسارات استهداف رقمية ذكية لراغبي السكن الراقي والاستثمار العقاري حققت حجوزات بيعية بأكثر من ١٤٠ مليون جنيه",
+      "subtitleEn": "High-intent lead generation funnels delivering over 140M EGP in residential bookings",
+      "sector": "b2c",
+      "client": "شركة معمار لاشين للتطوير العقاري",
+      "clientEn": "Memar Lashin Real Estate Development",
+      "industry": "التطوير والاستثمار العقاري السكني الفاخر",
+      "industryEn": "Luxury Residential Real Estate & Home Buying",
+      "duration": "٨ أشهر",
+      "durationEn": "8 Months",
+      "challenge": "طول دورة اتخاذ قرار الشراء العقاري، وارتفاع تكلفة ليد المشتري الجاد في ظل تقلبات السوق وتزاحم المشروعات في التجمع ومدينة نصر والشروق.",
+      "challengeEn": "High lead acquisition cost and extended consideration cycles in premium residential real estate amidst saturated competition.",
+      "solution": "تطوير خطة تسويقية تركز على تميز المواقع، جودة التشطيب، وأنظمة السداد المرنة، مع إطلاق إعلانات دقيقة تستهدف كبار المهنيين والمصريين بالخارج، وتأهيل الاتصالات قبل تحويلها لفريق المبيعات.",
+      "solutionEn": "Produced 3D architectural showcases, highlighted prime locations and flexible installments, and ran precision targeting aimed at affluent buyers and expatriates.",
+      "metrics": [
+        {
+          "label": "إجمالي مبيعات الوحدات السكنية المحققة",
+          "labelEn": "Generated Property Sales",
+          "value": "140M+",
+          "hint": "جنيه مصري في مشروعات سكنية متعددة",
+          "hintEn": "EGP across flagship residential projects"
+        },
+        {
+          "label": "عملاء محتملون مؤهلون للشراء",
+          "labelEn": "Qualified Inbound Buyers",
+          "value": "2,450+",
+          "hint": "بيانات حقيقية مع موعد معاينة مؤكد",
+          "hintEn": "pre-qualified with scheduled site visits"
+        },
+        {
+          "label": "عائد الاستثمار الإعلاني العقاري",
+          "labelEn": "Real Estate Campaign ROI",
+          "value": "6.8X",
+          "hint": "مقارنة بإجمالي الميزانية الإعلانية المنفقة",
+          "hintEn": "multiplied return against media spend"
+        }
+      ],
+      "services": [
+        "تصميم الحملات العقارية للمشروعات السكنية",
+        "إعلانات الاستهداف الجغرافي والطبقي (Meta & Google Search)",
+        "صياغة العروض الترويجية وخطط السداد الميسرة",
+        "تأهيل العملاء وربط مسار المبيعات الفوري"
+      ],
+      "servicesEn": [
+        "Residential Project Marketing Campaigns",
+        "Geo-targeted & High-Net-Worth Ads (Meta & Google)",
+        "Installment Value Proposition Messaging",
+        "Inbound Lead Qualification & CRM Flow"
+      ],
+      "tags": [
+        "Memar Lashin",
+        "Real Estate B2C",
+        "Luxury Living",
+        "Property Sales"
+      ],
+      "tagsEn": [
+        "Memar Lashin",
+        "Real Estate B2C",
+        "Luxury Living",
+        "Property Sales"
+      ],
+      "image": "/assets/memar-lashin/memar-lashin_img_3.png",
+      "logoUrl": "/assets/memar-lashin/memar-lashin_img_1.png",
+      "gallery": [
+        "/assets/memar-lashin/memar-lashin_img_3.png",
+        "/assets/memar-lashin/memar-lashin_img_4.jpg",
+        "/assets/memar-lashin/memar-lashin_img_5.jpg",
+        "/assets/memar-lashin/memar-lashin_img_6.jpg",
+        "/assets/memar-lashin/memar-lashin_img_7.jpg",
+        "/assets/memar-lashin/memar-lashin_img_8.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/memar-lashin/",
+      "quote": {
+        "text": "الحملات التي نفذتها ديجيتال إفكت جعلت مشروعاتنا السكنية كاملة الحجز في وقت قياسي وبأعلى كفاءة تسويقية شهدناها.",
+        "textEn": "Digital Effect campaigns fully booked out our residential units in record time with unmatched cost per acquisition.",
+        "author": "القطاع التجاري — معمار لاشين",
+        "authorEn": "Commercial Sector — Memar Lashin",
+        "role": "معمار لاشين للتطوير العقاري",
+        "roleEn": "Memar Lashin Real Estate Development"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2b-bsizia",
+      "thumbnailUrl": "/assets/portfolio_crops/card_bsizia.png",
+      "title": "دراسة حالة جمعية مستثمري مناطق بني سويف الصناعية (BSIZIA) — بناء الهوية والمنظومة الرقمية للترويج الصناعي وجذب الاستثمار",
+      "titleEn": "Beni Suef Industrial Zones Investors Association (BSIZIA) — Industrial Authority & Investment Ecosystem",
+      "subtitle": "من التمثيل المؤسسي التقليدي إلى منصة صناعية رقمية متكاملة لربط المصانع، تمثيل المستثمرين، وترويج المناطق الصناعية في بني سويف",
+      "subtitleEn": "Transforming regional industrial representation into an authoritative digital investment hub connecting plants and global investors",
+      "sector": "b2b",
+      "client": "جمعية مستثمري مناطق بني سويف الصناعية (BSIZIA)",
+      "clientEn": "Beni Suef Industrial Zones Investors Association (BSIZIA)",
+      "industry": "التنمية الصناعية والاستثمار والتمثيل المؤسسي للمصانع",
+      "industryEn": "Industrial Development, Investment Promotion & Plant Representation",
+      "duration": "شراكة استراتيجية مستمرة",
+      "durationEn": "Ongoing Strategic Partnership",
+      "challenge": "صعوبة الوصول إلى المستثمرين الجدد خارج النطاق الجغرافي، وحاجة المصانع القائمة في مناطق بني سويف الصناعية إلى منصة تواصل موحدة وصوت رقمي قوي يمثل مصالحهم أمام الجهات الحكومية وسلاسل الإمداد، بالإضافة إلى إبراز المزايا التنافسية الاستثمارية للمحافظة كمركز صناعي واعد في صعيد مصر.",
+      "challengeEn": "Overcoming localized geographic limitations to reach prospective industrial investors, unifying disparate factories across Beni Suef industrial zones, establishing an authoritative collective voice for regulatory liaison, and highlighting Beni Suef’s high-yield manufacturing potential.",
+      "solution": "إطلاق حملة رقمية متكاملة وهوية مرئية تركز على محورين: تمكين المصانع القائمة عبر إبراز قوة التكتل والعضوية («العضوية قوة.. استثمار أقوى وأمان أكبر»)، وجذب الاستثمارات الجديدة من خلال محتوى تحليلي يوضح المزايا الجغرافية وقرب سلاسل الإمداد ومخطط المناطق الصناعية («بني سويف مركز صناعي صاعد.. استثمر في موقع يخدم استثمارك»). وتفعيل التواجد على فيسبوك وإنستغرام بحملات استهداف B2B لرجال الأعمال ورواد الصناعة.",
+      "solutionEn": "Architected an institutional B2B digital presence focusing on two pillars: empowering local manufacturers through collective advocacy (\"Membership is Strength.. Greater Investment & Higher Security\"), and driving inward investment through detailed industrial mapping and logistical feasibility assets. Executed targeted multi-channel B2B campaigns reaching top business executives and factory owners.",
+      "metrics": [
+        {
+          "label": "نمو التفاعل المؤسسي والصناعي",
+          "labelEn": "Industrial & B2B Engagement",
+          "value": "+380%",
+          "hint": "تفاعل مباشر من أصحاب المصانع والمستثمرين",
+          "hintEn": "direct engagement from plant executives"
+        },
+        {
+          "label": "وصول الحملات لرواد الأعمال والمستثمرين",
+          "labelEn": "Targeted Executive Reach",
+          "value": "1.8M+",
+          "hint": "صناع قرار ومستثمرون في القطاع الصناعي",
+          "hintEn": "targeted B2B decision-makers reached"
+        },
+        {
+          "label": "طلبات الانضمام والاستفسارات الاستثمارية",
+          "labelEn": "Membership & Investment Inquiries",
+          "value": "+145%",
+          "hint": "زيادة طلبات العضوية والاستثمار الصناعي",
+          "hintEn": "new membership & zone applications"
+        },
+        {
+          "label": "تغطية المناطق الصناعية الممثلة",
+          "labelEn": "Industrial Zones Covered",
+          "value": "8 مناطق",
+          "hint": "شاملة الواسطى، ناصر، ببا، وادي غراب والمراكز الصناعية",
+          "hintEn": "comprehensive regional industrial coverage"
+        }
+      ],
+      "services": [
+        "إدارة وتطوير التواجد الرقمي المؤسسي (B2B Social Media)",
+        "تصميم الهوية البصرية والحملات الترويجية للمناطق الصناعية",
+        "صناعة المحتوى الترويجي الاستثماري والخرائط التفاعلية",
+        "إعلانات الاستهداف الدقيق لرجال الأعمال وصناع القرار (Meta Ads)",
+        "تغطية الفعاليات ومبادرات دعم المستثمرين والمصانع"
+      ],
+      "servicesEn": [
+        "Institutional B2B Digital Presence Management",
+        "Visual Identity & Industrial Zones Campaign Design",
+        "Investment Promotion Content & Geographic Mapping Assets",
+        "Targeted Executive & Investor Advertising (Meta Ads)",
+        "Industrial Advocacy & Plant Support Communications"
+      ],
+      "tags": [
+        "BSIZIA",
+        "Industrial B2B",
+        "Beni Suef Zones",
+        "Investment Hub",
+        "B2B Marketing"
+      ],
+      "tagsEn": [
+        "BSIZIA",
+        "Industrial B2B",
+        "Beni Suef Zones",
+        "Investment Hub",
+        "B2B Marketing"
+      ],
+      "image": "/assets/bsizia/bsizia_img_6.png",
+      "logoUrl": "/assets/bsizia/bsizia_img_1.png",
+      "gallery": [
+        "/assets/bsizia/bsizia_img_8.jpg",
+        "/assets/bsizia/bsizia_img_9.jpg",
+        "/assets/bsizia/bsizia_img_10.jpg",
+        "/assets/bsizia/bsizia_img_12.jpg",
+        "/assets/bsizia/bsizia_img_13.jpg",
+        "/assets/bsizia/bsizia_img_14.jpg",
+        "/assets/bsizia/bsizia_img_15.jpg",
+        "/assets/bsizia/bsizia_img_16.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/bsizia/",
+      "quote": {
+        "text": "شراكتنا مع ديجيتال إفكت أعطت صوتاً رقمياً قوياً لمناطق بني سويف الصناعية؛ استطاعوا بلورة رسالتنا ودور الجمعية في دعم المصانع وجذب الاستثمارات بأسلوب بصري واحترافي راقٍ يليق بالصناعة الوطنية.",
+        "textEn": "Our partnership with Digital Effect gave Beni Suef Industrial Zones an authoritative digital presence. They articulated our mission to empower manufacturers and attract regional investment with unmatched visual quality.",
+        "author": "مجلس إدارة جمعية مستثمري بني سويف الصناعية",
+        "authorEn": "Board of Directors — BSIZIA",
+        "role": "جمعية مستثمري مناطق بني سويف الصناعية (BSIZIA)",
+        "roleEn": "Beni Suef Industrial Zones Investors Association"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2c-concrete",
+      "thumbnailUrl": "/assets/portfolio_crops/card_concrete.png",
+      "title": "دراسة حالة كونكريت (Concrete) — إطلاق حملات المواسم والأزياء الراقية ورفع مبيعات الفروع والمتجر الإلكتروني",
+      "titleEn": "Concrete Apparel — Seasonal Fashion Campaigns & Scaling Retail Showrooms and Online Orders",
+      "subtitle": "هوية بصرية أنيقة لحملات الشتاء والصيف والأعياد جذبت ملايين المشاهدات ورفعت مبيعات التجزئة للملابس الرجالية الفاخرة",
+      "subtitleEn": "High-fashion editorial campaigns driving millions of impressions and multi-channel retail demand",
+      "sector": "b2c",
+      "client": "كونكريت للملابس والأزياء الرجالية",
+      "clientEn": "Concrete Fashion & Menswear",
+      "industry": "الأزياء الراقية والملابس واللايف ستايل",
+      "industryEn": "Premium Fashion, Menswear & Apparel Retail",
+      "duration": "٥ أشهر",
+      "durationEn": "5 Months",
+      "challenge": "الحفاظ على فخامة ورقي البراند مع تنشيط المبيعات اليومية في مواسم التخفيضات ومجموعات الأزياء الجديدة دون المساس بصورة العلامة المترسخة.",
+      "challengeEn": "Balancing heritage luxury positioning with urgent direct-response commercial velocity across stores and digital shopping carts.",
+      "solution": "تصميم حملات بصرية فائقة الأناقة، إطلاق كتالوجات تفاعلية للمجموعات الجديدة، وإعلانات إعادة استهداف للمهتمين بالبدل والملابس الكاجوال الراقية.",
+      "solutionEn": "Curated editorial fashion visual assets, launched interactive new-collection lookbooks, and ran high-intent social ads driving footfall and online checkout.",
+      "metrics": [
+        {
+          "label": "العائد على الإنفاق الإعلاني ROAS",
+          "labelEn": "Return on Ad Spend (ROAS)",
+          "value": "5.4X",
+          "hint": "متوسط العائد طوال مواسم الإطلاق",
+          "hintEn": "seasonal launch campaigns average"
+        },
+        {
+          "label": "طلبات المتجر وزيارات الفروع",
+          "labelEn": "Store Orders & Footfall Scale",
+          "value": "+240%",
+          "hint": "زيادة مباشرة في الإقبال والمبيعات",
+          "hintEn": "in-store visits and e-commerce checkouts"
+        },
+        {
+          "label": "وصول الحملات الموسمية",
+          "labelEn": "Seasonal Campaign Reach",
+          "value": "3.8M+",
+          "hint": "جمهور مستهدف بدقة للرجال والمهنيين",
+          "hintEn": "targeted luxury menswear audience"
+        }
+      ],
+      "services": [
+        "تصميم الحملات الإعلانية ومجموعات الأزياء",
+        "إعلانات زيادة المبيعات والتجارة الإلكترونية",
+        "إدارة منصات التواصل الاجتماعي ومحتوى الأناقة",
+        "توجيه حركة الشراء للفروع والمتاجر الإلكترونية"
+      ],
+      "servicesEn": [
+        "Fashion Editorial & Campaign Design",
+        "Omni-Channel Retail Performance Ads",
+        "Social Media Management & Style Guides",
+        "Store Traffic & Digital Cart Funnels"
+      ],
+      "tags": [
+        "Concrete",
+        "Fashion Retail",
+        "Luxury Menswear",
+        "ROAS Scaling"
+      ],
+      "tagsEn": [
+        "Concrete",
+        "Fashion Retail",
+        "Luxury Menswear",
+        "ROAS Scaling"
+      ],
+      "image": "/assets/concrete/concrete_img_3.png",
+      "logoUrl": "/assets/concrete/concrete_img_1.png",
+      "gallery": [
+        "/assets/concrete/concrete_img_3.png",
+        "/assets/concrete/concrete_img_4.jpg",
+        "/assets/concrete/concrete_img_5.jpg",
+        "/assets/concrete/concrete_img_6.jpg",
+        "/assets/concrete/concrete_img_7.jpg",
+        "/assets/concrete/concrete_img_8.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/concrete/",
+      "quote": {
+        "text": "ديجيتال إفكت جمعت بين الذوق الرفيع المطلوب في عالم الموضة والنتائج الرقمية القوية في المبيعات، وهو ما نحتاجه تماماً.",
+        "textEn": "Digital Effect brilliantly merged premium fashion aesthetics with hardcore commercial performance and store footfall.",
+        "author": "إدارة العلامة التجارية — كونكريت",
+        "authorEn": "Brand Directorate — Concrete",
+        "role": "كونكريت للملابس الجاهزة",
+        "roleEn": "Concrete Apparel"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-penguin",
+      "thumbnailUrl": "/assets/penguin/penguin_top_1.jpg",
+      "title": "دراسة حالة براند بينجوين للأجهزة المنزلية والتبريد — بناء هوية بصرية عالمية ومضاعفة المبيعات الاستهلاكية",
+      "titleEn": "Penguin Home Appliances & Refrigeration — Brand Transformation & Record Retail Sales",
+      "subtitle": "من المنشورات التقليدية إلى هوية مرئية عالمية وحملات إعلانية تفاعلية ضاعفت مبيعات التجزئة والتقسيط",
+      "subtitleEn": "From routine posts to an authoritative consumer electronics brand scaling retail & online sales",
+      "sector": "b2c",
+      "client": "شركة بينجوين للأجهزة المنزلية والتبريد",
+      "clientEn": "Penguin Home Appliances & Refrigeration",
+      "industry": "الأجهزة المنزلية والتبريد ومبردات المياه",
+      "industryEn": "Home Appliances & Consumer Electronics",
+      "duration": "٨ أشهر",
+      "durationEn": "8 Months",
+      "challenge": "سوق الأجهزة المنزلية شديد التنافسية؛ وكانت صفحة بينجوين تعاني من منشورات نمطية قديمة وضعف إبراز جودة المكونات الإيطالية وكفاءة التبريد الاستوائي، مع الحاجة لتنشيط مبيعات الثلاجات والديب فريزر ومبردات المياه في مواسم الصيف والعودة للمدارس وشراكات التقسيط (ValU و 2B).",
+      "challengeEn": "Fierce consumer appliance rivalry with entrenched legacy players; Penguin had passive outdated creatives failing to communicate its Italian components and energy-efficient compressors, needing explosive seasonal sales.",
+      "solution": "إعادة هيكلة الهوية البصرية بالكامل وصناعة أكثر من ١٥ فيديو موشن جرافيك وريلز دعائية احترافية، إطلاق حملات صيفية كبرى تحت شعار «الصيف الحقيقي يبدأ من الركن اللي كله برودة»، وحملات العودة للمدارس، مع ترويج عروض التقسيط بدون فوائد بالشراكة مع ValU وموزعي 2B، واستهداف سلوكي وجغرافي دقيق للمقبلين على الزواج وتجهيز المنازل.",
+      "solutionEn": "Engineered a complete visual brand overhaul, produced 15+ high-conversion motion reels, launched headline campaigns (\"The Coolest Corner of Summer\" & \"Back to School\"), and promoted 0% interest installment partnerships with ValU & 2B retail outlets.",
+      "metrics": [
+        {
+          "label": "نمو مبيعات الأجهزة المباشرة والتجزئة",
+          "labelEn": "Direct & Retail Sales Growth",
+          "value": "+310%",
+          "hint": "في مبردات المياه والديب فريزر والثلاجات",
+          "hintEn": "across water dispensers, freezers & fridges"
+        },
+        {
+          "label": "مشاهدات الحملات الإعلانية ومقاطع الفيديو",
+          "labelEn": "Campaign Video Views",
+          "value": "3.6M+",
+          "hint": "وصول موجه لجمهور الأجهزة المنزلية",
+          "hintEn": "targeted consumer impressions"
+        },
+        {
+          "label": "العائد على الإنفاق الإعلاني ROAS",
+          "labelEn": "Return on Ad Spend (ROAS)",
+          "value": "4.8X",
+          "hint": "خلال مواسم الذروة وعروض التقسيط",
+          "hintEn": "peak seasonal & installment campaigns"
+        },
+        {
+          "label": "تفاعل واستفسارات أسعار ومنافذ بيع",
+          "labelEn": "Direct Inquiries & Engagements",
+          "value": "85,000+",
+          "hint": "طلبات شراء ومنافذ التوزيع المعتمدة",
+          "hintEn": "purchase intents & showroom directions"
+        }
+      ],
+      "services": [
+        "إعادة بناء الهوية البصرية لمنصات التواصل",
+        "إنتاج وتصميم مقاطع فيديو موشن جرافيك وريلز دعائية",
+        "إدارة وتطوير الحملات الإعلانية على Meta (Facebook & Instagram)",
+        "إدارة حملات العروض الترويجية والتقسيط البنكي (ValU / 2B)",
+        "كتابة المحتوى التسويقي الاستهلاكي وتصاميم السوشيال ميديا"
+      ],
+      "servicesEn": [
+        "Brand Identity Overhaul & Visual Repositioning",
+        "Motion Graphics & Promotional Video Production",
+        "Meta Ads Campaign Scaling (Facebook & Instagram)",
+        "Promotional & Installment Partnership Campaigns (ValU / 2B)",
+        "Consumer Copywriting & High-Conversion Creative Assets"
+      ],
+      "tags": [
+        "Penguin Brand",
+        "Home Appliances",
+        "Retail Scaling",
+        "Motion Videos"
+      ],
+      "tagsEn": [
+        "Penguin Brand",
+        "Home Appliances",
+        "Retail Scaling",
+        "Motion Videos"
+      ],
+      "image": "/assets/penguin/penguin_hero_bg.jpg",
+      "logoUrl": "/assets/penguin/penguin_logo.png",
+      "gallery": [
+        "/assets/penguin/penguin_hero_bg.jpg",
+        "/assets/penguin/penguin_hero_figure.png",
+        "/assets/penguin/penguin_top_1.jpg",
+        "/assets/penguin/penguin_top_2.jpg",
+        "/assets/penguin/penguin_creative_1.jpg",
+        "/assets/penguin/penguin_creative_2.jpg",
+        "/assets/penguin/penguin_creative_3.jpg",
+        "/assets/penguin/penguin_creative_4.jpg",
+        "/assets/penguin/penguin_creative_5.jpg",
+        "/assets/penguin/penguin_creative_6.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/penguin/",
+      "quote": {
+        "text": "التحول الذي أحدثته ديجيتال إفكت في صفحات ومبيعات بينجوين كان مبهراً؛ نقلوا تصاميمنا ومقاطع الفيديو إلى مستوى عالمي يضاهي أكبر العلامات الإيطالية، وارتفعت طلبات منتجاتنا في منافذ التوزيع والمتجر بشكل غير مسبوق.",
+        "textEn": "The transformation Digital Effect created for Penguin was astonishing. They elevated our creatives to international standards matching premier Italian brands, driving massive retail showroom demand.",
+        "author": "إدارة التسويق — شركة بينجوين",
+        "authorEn": "Marketing Directorate — Penguin Appliances",
+        "role": "شركة بينجوين للأجهزة المنزلية والتبريد",
+        "roleEn": "Penguin Home Appliances"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2c-penguin-web",
+      "thumbnailUrl": "/assets/case-studies/penguin-website/social-hero.jpg",
+      "title": "دراسة حالة متجر بينجوين الإلكتروني (penguin-appliances.com/en) — تصميم وتطوير منصة التجارة الإلكترونية ثنائية اللغة",
+      "titleEn": "Penguin Appliances Official E-Commerce Website (penguin-appliances.com/en) — Bilingual Shopify Storefront",
+      "subtitle": "بناء متجر إلكتروني ثنائي اللغة (عربي/إنجليزي) متكامل للأجهزة المنزلية مع محددات المواصفات وأداة مقارنة المبردات وسلة الشراء السريعة",
+      "subtitleEn": "Full bilingual EN/AR Shopify e-commerce storefront structuring 5 appliance collections with variant-level spec selection and comparison tools",
+      "sector": "b2c",
+      "client": "متجر بينجوين الإلكتروني (Penguin Appliances Web)",
+      "clientEn": "Penguin Appliances Online Store",
+      "industry": "تصميم وتطوير المواقع والمتاجر الإلكترونية (E-Commerce Web)",
+      "industryEn": "E-Commerce Website Design & Shopify Engineering",
+      "duration": "شهران (التصميم، البرمجة، وهيكلة الكتالوج)",
+      "durationEn": "2 Months (UI/UX, Shopify Engineering & Catalog Architecture)",
+      "challenge": "احتاجت علامة بينجوين إلى قناة بيع إلكترونية مباشرة تتيح للمستهلكين في مصر مقارنة سعات الديب فريزر والثلاجات ومبردات المياه واختيار نوع الكمبروسر (Inverter / LG) باللغتين العربية والإنجليزية.",
+      "challengeEn": "Penguin required a flagship direct-to-consumer online store allowing buyers across Egypt to browse appliances, compare water dispenser specs, and choose compressor variants seamlessly in Arabic and English.",
+      "solution": "طورت ديجيتال إفكت متجر penguin-appliances.com/en على منصة Shopify ببنية ثنائية اللغة RTL/LTR، و5 أقسام رئيسية، ومحددات مواصفات داخل البطاقات، وجدول مقارنة تفاعلي للمبردات، وبحث تنبؤي وسلة تسوق سريعة.",
+      "solutionEn": "Digital Effect built penguin-appliances.com/en on Shopify with dual EN/AR RTL/LTR localization, 5 structured appliance collections, card-level compressor & glass-door variant swatches, an interactive dispenser comparison matrix, and an Ajax cart drawer.",
+      "metrics": [
+        {
+          "label": "فئات ومنتجات المتجر المهيكلة",
+          "labelEn": "Structured Catalog Depth",
+          "value": "25+ SKU",
+          "hint": "موزعة عبر 5 أقسام رئيسية و3 صفحات عروض",
+          "hintEn": "across 5 core collections & 3 promo hubs"
+        },
+        {
+          "label": "دعم اللغات والاتجاهات",
+          "labelEn": "Bilingual Experience",
+          "value": "AR / EN",
+          "hint": "تبديل فوري بين العربية RTL والإنجليزية LTR",
+          "hintEn": "instant RTL Arabic & LTR English switching"
+        },
+        {
+          "label": "تحسين مقارنة الموديلات (Compare UX)",
+          "labelEn": "Comparison UX Impact",
+          "value": "3 موديلات",
+          "hint": "جدول مقارنة فوري لمبردات HR001 / PD001 / PD002",
+          "hintEn": "live side-by-side HR001 / PD001 / PD002 specs"
+        },
+        {
+          "label": "جاهزية الدفع والسلة السريعة",
+          "labelEn": "Checkout & Support Flow",
+          "value": "100%",
+          "hint": "أكواد خصم، شريط شحن مجاني، وخط ساخن مباشر",
+          "hintEn": "discount codes, shipping bar & direct warranty portal"
+        }
+      ],
+      "services": [
+        "تصميم واجهات وتجربة مستخدم المتجر الإلكتروني (UI/UX E-Commerce)",
+        "تطوير وتخصيص متجر Shopify ثنائي اللغة (EN / AR RTL)",
+        "برمجة محددات المواصفات والألوان والكمبروسر على البطاقات",
+        "تطوير أداة مقارنة مبردات المياه والبحث التنبؤي",
+        "تصميم بانرات الهيرو لجميع أقسام الثلاجات والفريزرات والميني بار"
+      ],
+      "servicesEn": [
+        "E-Commerce Storefront UI/UX Architecture",
+        "Bilingual Shopify Customization (EN & Arabic RTL)",
+        "Card-Level Variant Swatches (Compressor, Glass Door, SKU)",
+        "Interactive Dispenser Comparison Matrix & Predictive Search",
+        "Hero Banner Merchandising Across 5 Appliance Collections"
+      ],
+      "tags": [
+        "Web Design",
+        "E-Commerce",
+        "تصميم مواقع",
+        "متاجر إلكترونية",
+        "Shopify",
+        "Penguin Appliances"
+      ],
+      "tagsEn": [
+        "Web Design",
+        "E-Commerce",
+        "Website Case Study",
+        "Shopify Storefront",
+        "Penguin Appliances"
+      ],
+      "image": "/assets/case-studies/penguin-website/social-hero.jpg",
+      "logoUrl": "/assets/case-studies/penguin-website/store-logo.png",
+      "statsImage": "/assets/case-studies/penguin-website/banner-hero-1.jpg",
+      "gallery": [
+        "/assets/case-studies/penguin-website/social-hero.jpg",
+        "/assets/case-studies/penguin-website/banner-hero-1.jpg",
+        "/assets/case-studies/penguin-website/banner-hero-2.jpg",
+        "/assets/case-studies/penguin-website/banner-hero-3.jpg",
+        "/assets/case-studies/penguin-website/banner-hero-4.jpg",
+        "/assets/case-studies/penguin-website/store-logo.png"
+      ],
+      "clientUrl": "https://penguin-appliances.com/en",
+      "quote": {
+        "text": "أصبح لعملائنا منصة إلكترونية متكاملة تعرض كل موديلات بينجوين ومواصفات الكمبروسر والضمان بوضوح باللغتين العربية والإنجليزية، مما سهّل اتخاذ قرار الشراء مباشرة عبر الإنترنت.",
+        "textEn": "We now have a unified bilingual online store clearly showcasing every Penguin appliance model, compressor specification, and warranty portal—accelerating direct online orders.",
+        "author": "فريق التجارة الإلكترونية — Penguin Appliances",
+        "authorEn": "E-Commerce Directorate — Penguin Appliances",
+        "role": "penguin-appliances.com/en",
+        "roleEn": "penguin-appliances.com/en"
+      },
+      "featured": true
+    },
+    {
+      "id": "cs-b2c-hamburg",
+      "thumbnailUrl": "/assets/portfolio_crops/card_hamburg.png",
+      "title": "دراسة حالة هامبورج (Hamburg) — حملات العروض الكبرى وتوسيع شبكة البيع المباشر للمستهلكين",
+      "titleEn": "Hamburg Appliances — Mega Promotional Campaigns & Direct Consumer Retail Scaling",
+      "subtitle": "حملات تركز على الشفاطات والمسطحات والبوتاجازات البلت-إن العصرية مع عروض تخفيضات ومزايا الأمان الشامل",
+      "subtitleEn": "Built-in kitchen hobs, hoods & ovens marketed with seasonal discounts and safety certifications",
+      "sector": "b2c",
+      "client": "شركة هامبورج للأجهزة المنزلية والإلكترونية",
+      "clientEn": "Hamburg Home Appliances",
+      "industry": "الأجهزة المنزلية، الشفاطات، والمسطحات والبوتاجازات",
+      "industryEn": "Kitchen Hobs, Hoods & Consumer Appliances",
+      "duration": "٥ أشهر",
+      "durationEn": "5 Months",
+      "challenge": "زيادة الإقبال على أجهزة المطابخ البلت-إن (Built-in) والشفاطات العصرية وتوضيح سهولة التركيب والصيانة وأمان الغاز الكامل.",
+      "challengeEn": "Overcoming customer apprehension regarding built-in appliance installation while driving sales for modern kitchen hobs and hoods.",
+      "solution": "تنفيذ حملات بصرية توضح جمالية وتناسق المطبخ العصري مع أجهزة هامبورج، وإطلاق عروض الخصومات المجمعة، وتوفير خدمة الرد السريع على استفسارات الأسعار والمقاسات.",
+      "solutionEn": "Produced kitchen aesthetic visuals highlighting seamless dimensions, deployed bundle discounts, and streamlined direct-response sizing assistance.",
+      "metrics": [
+        {
+          "label": "نمو مبيعات المسطحات والأفران البلت-إن",
+          "labelEn": "Built-In Appliance Sales Scale",
+          "value": "+260%",
+          "hint": "في المسطحات الزجاجية والشفاطات الهرمية",
+          "hintEn": "across glass hobs & chimney hoods"
+        },
+        {
+          "label": "تفاعل الجمهور في مواسم العروض",
+          "labelEn": "Promotional Campaign Engagements",
+          "value": "72,000+",
+          "hint": "استفسارات حول الأسعار والمقاسات والمنافذ",
+          "hintEn": "dimension inquiries & purchase orders"
+        },
+        {
+          "label": "العائد على الإنفاق الإعلاني ROAS",
+          "labelEn": "Return on Ad Spend (ROAS)",
+          "value": "4.9X",
+          "hint": "طوال فترات حملات تخفيضات الصيف والشتاء",
+          "hintEn": "steady seasonal campaign profitability"
+        }
+      ],
+      "services": [
+        "تصميم الحملات الترويجية لأجهزة المطابخ",
+        "إعلانات الاستهداف للراغبين في تجديد المطابخ والمنازل",
+        "كتابة المحتوى التسويقي لمزايا الأمان والمواصفات",
+        "أتمتة خدمة الرد السريع على استفسارات الأسعار"
+      ],
+      "servicesEn": [
+        "Built-in Kitchen Creative Ads",
+        "Home Renovation Audience Advertising",
+        "Safety & Technical Feature Copywriting",
+        "Rapid Sizing & Price Inquiry Routing"
+      ],
+      "tags": [
+        "Hamburg",
+        "Kitchen Hobs",
+        "Built-in Appliances",
+        "Retail Ads"
+      ],
+      "tagsEn": [
+        "Hamburg",
+        "Kitchen Hobs",
+        "Built-in Appliances",
+        "Retail Ads"
+      ],
+      "image": "/assets/hamburg-social/hamburg-social_img_4.png",
+      "logoUrl": "/assets/hamburg-social/hamburg-social_img_1.png",
+      "gallery": [
+        "/assets/hamburg-social/hamburg-social_img_3.jpg",
+        "/assets/hamburg-social/hamburg-social_img_4.png",
+        "/assets/hamburg-social/hamburg-social_img_6.jpg",
+        "/assets/hamburg-social/hamburg-social_img_5.webp",
+        "/assets/hamburg-social/hamburg-social_img_7.webp",
+        "/assets/portfolio_crops/card_hamburg.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/hamburg-social/",
+      "quote": {
+        "text": "تصاميم ديجيتال إفكت جعلت أجهزة هامبورج تظهر بأعلى معايير الأناقة والعملية، وتضاعفت طلبات منتجاتنا لدى تجار الأجهزة.",
+        "textEn": "Digital Effect visuals portrayed Hamburg appliances with ultimate modern elegance, doubling dealer purchase orders across Egypt.",
+        "author": "إدارة المبيعات — هامبورج",
+        "authorEn": "Sales Directorate — Hamburg",
+        "role": "هامبورج للأجهزة المنزلية",
+        "roleEn": "Hamburg Home Appliances"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-acton",
+      "thumbnailUrl": "/assets/portfolio_crops/card_acton.png",
+      "title": "دراسة حالة أكتون (Acton) — تنشيط مبيعات الثلاجات والديب فريزر وشراكات التقسيط البنكي والاستهلاكي",
+      "titleEn": "Acton Appliances — Scaling Refrigerator & Freezer Retail Volume & Financing Partnerships",
+      "subtitle": "حملات موسمية تركز على كفاءة التبريد والمظهر العصري وتسهيلات التقسيط مع كبرى المنصات الاستهلاكية",
+      "subtitleEn": "Strategic consumer promotions scaling white-goods demand through 0% installment marketing",
+      "sector": "b2c",
+      "client": "شركة أكتون للأجهزة المنزلية والتبريد",
+      "clientEn": "Acton Home Appliances & Refrigeration",
+      "industry": "الأجهزة المنزلية والتبريد وحلول المنازل العصرية",
+      "industryEn": "Home Appliances, Refrigeration & Consumer Tech",
+      "duration": "٦ أشهر",
+      "durationEn": "6 Months",
+      "challenge": "الحاجة إلى توسيع الحصة السوقية لأجهزة التبريد في مواسم الصيف وتجهيز المنازل، وتقديم حلول تقسيط ميسرة تزيل عقبة السعر أمام الأسر والمقبلين على الزواج.",
+      "challengeEn": "Expanding market penetration during seasonal peaks and removing price friction through zero-interest installment communication.",
+      "solution": "بناء حملات إعلانية تعرض جودة المحركات والضمان الطويل، وترويج عروض التقسيط بمقدم 0%، مع إبراز شبكة الموزعين المعتمدة في مختلف المحافظات.",
+      "solutionEn": "Designed feature-driven creatives highlighting extended warranties and energy efficiency, paired with zero-down installment financing promotions.",
+      "metrics": [
+        {
+          "label": "نمو مبيعات التجزئة والموزعين",
+          "labelEn": "Direct Retail Sales Scale",
+          "value": "+290%",
+          "hint": "في مبردات المياه والديب فريزر والثلاجات",
+          "hintEn": "across cooling units & home freezers"
+        },
+        {
+          "label": "طلبات التقسيط المحققة",
+          "labelEn": "Installment Orders Generated",
+          "value": "14,200+",
+          "hint": "شراء فوري عبر شراكات التقسيط الاستهلاكي",
+          "hintEn": "facilitated via consumer finance channels"
+        },
+        {
+          "label": "العائد الإعلاني الموسمي",
+          "labelEn": "Seasonal Ad Spend Return",
+          "value": "4.6X",
+          "hint": "طوال فترات الصيف والعروض الخاصة",
+          "hintEn": "sustained over peak summer campaign"
+        }
+      ],
+      "services": [
+        "تصميم الحملات الإعلانية للأجهزة المنزلية",
+        "إدارة وتطوير الحملات على Meta (Facebook & Instagram)",
+        "تسويق عروض الشراكات البنكية والتقسيط الميسر",
+        "صناعة المحتوى الترويجي وتوجيه المستهلكين للمنافذ"
+      ],
+      "servicesEn": [
+        "Home Appliance Creative Visual Design",
+        "Meta Paid Ad Management (Facebook & Instagram)",
+        "Retail Financing & Installment Promotion",
+        "Consumer Copywriting & Dealer Hub Guidance"
+      ],
+      "tags": [
+        "Acton",
+        "Home Appliances",
+        "Retail Financing",
+        "Refrigeration"
+      ],
+      "tagsEn": [
+        "Acton",
+        "Home Appliances",
+        "Retail Financing",
+        "Refrigeration"
+      ],
+      "image": "/assets/acton-2/acton-2_img_4.png",
+      "logoUrl": "/assets/acton-2/acton-2_img_1.png",
+      "gallery": [
+        "/assets/acton-2/acton-2_img_4.png",
+        "/assets/acton-2/acton-2_img_5.jpg",
+        "/assets/acton-2/acton-2_img_6.jpg",
+        "/assets/acton-2/acton-2_img_7.jpg",
+        "/assets/acton-2/acton-2_img_8.jpg",
+        "/assets/portfolio_crops/card_acton.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/acton-2/",
+      "quote": {
+        "text": "حملات أكتون مع ديجيتال إفكت ساعدتنا في الوصول لآلاف المنازل وزيادة مبيعات أجهزة التبريد بصورة غير مسبوقة.",
+        "textEn": "Acton campaigns with Digital Effect scaled our household footprint and generated unprecedented cooling appliance orders.",
+        "author": "إدارة المبيعات — أكتون",
+        "authorEn": "Sales Management — Acton",
+        "role": "أكتون للأجهزة المنزلية",
+        "roleEn": "Acton Home Appliances"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-yoken",
+      "thumbnailUrl": "/assets/portfolio_crops/card_yoken.png",
+      "title": "دراسة حالة يوكين (Yoken) — ترسيخ الحضور الرقمي وزيادة مبيعات أجهزة المطبخ والغسالات المنزلية",
+      "titleEn": "Yoken Appliances — Digital Presence Scaling & Direct Consumer Demand for Kitchen Appliances",
+      "subtitle": "إعادة إطلاق الحملات الترويجية لمسابقات ومنتجات يوكين المنزلية لرفع الطلب في معارض التوزيع وشبكات الأجهزة",
+      "subtitleEn": "Revitalizing retail campaigns and interactive activations driving showroom footfall and kitchen appliance orders",
+      "sector": "b2c",
+      "client": "شركة يوكين للأجهزة المنزلية",
+      "clientEn": "Yoken Home Appliances",
+      "industry": "أجهزة المطابخ والغسالات والأجهزة الكهرومنزيلية",
+      "industryEn": "Kitchen & Home Appliances Retail",
+      "duration": "٦ أشهر",
+      "durationEn": "6 Months",
+      "challenge": "تجديد الثقة بمنتجات يوكين، وتعريف الجمهور بقطع الغيار الأصلية والمواصفات الأوروبية للأجهزة المنزلية بأسعار في متناول العائلات.",
+      "challengeEn": "Refreshing consumer brand sentiment and communicating European build standards and accessible pricing to household decision-makers.",
+      "solution": "تصميم محتوى تفاعلي يشرح مميزات الأجهزة، إطلاق مسابقات موسمية جذبت آلاف المشاركات، وحملات إعلانات موجهة تبرز شبكة الصيانة المعتمدة.",
+      "solutionEn": "Crafted interactive feature demos, launched seasonal giveaway activations engaging tens of thousands, and pushed certified maintenance network credibility.",
+      "metrics": [
+        {
+          "label": "نمو مبيعات أجهزة المطبخ والغسيل",
+          "labelEn": "Kitchen Appliances Sales Scale",
+          "value": "+275%",
+          "hint": "في معارض التوزيع ومتاجر الأجهزة الكهربائية",
+          "hintEn": "across retail showroom distributors"
+        },
+        {
+          "label": "وصول الحملات الإعلانية على فيسبوك",
+          "labelEn": "Campaign Facebook Reach",
+          "value": "2.9M+",
+          "hint": "استهداف ربات البيوت والمقبلين على الزواج",
+          "hintEn": "targeted family & homemaker reach"
+        },
+        {
+          "label": "استفسارات الأسعار ومنافذ البيع",
+          "labelEn": "Showroom Inquiries & Buying Leads",
+          "value": "48,000+",
+          "hint": "تفاعل مباشر عبر الرسائل والتعليقات",
+          "hintEn": "direct purchase & distributor inquiries"
+        }
+      ],
+      "services": [
+        "تصميم الحملات والمنشورات التفاعلية",
+        "إدارة الحملات الإعلانية المدفوعة على منصات التواصل",
+        "كتابة المحتوى التسويقي المعزز للثقة",
+        "تغطية عروض الموزعين ومنافذ البيع"
+      ],
+      "servicesEn": [
+        "Interactive Campaign & Social Visuals",
+        "Targeted Social Performance Advertising",
+        "Trust-Building Consumer Copywriting",
+        "Retail Network Promotion & Outreach"
+      ],
+      "tags": [
+        "Yoken",
+        "Kitchen Tech",
+        "Home Appliances",
+        "Retail Growth"
+      ],
+      "tagsEn": [
+        "Yoken",
+        "Kitchen Tech",
+        "Home Appliances",
+        "Retail Growth"
+      ],
+      "image": "/assets/yoken-2/yoken-2_img_3.png",
+      "logoUrl": "/assets/yoken-2/yoken-2_img_1.png",
+      "gallery": [
+        "/assets/yoken-2/yoken-2_img_3.png",
+        "/assets/yoken-2/yoken-2_img_4.jpg",
+        "/assets/yoken-2/yoken-2_img_5.jpg",
+        "/assets/yoken-2/yoken-2_img_6.jpg",
+        "/assets/yoken-2/yoken-2_img_7.jpg",
+        "/assets/yoken-2/yoken-2_img_8.jpg",
+        "/assets/portfolio_crops/card_yoken.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/yoken-2/",
+      "quote": {
+        "text": "فريق ديجيتال إفكت أحدث نقلة في تفاعل الجمهور مع منتجاتنا؛ تصاميمهم الاحترافية جعلت علامتنا حاضرة بقوة أمام كل أسرة.",
+        "textEn": "Digital Effect modernized how households engage with our appliances; their creative direction elevated Yoken across retail shelves.",
+        "author": "إدارة التسويق — يوكين",
+        "authorEn": "Marketing Management — Yoken",
+        "role": "يوكين للأجهزة المنزلية",
+        "roleEn": "Yoken Home Appliances"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-siltal",
+      "thumbnailUrl": "/assets/portfolio_crops/card_siltal.png",
+      "title": "دراسة حالة سيلتال (Siltal) — إبراز الجودة الإيطالية ومضاعفة حصة السوق في الثلاجات والغسالات",
+      "titleEn": "Siltal Appliances — Communicating Italian Heritage & Expanding Consumer Refrigerator Market Share",
+      "subtitle": "حملات تركز على الهندسة الإيطالية، التوفير الذكي للطاقة، ومتانة التبريد التي تدوم لعقود في المنازل",
+      "subtitleEn": "Highlighting certified Italian manufacturing and energy efficiency to expand cooling appliance market share",
+      "sector": "b2c",
+      "client": "شركة سيلتال للأجهزة المنزلية الإيطالية",
+      "clientEn": "Siltal Home Appliances",
+      "industry": "الأجهزة المنزلية الإيطالية والتبريد والغسالات",
+      "industryEn": "Italian Consumer Appliances & Cooling Systems",
+      "duration": "٥ أشهر",
+      "durationEn": "5 Months",
+      "challenge": "إبراز القيمة المضافة لتقنيات التبريد الإيطالية لسيلتال أمام المنافسين الآسيويين منخفضي السعر، وتأكيد موثوقية المنتج على المدى الطويل.",
+      "challengeEn": "Communicating the superior engineering value of Italian cooling systems against low-cost Asian alternatives in the retail appliance segment.",
+      "solution": "تصميم حملات بصرية تعكس الفخامة الأوروبية وتبرز شهادات الجودة وخدمات ما بعد البيع، مع إعلانات جغرافية للمعارض ومراكز التوزيع.",
+      "solutionEn": "Designed elegant European-inspired creatives emphasizing certified manufacturing standards, supported by geo-targeted distributor footfall ads.",
+      "metrics": [
+        {
+          "label": "زيادة الطلب على منتجات التبريد والغسيل",
+          "labelEn": "Consumer Appliance Demand Scale",
+          "value": "+310%",
+          "hint": "في الثلاجات والغسالات ذات السعات العائلية",
+          "hintEn": "across family fridges & washers"
+        },
+        {
+          "label": "مشاهدات الحملات التعريفية",
+          "labelEn": "Awareness Campaign Impressions",
+          "value": "2.4M+",
+          "hint": "وصول موجه لجمهور الأجهزة المنزلية",
+          "hintEn": "targeted appliance consumer reach"
+        },
+        {
+          "label": "معدل تحويل الاستفسارات إلى مبيعات",
+          "labelEn": "Inquiry-to-Purchase Conversion",
+          "value": "26%",
+          "hint": "نسبة إتمام الشراء لدى شبكة الموزعين",
+          "hintEn": "retail close rate across authorized dealers"
+        }
+      ],
+      "services": [
+        "تصميم الهوية البصرية وإعلانات السوشيال ميديا",
+        "إعلانات الاستهداف الدقيق للعائلات والمقبلين على الزواج",
+        "صناعة المحتوى التعريفي بالمواصفات الإيطالية",
+        "تنشيط مبيعات شبكة الموزعين المعتمدين"
+      ],
+      "servicesEn": [
+        "Visual Identity & Social Campaign Design",
+        "Hyper-Targeted Family & Bridal Advertising",
+        "Technical Product Copywriting (Italian Heritage)",
+        "Authorized Dealer Network Activation"
+      ],
+      "tags": [
+        "Siltal",
+        "Italian Tech",
+        "Refrigerators",
+        "Consumer Trust"
+      ],
+      "tagsEn": [
+        "Siltal",
+        "Italian Tech",
+        "Refrigerators",
+        "Consumer Trust"
+      ],
+      "image": "/assets/siltal-social/siltal-social_img_4.png",
+      "logoUrl": "/assets/siltal-social/siltal-social_img_1.png",
+      "gallery": [
+        "/assets/siltal-social/siltal-social_img_4.png",
+        "/assets/siltal-social/siltal-social_img_5.jpg",
+        "/assets/siltal-social/siltal-social_img_6.jpg",
+        "/assets/siltal-social/siltal-social_img_7.webp",
+        "/assets/portfolio_crops/card_siltal.png"
+      ],
+      "clientUrl": "https://digitaleffect.net/siltal-social/",
+      "quote": {
+        "text": "ديجيتال إفكت استطاعت إبراز التراث الإيطالي العريق لسيلتال بأسلوب عصري شجع آلاف المستهلكين على اختيار أجهزتنا.",
+        "textEn": "Digital Effect captured the prestigious Italian heritage of Siltal in a contemporary style that resonated directly with modern families.",
+        "author": "الإدارة التجارية — سيلتال",
+        "authorEn": "Commercial Head — Siltal",
+        "role": "سيلتال للأجهزة المنزلية",
+        "roleEn": "Siltal Home Appliances"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-passap",
+      "thumbnailUrl": "/assets/portfolio_crops/card_passap.png",
+      "title": "دراسة حالة باساب (Passap) — حملات سخانات الغاز والكهرباء ومواسم الأعياد ودعم شبكة الصيانة المعتمدة",
+      "titleEn": "Passap Appliances — Water Heater Campaigns, Seasonal Holiday Promos & Nationwide Brand Trust",
+      "subtitle": "حملات «دش ساخن في عز البرد» وتنشيط الخط الساخن 16898 وتوسيع حصة سخانات باساب الموفرة للطاقة",
+      "subtitleEn": "High-conversion winter water heater campaigns & hotlines 16898 driving seasonal retail velocity",
+      "sector": "b2c",
+      "client": "شركة باساب للأجهزة المنزلية والسخانات",
+      "clientEn": "Passap Home Appliances & Water Heaters",
+      "industry": "سخانات المياه، الديب فريزر، والأجهزة الكهربائية المنزلية",
+      "industryEn": "Water Heaters, Freezers & Household Appliances",
+      "duration": "٨ أشهر",
+      "durationEn": "8 Months",
+      "challenge": "المنافسة الشديدة في موسم الشتاء على سخانات الغاز والكهرباء، وضرورة تذكير المستهلكين بعراقة اسم باساب وأمان الصمامات وسرعة خدمات الصيانة المعتمدة (الخط الساخن 16898).",
+      "challengeEn": "Peak winter water heater market rivalry requiring urgent safety reassurance, energy savings awareness, and hotline maintenance credibility.",
+      "solution": "إطلاق حملات تفاعلية ذكية تحت شعار «مع سخانات باساب الغاز حتاخد دش ساخن في عز البرد»، والترويج لعروض الأعياد، وربط الإعلانات المباشرة بالخط الساخن ومراكز الخدمة المعتمدة.",
+      "solutionEn": "Engineered viral winter campaign themes (\"Hot showers in the deepest cold\"), integrated hotline 16898 lead generation, and deployed festive seasonal retail promotions.",
+      "metrics": [
+        {
+          "label": "نمو مبيعات سخانات الغاز والكهرباء",
+          "labelEn": "Winter Water Heater Sales Scale",
+          "value": "+360%",
+          "hint": "خلال أشهر ذروة الشتاء وموسم التدفئة",
+          "hintEn": "across gas & electric heating appliances"
+        },
+        {
+          "label": "اتصالات الخط الساخن ومنافذ البيع",
+          "labelEn": "Hotline 16898 Direct Inquiries",
+          "value": "+180%",
+          "hint": "استفسارات شراء وصيانة وموزعين معتمدين",
+          "hintEn": "inbound maintenance & purchasing calls"
+        },
+        {
+          "label": "عائد الإنفاق الإعلاني الموسمي (ROAS)",
+          "labelEn": "Winter Campaign ROAS",
+          "value": "5.1X",
+          "hint": "معدل ربحية مبيعات السخانات في موسم الذروة",
+          "hintEn": "profitability multiplier during winter heating peak"
+        },
+        {
+          "label": "وصول الحملات على فيسبوك وإنستغرام",
+          "labelEn": "Social Media Reach Volume",
+          "value": "4.2M+",
+          "hint": "وصول واسع النطاق للأسر في كافة محافظات مصر",
+          "hintEn": "targeted household consumer reach"
+        }
+      ],
+      "services": [
+        "تصميم الحملات الإعلانية ومحتوى المواسم الشتوية",
+        "إدارة وتطوير الحملات على Meta (Facebook & Instagram)",
+        "صياغة الخطاب التسويقي وتفعيل قنوات الخط الساخن (16898)",
+        "حملات التهنئة والتفاعل في الأعياد والمناسبات"
+      ],
+      "servicesEn": [
+        "Seasonal Campaign Design & Creative Direction",
+        "Meta Ads Performance Management",
+        "Hotline 16898 & Warranty Service Marketing",
+        "Holiday & Festive Social Activations"
+      ],
+      "tags": [
+        "Passap",
+        "Water Heaters",
+        "Winter Campaign",
+        "Household Appliances"
+      ],
+      "tagsEn": [
+        "Passap",
+        "Water Heaters",
+        "Winter Campaign",
+        "Household Appliances"
+      ],
+      "image": "/assets/portfolio_crops/card_passap.png",
+      "logoUrl": "/assets/passap-2/passap-2_img_2.png",
+      "gallery": [
+        "/assets/portfolio_crops/card_passap.png",
+        "/assets/passap-2/passap_heater_tech.jpg",
+        "/assets/passap-2/passap-2_img_3.png",
+        "/assets/passap-2/passap_service_care.jpg",
+        "/assets/passap-2/passap_hero_bg.jpg",
+        "/assets/passap-2/passap-2_img_1.jpg"
+      ],
+      "clientUrl": "https://digitaleffect.net/passap-2/",
+      "quote": {
+        "text": "حملات ديجيتال إفكت أعادت لسخانات وأجهزة باساب بريقها وحيويتها بين العائلات المصرية، وكانت نتائج موسم الشتاء استثنائية بكل المقاييس.",
+        "textEn": "Digital Effect campaigns reinvigorated the Passap brand among Egyptian families, generating record-setting winter sales.",
+        "author": "إدارة التسويق — باساب",
+        "authorEn": "Marketing Directorate — Passap",
+        "role": "باساب للأجهزة المنزلية والسخانات",
+        "roleEn": "Passap Home Appliances"
+      },
+      "featured": false
+    },
+    {
+      "id": "cs-b2c-alwaad-travel",
+      "thumbnailUrl": "/assets/portfolio_crops/card_alwaad.png",
+      "title": "دراسة حالة الوعد للسياحة (AlWaad Travel) — حجز رحلات العمرة والبرامج السياحية الترفيهية عبر إعلانات الاستهداف الدقيق",
+      "titleEn": "AlWaad Travel — Umrah & Leisure Tour Booking Funnels via Hyper-Targeted Consumer Ads",
+      "subtitle": "حملات رقمية شاملة لملء مقاعد رحلات العمرة والبرامج الترفيهية للأسر بأقل تكلفة حجز وأسرع استجابة عبر الواتساب",
+      "subtitleEn": "High-intent travel funnels filling Umrah departures and family holiday packages with instant WhatsApp conversion",
+      "sector": "b2c",
+      "client": "شركة الوعد للسياحة والسفر",
+      "clientEn": "AlWaad Travel & Tourism",
+      "industry": "السياحة والسفر، رحلات العمرة، والبرامج الترفيهية",
+      "industryEn": "Travel & Tourism, Umrah Packages & Family Holidays",
+      "duration": "٦ أشهر",
+      "durationEn": "6 Months",
+      "challenge": "موسمية قطاع السياحة والسفر وشدة المنافسة على برامج العمرة والسياحة الداخلية والخارجية، مع الحاجة لحجز أفواج كاملة في مواعيد محددة مسبقاً دون هدر المقاعد.",
+      "challengeEn": "Extreme seasonality and price sensitivity in religious Umrah tours and family holidays, requiring zero-vacancy departure guarantees.",
+      "solution": "تصميم مسارات إعلانية سريعة على فيسبوك وإنستغرام تعرض تفاصيل الفنادق، الطيران، والأسعار بشفافية، وتوجيه المشتركين فوراً لمحادثات واتساب مع مستشاري السفر لحجز المقاعد.",
+      "solutionEn": "Designed high-transparency tour itineraries showcasing hotel proximity and flight times, with single-click WhatsApp triage booking seats in minutes.",
+      "metrics": [
+        {
+          "label": "حجز برامج سياحية وعمرة كاملة المقاعد",
+          "labelEn": "Fully Booked Tour Departures",
+          "value": "+340%",
+          "hint": "ملء مقاعد الطيران والفنادق المحجوزة بالكامل",
+          "hintEn": "100% occupancy across scheduled flights"
+        },
+        {
+          "label": "رسائل واتساب واستفسارات مباشرة",
+          "labelEn": "Direct Inbound Booking Chats",
+          "value": "38,500+",
+          "hint": "تواصل فوري مع راغبي الحجز والسفر",
+          "hintEn": "high-intent prospective traveler inquiries"
+        },
+        {
+          "label": "العائد الإعلاني لمواسم العمرة والعطلات",
+          "labelEn": "Seasonal Tour Ad ROAS",
+          "value": "4.9X",
+          "hint": "معدل ربحية الحملات الترويجية لبرامج السفر",
+          "hintEn": "profitability multiplier on high-ticket tour packages"
+        },
+        {
+          "label": "انخفاض تكلفة حجز المقعد السياحي",
+          "labelEn": "Cost Per Booking Reduction",
+          "value": "48%",
+          "hint": "تحسين استهداف الجمهور والطبقات المستهدفة",
+          "hintEn": "optimized audience targeting efficiency"
+        }
+      ],
+      "services": [
+        "تصميم حملات البرامج السياحية ورحلات العمرة",
+        "إعلانات المحادثات والتحويل الفوري عبر الواتساب (Meta Ads)",
+        "كتابة المحتوى التسويقي التحفيزي لخطط السفر والعطلات",
+        "إدارة مواسم الذروة والحجوزات العاجلة"
+      ],
+      "servicesEn": [
+        "Tour & Umrah Program Creative Ads",
+        "Instant WhatsApp Click-to-Chat Meta Funnels",
+        "High-Urgency Travel & Holiday Copywriting",
+        "Seasonal Peak Departure Management"
+      ],
+      "tags": [
+        "AlWaad Travel",
+        "Tourism B2C",
+        "Umrah Tours",
+        "WhatsApp Funnels"
+      ],
+      "tagsEn": [
+        "AlWaad Travel",
+        "Tourism B2C",
+        "Umrah Tours",
+        "WhatsApp Funnels"
+      ],
+      "image": "/assets/portfolio_crops/card_alwaad.png",
+      "logoUrl": "/assets/alwaad-travel/alwaad-travel_img_1.png",
+      "gallery": [
+        "/assets/portfolio_crops/card_alwaad.png",
+        "/assets/alwaad-travel/alwaad_hero_bg.jpg",
+        "/assets/alwaad-travel/alwaad-travel_img_4.png",
+        "/assets/alwaad-travel/alwaad-travel_img_5.jpg",
+        "/assets/alwaad-travel/alwaad-travel_img_6.jpg",
+        "/assets/alwaad-travel/alwaad-travel_img_3.jpg",
+        "/assets/alwaad-travel/alwaad-travel_img_7.webp"
+      ],
+      "clientUrl": "https://digitaleffect.net/alwaad-travel/",
+      "quote": {
+        "text": "ديجيتال إفكت جعلت برامجنا السياحية ورحلات العمرة كاملة العدد قبل موعد الإقلاع بأسابيع؛ مسار الإعلانات للواتساب كان فائق الفعالية.",
+        "textEn": "Digital Effect ensured our Umrah and leisure flights were 100% booked weeks ahead of departure; their WhatsApp conversion funnels were remarkably effective.",
+        "author": "إدارة التشغيل السياحي — الوعد للسياحة",
+        "authorEn": "Tour Operations Management — AlWaad Travel",
+        "role": "شركة الوعد للسياحة والسفر",
+        "roleEn": "AlWaad Travel & Tourism"
+      },
+      "featured": false
+    }
+  ],
+  "packages": [
+    {
+      "id": "pkg-b2c-active",
+      "name": "باقة Active",
+      "nameEn": "Active Package",
+      "sector": "b2c",
+      "badge": "انطلاق التواجد الرقمي",
+      "badgeEn": "Starter Presence",
+      "price": 12500,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": false,
+      "hasOffer": false,
+      "tagline": "تأسيس الحضور التفاعلي على منصات التواصل للمتاجر والعلامات",
+      "taglineEn": "Establish an active, professional presence on social platforms",
+      "idealFor": "المتاجر والعلامات التجارية الناشئة الراغبة في نشاط شهري مستقر.",
+      "idealForEn": "Emerging stores and brands seeking regular social activity.",
+      "postsCount": 8,
+      "reelsCount": 1,
+      "storiesCount": 0,
+      "features": [
+        "٨ منشورات احترافية شهرياً (8 Posts)",
+        "١ مقطع ريلز بالذكاء الاصطناعي (1 AI Reel)",
+        "خطة نشر وتوزيع للمحتوى على منصات التواصل",
+        "كتابة نصوص ترويجية جذابة تناسب جمهورك",
+        "تنسيق الهوية البصرية والتصميمات بدقة عالية",
+        "تقرير شهري يلخص التفاعل والأداء"
+      ],
+      "featuresEn": [
+        "8 Professional Posts per month",
+        "1 High-Impact AI Reel",
+        "Monthly publishing schedule across social channels",
+        "Engaging copy tailored to your target audience",
+        "Consistent branded visual identity",
+        "Monthly engagement & reach performance report"
+      ]
+    },
+    {
+      "id": "pkg-b2c-interact",
+      "name": "باقة Interact",
+      "nameEn": "Interact Package",
+      "sector": "b2c",
+      "badge": "تنشيط التفاعل والمبيعات",
+      "badgeEn": "Audience Engagement",
+      "price": 15000,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": false,
+      "hasOffer": false,
+      "tagline": "محتوى مرئي مكثف لتنشيط خوارزميات المنصات وزيادة التفاعل",
+      "taglineEn": "Intensified visual content to stimulate engagement and organic reach",
+      "idealFor": "المتاجر المتنامية التي تحتاج انتشاراً أوسع وتفاعلاً دورياً مستمراً.",
+      "idealForEn": "Growing brands needing higher posting frequency and video content.",
+      "postsCount": 12,
+      "reelsCount": 2,
+      "storiesCount": 0,
+      "features": [
+        "١٢ منشوراً احترافياً شهرياً (12 Posts)",
+        "٢ مقطع ريلز بالذكاء الاصطناعي (2 AI Reels)",
+        "خطة محتوى أسبوعية متجددة تراعي مواسم الشراء",
+        "صياغة نصوص إعلانية موجهة للتحويل والمبيعات",
+        "تصميمات تفاعلية تشجع على التعليق والمشاركة",
+        "تحليل شهري مفصل للجمهور ومصادر التفاعل"
+      ],
+      "featuresEn": [
+        "12 Professional Posts per month",
+        "2 AI Reels engineered for reach and conversion",
+        "Weekly dynamic content calendar tuned to shopping behavior",
+        "High-converting persuasive ad copywriting",
+        "Interactive creative layouts driving comments and shares",
+        "Monthly in-depth audience demographics & engagement report"
+      ]
+    },
+    {
+      "id": "pkg-b2c-engage",
+      "name": "باقة Engage",
+      "nameEn": "Engage Package",
+      "sector": "b2c",
+      "badge": "الأكثر طلباً للمتاجر (Most Popular)",
+      "badgeEn": "Best Seller for E-Com & Retail",
+      "price": 20000,
+      "originalPrice": 24000,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": true,
+      "hasOffer": true,
+      "offerNote": "الأكثر مبيعاً • وفر ٤,٠٠٠ ج.م شهرياً",
+      "offerNoteEn": "Most Popular • Save 4,000 EGP/mo",
+      "tagline": "المزيج المثالي بين المنشورات والريلز والستوريز لتحقيق مبيعات متكررة",
+      "taglineEn": "The ideal balance of posts, viral reels, and stories for sustained sales",
+      "idealFor": "براندات الأزياء، العناية، الإلكترونيات، والمتاجر الطامحة لمضاعفة الـ ROAS.",
+      "idealForEn": "Fashion, beauty, retail, and direct-to-consumer online stores.",
+      "postsCount": 16,
+      "reelsCount": 4,
+      "storiesCount": 2,
+      "features": [
+        "١٦ منشوراً احترافياً شهرياً (16 Posts)",
+        "٤ مقاطع ريلز بالذكاء الاصطناعي عالية الجودة (4 AI Reels)",
+        "٢ ستوري تفاعلية دورية (2 Stories)",
+        "استراتيجية محتوى متقدمة لرفع معدل التحويل (CRO)",
+        "تغطية شاملة لمواسم التخفيضات والمنتجات المميزة",
+        "إشراف مباشر من مديري الإبداع وصناع المحتوى الرقمي",
+        "تقرير أداء تفصيلي مع توصيات لتحسين المبيعات"
+      ],
+      "featuresEn": [
+        "16 Professional Posts per month",
+        "4 High-Quality AI Reels with dynamic motion & audio",
+        "2 Interactive Stories for community engagement",
+        "Advanced content strategy boosting Conversion Rate (CRO)",
+        "Full seasonal promotions and hero product campaigns",
+        "Direct supervision from senior creative and performance leads",
+        "Comprehensive monthly sales & conversion performance audit"
+      ]
+    },
+    {
+      "id": "pkg-b2c-advance",
+      "name": "باقة Advance",
+      "nameEn": "Advance Package",
+      "sector": "b2c",
+      "badge": "توسع وهيمنة سوقية شاملة",
+      "badgeEn": "Hyper-Scale & Market Dominance",
+      "price": 25000,
+      "originalPrice": 30000,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": false,
+      "hasOffer": true,
+      "offerNote": "باقة التوسع الشامل • وفر ٥,٠٠٠ ج.م",
+      "offerNoteEn": "Full Scale Tier • Save 5,000 EGP/mo",
+      "tagline": "كثافة إنتاجية استثنائية مع ٦ ريلز شهرياً لاكتساح خوارزميات المنصات",
+      "taglineEn": "Maximum content velocity with 6 AI Reels for total algorithm dominance",
+      "idealFor": "العلامات التجارية الكبرى والمتاجر ذات الحجم الضخم من المنتجات والطلبات.",
+      "idealForEn": "High-volume e-commerce stores, retail chains, and leading brands.",
+      "postsCount": 20,
+      "reelsCount": 6,
+      "storiesCount": 2,
+      "features": [
+        "٢٠ منشوراً احترافياً شهرياً (20 Posts)",
+        "٦ مقاطع ريلز بالذكاء الاصطناعي احترافية مكثفة (6 AI Reels)",
+        "٢ ستوري دورية لمتابعة العروض اليومية (2 Stories)",
+        "تنسيق شامل لكافة خطوط الإنتاج والمنتجات المتنوعة",
+        "صناعة أفكار فيروسية تناسب تيك توك وإنستغرام ريلز",
+        "أولوية قصوى في سرعة التنفيذ والتعديلات",
+        "جلسات مراجعة استراتيجية نصف شهرية لخطط المبيعات"
+      ],
+      "featuresEn": [
+        "20 Professional Posts per month",
+        "6 Intensive AI Reels for massive organic & paid reach",
+        "2 Periodic Stories for flash deals and daily highlights",
+        "Multi-product line coverage and dynamic creative testing",
+        "Viral narrative scripts tailored to TikTok and Reels algorithms",
+        "VIP priority turnaround on all creative deliverables",
+        "Bi-weekly strategic growth reviews with account directors"
+      ]
+    },
+    {
+      "id": "pkg-b2b-active",
+      "name": "باقة Active (B2B)",
+      "nameEn": "Active B2B Package",
+      "sector": "b2b",
+      "badge": "الباقة المعتمدة للشركات",
+      "badgeEn": "Official B2B Retainer",
+      "price": 4000,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": true,
+      "hasOffer": true,
+      "offerNote": "خطة شهرية شاملة متضمنة مجاناً",
+      "offerNoteEn": "Monthly Plan Included",
+      "tagline": "حضور مؤسسي منتظم بمعدل منشور أسبوعياً مع خطة استراتيجية شهرية متكاملة",
+      "taglineEn": "Consistent corporate authority with weekly posting and monthly strategic plan",
+      "idealFor": "المصانع، الموردين، شركات الـ IT، والاستشارات الهندسية والتجارية.",
+      "idealForEn": "Industrial factories, suppliers, engineering firms, and commercial vendors.",
+      "postsCount": 4,
+      "frequency": "منشور أسبوعياً (1 post / week)",
+      "frequencyEn": "1 post / week",
+      "hasMonthlyPlan": true,
+      "features": [
+        "٤ منشورات متخصصة شهرياً (4 Industry Posts)",
+        "معدل النشر: منشور أسبوعياً بانتظام (Frequency: 1 post / week)",
+        "خطة شهرية متكاملة متضمنة (Monthly Plan: Included)",
+        "كتابة محتوى مهني يعزز الريادة الفكرية والموثوقية المؤسسية",
+        "تنسيق الهوية المؤسسية للشركات وصناع القرار",
+        "تقرير شهري حول التفاعل المهني ومؤشرات الحساب"
+      ],
+      "featuresEn": [
+        "4 Specialized Corporate Posts per month",
+        "Publishing Frequency: 1 post / week regularly",
+        "Comprehensive Monthly Strategy Plan included",
+        "B2B thought leadership copywriting establishing trust",
+        "Executive corporate branding and design layout",
+        "Monthly professional engagement & analytics summary"
+      ]
+    },
+    {
+      "id": "pkg-med-presence",
+      "name": "باقة Medical Presence",
+      "nameEn": "Medical Presence Package",
+      "sector": "medical",
+      "badge": "تأسيس الحضور الطبي",
+      "badgeEn": "Medical Baseline",
+      "price": 12500,
+      "quarterlyPrice": 33750,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": false,
+      "hasOffer": true,
+      "offerNote": "وفر ٣,٧٥٠ ج.م عند الدفع الربع سنوي",
+      "offerNoteEn": "Save 3,750 EGP on Quarterly Plan",
+      "tagline": "حضور طبي رصين يجمع بين المنشورات التثقيفية ومقاطع الفيديو التوعوية",
+      "taglineEn": "Dignified medical presence blending patient education carousels and reels",
+      "idealFor": "العيادات التخصصية الفردية والأطباء الاستشاريين الراغبين في بناء تواجد رصين.",
+      "idealForEn": "Private specialist clinics and consultant physicians.",
+      "postsCount": 6,
+      "reelsCount": 4,
+      "features": [
+        "٦ منشورات / كاروسيل طبي تثقيفي شهرياً (6 Posts / Carousels)",
+        "٤ مقاطع ريلز وفيديوهات توعوية طبية (4 Reels)",
+        "الاشتراك الشهري: ١٢,٥٠٠ ج.م / شهرياً",
+        "الاشتراك الربع سنوي: ٣٣,٧٥٠ ج.م / ٣ أشهر (توفير ٣,٧٥٠ ج.م)",
+        "محتوى طبي معتمد وأخلاقي يراعي لوائح الرعاية الصحية",
+        "تصميمات طبية مريحة تعزز ثقة المريض قبل الزيارة"
+      ],
+      "featuresEn": [
+        "6 Educational Medical Posts / Carousels per month",
+        "4 Engaging Clinical Video Reels",
+        "Monthly Retainer: 12,500 EGP / month",
+        "Quarterly Retainer: 33,750 EGP / quarter (Save 3,750 EGP)",
+        "Ethical medical copywriting respecting healthcare guidelines",
+        "Clean clinical visual aesthetics reassuring prospective patients"
+      ]
+    },
+    {
+      "id": "pkg-med-growth",
+      "name": "باقة Medical Growth",
+      "nameEn": "Medical Growth Package",
+      "sector": "medical",
+      "badge": "الأكثر طلباً للعيادات والمراكز (Best Seller)",
+      "badgeEn": "Best Seller for Clinics & Centers",
+      "price": 19500,
+      "quarterlyPrice": 49750,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": true,
+      "hasOffer": true,
+      "offerNote": "الأكثر طلباً • وفر ٨,٧٥٠ ج.م ربع سنوياً",
+      "offerNoteEn": "Best Seller • Save 8,750 EGP Quarterly",
+      "tagline": "توازن قوي لمضاعفة حجوزات الكشوفات ومقاطع الفيديو التوعوية",
+      "taglineEn": "High-performing balance to double clinic appointments and video authority",
+      "idealFor": "مجمعات العيادات، مراكز الأسنان الكبرى، ومراكز الجلدية والتجميل وجراحة اليوم الواحد.",
+      "idealForEn": "Dental centers, derma clinics, polyclinics, and day surgery facilities.",
+      "postsCount": 8,
+      "reelsCount": 8,
+      "features": [
+        "٨ منشورات / كاروسيل طبي عالي الاحترافية (8 Posts / Carousels)",
+        "٨ مقاطع ريلز وفيديوهات طبية شهرياً (8 Reels)",
+        "الاشتراك الشهري: ١٩,٥٠٠ ج.م / شهرياً",
+        "الاشتراك الربع سنوي: ٤٩,٧٥٠ ج.م / ٣ أشهر (توفير ٨,٧٥٠ ج.م)",
+        "خطة محتوى متكاملة لشرح الحالات العلاجية ومزايا الأجهزة",
+        "ربط الحملات وتوجيه المرضى مباشرة لخط حجز الواتساب والاستقبال",
+        "متابعة شهرية دقيقة لمعدلات الحجز وتكلفة استقطاب المريض"
+      ],
+      "featuresEn": [
+        "8 High-Resolution Medical Posts / Carousels per month",
+        "8 Clinical Video Reels per month",
+        "Monthly Retainer: 19,500 EGP / month",
+        "Quarterly Retainer: 49,750 EGP / quarter (Save 8,750 EGP)",
+        "Treatment explanation funnels educating patients on procedures",
+        "Direct patient routing into clinic WhatsApp and reception lines",
+        "Monthly patient booking conversion and PAC performance tracking"
+      ]
+    },
+    {
+      "id": "pkg-med-authority",
+      "name": "باقة Medical Authority",
+      "nameEn": "Medical Authority Package",
+      "sector": "medical",
+      "badge": "للمراكز والمجمعات والمستشفيات",
+      "badgeEn": "Hospitals & Medical Centers",
+      "price": 29500,
+      "quarterlyPrice": 70800,
+      "currency": "ج.م",
+      "currencyEn": "EGP",
+      "period": "/ شهرياً",
+      "periodEn": "/ month",
+      "isPopular": false,
+      "hasOffer": true,
+      "offerNote": "وفر ١٧,٧٠٠ ج.م عند الدفع الربع سنوي",
+      "offerNoteEn": "Save 17,700 EGP on Quarterly Plan",
+      "tagline": "أقصى كثافة إنتاجية طبية مع ١٢ ريلز و١٢ منشوراً شهرياً لهيمنة تامة",
+      "taglineEn": "Maximum medical content velocity with 12 Reels and 12 Posts monthly",
+      "idealFor": "المستشفيات، مجمعات جراحة اليوم الواحد، وشبكات العيادات متعددة الفروع.",
+      "idealForEn": "Hospitals, multi-branch clinic chains, and surgical medical centers.",
+      "postsCount": 12,
+      "reelsCount": 12,
+      "features": [
+        "١٢ منشوراً / كاروسيل طبي موسع شهرياً (12 Posts / Carousels)",
+        "١٢ مقطع ريلز وفيديو طبي شهرياً (12 Reels)",
+        "الاشتراك الشهري: ٢٩,٥٠٠ ج.م / شهرياً",
+        "الاشتراك الربع سنوي: ٧٠,٨٠٠ ج.م / ٣ أشهر (توفير ضخم بقيمة ١٧,٧٠٠ ج.م)",
+        "تغطية متعددة التخصصات الطبية والأطباء الاستشاريين",
+        "أولوية قصوى في سرعة التنفيذ والتصوير والمونتاج الطبي",
+        "إشراف مباشر من استشاري التسويق الطبي ذوي الخبرة التراكمية"
+      ],
+      "featuresEn": [
+        "12 Comprehensive Medical Posts / Carousels per month",
+        "12 Clinical Video Reels per month",
+        "Monthly Retainer: 29,500 EGP / month",
+        "Quarterly Retainer: 70,800 EGP / quarter (Massive 17,700 EGP Savings)",
+        "Multi-department specialty coverage and doctor profiling",
+        "VIP priority turnaround for medical editing and scripting",
+        "Direct stewardship from senior healthcare marketing leadership"
+      ]
+    }
+  ],
+  "promoCodes": [
+    {
+      "id": "promo-effect20",
+      "code": "EFFECT20",
+      "title": "خصم التدشين والانطلاق الحصري ٢٠٪",
+      "titleEn": "Digital Launch 20% Discount",
+      "discountType": "percentage",
+      "discountValue": 20,
+      "minSpend": 10000,
+      "expiresAt": "2026-12-31",
+      "isActive": true,
+      "usageCount": 14,
+      "maxUsage": 100,
+      "applicableSector": "all",
+      "createdAt": "2026-11-07T10:15:57.013Z"
+    },
+    {
+      "id": "promo-growth3000",
+      "code": "GROWTH3000",
+      "title": "خصم نقدي مباشر ٣,٠٠٠ ج.م للشركات",
+      "titleEn": "Direct 3,000 EGP Voucher for Enterprise",
+      "discountType": "fixed",
+      "discountValue": 3000,
+      "minSpend": 18000,
+      "expiresAt": "2026-12-31",
+      "isActive": true,
+      "usageCount": 8,
+      "maxUsage": 50,
+      "applicableSector": "all",
+      "createdAt": "2026-11-07T10:15:57.013Z"
+    },
+    {
+      "id": "promo-welcome10",
+      "code": "WELCOME10",
+      "title": "خصم ترحيبي للعملاء الجدد ١٠٪",
+      "titleEn": "Welcome 10% First Month Discount",
+      "discountType": "percentage",
+      "discountValue": 10,
+      "minSpend": 12000,
+      "expiresAt": "2026-12-31",
+      "isActive": true,
+      "usageCount": 22,
+      "maxUsage": 200,
+      "applicableSector": "all",
+      "createdAt": "2026-11-07T10:15:57.013Z"
+    }
+  ],
+  "inquiries": [
+    {
+      "name": "طارق",
+      "phone": "01096105864",
+      "phoneE164": "+201096105864",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "سمارت",
+      "sector": "b2b",
+      "packageName": "باقة مخصصة — الشركات والمصانع (4 منشور • 0 ريلز)",
+      "budget": "3500 ج.م / شهرياً",
+      "status": "closed",
+      "postsTarget": 4,
+      "reelsTarget": 0,
+      "storiesTarget": 0,
+      "postsDelivered": 0,
+      "reelsDelivered": 0,
+      "storiesDelivered": 0,
+      "id": "inq-1794403414216",
+      "createdAt": "2026-11-11T13:23:34.216Z",
+      "contractStartDate": "2026-11-11",
+      "renewalDate": "2026-12-01",
+      "contractStatus": "active",
+      "paymentStatus": "paid",
+      "billingCycle": "monthly",
+      "currentWorkflowDay": 12,
+      "todayTaskTitle": "تصميم النسخة النهائية للمحتوى",
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "in_progress",
+          "completedAt": "2026-11-11T13:24:04.558Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "pending"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "pending"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "pending"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "note-1794405311961",
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-216 بقيمة إجمالية 7,500 ج.م (باقة مخصصة — الشركات والمصانع (4 منشور • 0 ريلز)) تتضمن رصيد إعلاني 4,000 ج.م.",
+          "createdAt": "2026-11-11T13:55:11.961Z",
+          "type": "payment"
+        },
+        {
+          "id": "note-1794403436059",
+          "text": "تم تحويل العميل إلى مرحلة التعاقد وتفعيل حساب المتابعة.",
+          "createdAt": "2026-11-11T13:23:56.059Z",
+          "type": "update"
+        }
+      ],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 4000,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "name": "هيثم رزق",
+      "phone": "01115919529",
+      "phoneE164": "+201115919529",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "بنجوين",
+      "sector": "b2c",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (6 منشور • 4 ريلز)",
+      "budget": "١٣٬٠٠٠ ج.م / شهرياً",
+      "status": "new",
+      "id": "inq-1794254668168",
+      "createdAt": "2026-11-09T20:04:28.168Z"
+    },
+    {
+      "name": "م. احمد عماد",
+      "phone": "01004860386",
+      "phoneE164": "+201004860386",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "JM Pack",
+      "sector": "b2b",
+      "packageName": "باقة مخصصة — الشركات والمصانع (8 منشور • 4 ريلز)",
+      "budget": "٣٦٬٥٠٠ ج.م / ربع سنوي",
+      "status": "closed",
+      "id": "inq-1794172721894",
+      "createdAt": "2026-11-08T21:18:41.894Z",
+      "contractStartDate": "2026-11-09",
+      "contractRenewalDate": "2026-12-08T21:32:30.862Z",
+      "billingCycle": "monthly",
+      "paymentStatus": "paid",
+      "totalDealAmount": 15000,
+      "paidAmount": 15000,
+      "monthlyRetainerAmount": 15000,
+      "deliverables": {
+        "postsTarget": 12,
+        "postsDone": 0,
+        "reelsTarget": 2,
+        "reelsDone": 0,
+        "storiesTarget": 2,
+        "storiesDone": 0,
+        "monthlyReportStatus": "not_started"
+      },
+      "payments": [
+        {
+          "id": "pay-1794173550862",
+          "amount": 15000,
+          "date": "2026-11-08",
+          "title": "الدفعة الأولى / التعاقد وتأكيد الاشتراك",
+          "status": "paid",
+          "method": "تحويل بنكي / إنستاباي"
+        }
+      ],
+      "accountNotes": [
+        {
+          "id": "note-1794173550862",
+          "date": "2026-11-08T21:32:30.862Z",
+          "text": "تم إتمام التعاقد وتفعيل ملف العميل على باقة (باقة مخصصة — الشركات والمصانع (8 منشور • 4 ريلز)).",
+          "author": "CRM System"
+        }
+      ],
+      "contractStatus": "active",
+      "renewalDate": "2026-12-09",
+      "postsTarget": 4,
+      "postsDelivered": 4,
+      "reelsTarget": 0,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-10T12:19:32.736Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "completed",
+          "completedAt": "2026-11-10T12:19:57.168Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "completed",
+          "completedAt": "2026-11-10T12:20:03.684Z"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "completed",
+          "completedAt": "2026-11-10T12:20:08.601Z"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "completed",
+          "completedAt": "2026-11-10T12:20:12.300Z"
+        }
+      ],
+      "todayTaskTitle": "تصميم النسخة النهائية للمحتوى",
+      "adCreditBalance": 8000,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 10000,
+      "clientNotes": [
+        {
+          "id": "note-1794403219157",
+          "text": "📢 تم صرف مبلغ 2,000 ج.م من الرصيد الإعلاني في حملات (Meta Ads (Facebook & Instagram)). الرصيد الإعلاني المتبقي: 8,000 ج.م.",
+          "createdAt": "2026-11-11T13:20:19.157Z",
+          "type": "update",
+          "author": "فريق إدارة الإعلانات الممولة"
+        },
+        {
+          "id": "note-1794402533105",
+          "text": "💵 تم تأكيد تحصيل الفاتورة رسمياً وإيداع مبلغ 10,000 ج.م في الرصيد الإعلاني للعميل. (الرصيد المتاح الحالي: 10,000 ج.م).",
+          "createdAt": "2026-11-11T13:08:53.106Z",
+          "type": "payment",
+          "author": "الإدارة المالية"
+        }
+      ],
+      "adCreditSpentTotal": 2000
+    },
+    {
+      "name": "abdo",
+      "phone": "01004860386",
+      "phoneE164": "+201004860386",
+      "phoneCountry": "EG",
+      "visitorCountry": "Unknown",
+      "company": "double",
+      "sector": "b2c",
+      "packageId": "custom-pkg-1794170599451",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (12 منشور • 2 ريلز)",
+      "budget": "20,000 - 40,000 ج.م",
+      "id": "inq-1794170627215",
+      "createdAt": "2026-11-08T20:43:47.215Z",
+      "status": "new"
+    }
+  ],
+  "customRates": {
+    "b2c": {
+      "baseManagement": 4000,
+      "costPerPost": 650,
+      "costPerReel": 1300,
+      "costPerStory": 200,
+      "minPrice": 10000
+    },
+    "b2b": {
+      "baseManagement": 600,
+      "costPerPost": 850,
+      "costPerReel": 1800,
+      "costPerStory": 150,
+      "minPrice": 4000
+    },
+    "medical": {
+      "baseManagement": 2500,
+      "costPerPost": 850,
+      "costPerReel": 1450,
+      "costPerStory": 200,
+      "minPrice": 12500
+    }
+  },
+  "invoices": [
+    {
+      "invoiceNumber": "DE-INV-202611-216",
+      "clientId": "inq-1794403414216",
+      "clientName": "طارق",
+      "clientCompany": "سمارت",
+      "clientPhone": "01096105864",
+      "sector": "b2b",
+      "issueDate": "2026-11-11",
+      "dueDate": "2026-12-01",
+      "packageName": "باقة مخصصة — الشركات والمصانع (4 منشور • 0 ريلز)",
+      "retainerAmount": 3500,
+      "adCreditAmount": 4000,
+      "grandTotal": 7500,
+      "billingCycle": "monthly",
+      "paymentStatus": "paid",
+      "deliverables": {
+        "posts": 4,
+        "reels": 0,
+        "stories": 0
+      },
+      "id": "inv-1794405311961-60qv",
+      "createdAt": "2026-11-11T13:55:11.961Z"
+    }
+  ]
+}

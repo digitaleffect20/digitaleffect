@@ -14,6 +14,7 @@ import { CaseStudiesPage } from './pages/CaseStudiesPage';
 import { AboutPage } from './pages/AboutPage';
 import { IptCaseStudyPage } from './pages/IptCaseStudyPage';
 import { PenguinCaseStudyPage } from './pages/PenguinCaseStudyPage';
+import { PenguinWebsiteCaseStudyPage } from './pages/PenguinWebsiteCaseStudyPage';
 import { BsiziaCaseStudyPage } from './pages/BsiziaCaseStudyPage';
 import { BinaryracksCaseStudyPage } from './pages/BinaryracksCaseStudyPage';
 import { GimokaCaseStudyPage } from './pages/GimokaCaseStudyPage';
@@ -25,6 +26,16 @@ import { YokenCaseStudyPage } from './pages/YokenCaseStudyPage';
 import { SiltalCaseStudyPage } from './pages/SiltalCaseStudyPage';
 import { PassapCaseStudyPage } from './pages/PassapCaseStudyPage';
 import { AlwaadCaseStudyPage } from './pages/AlwaadCaseStudyPage';
+import { AguCaseStudyPage } from './pages/AguCaseStudyPage';
+import { PremiumCaseStudyPage } from './pages/PremiumCaseStudyPage';
+import { BusinessPartnerCaseStudyPage } from './pages/BusinessPartnerCaseStudyPage';
+import { OverviewCaseStudyPage } from './pages/OverviewCaseStudyPage';
+import { OroCaseStudyPage } from './pages/OroCaseStudyPage';
+import { AfroEnergyCaseStudyPage } from './pages/AfroEnergyCaseStudyPage';
+import { SadkoCaseStudyPage } from './pages/SadkoCaseStudyPage';
+import { UfarCaseStudyPage } from './pages/UfarCaseStudyPage';
+import { SiltalIdentityCaseStudyPage } from './pages/SiltalIdentityCaseStudyPage';
+import { BiltonCaseStudyPage } from './pages/BiltonCaseStudyPage';
 import { CustomPackagePage } from './pages/CustomPackagePage';
 import { AdminPortalPage } from './pages/AdminPortalPage';
 import { Building2, ShoppingBag, Stethoscope, Home, MessageSquare, Briefcase, Sliders } from 'lucide-react';
@@ -55,6 +66,28 @@ const AppContent: React.FC = () => {
       document.title = isAr ? 'من نحن — خبرة ٢٠ عاماً في التسويق والحلول الرقمية | ديجيتال إفكت' : 'About Us — 20+ Years of Digital Marketing Excellence | Digital Effect';
     } else if (currentPage === 'custom-package') {
       document.title = isAr ? 'صمم باقتك المخصصة واحسب تكلفتها فوراً | ديجيتال إفكت' : 'Custom Package Calculator & Scope Builder | Digital Effect';
+    } else if (currentPage === 'agu-case-study') {
+      document.title = isAr ? 'الاتحاد العربي الخليجي AGU — تصميم الهوية المؤسسية | ديجيتال إفكت' : 'Arab Gulf United AGU — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'premium-case-study') {
+      document.title = isAr ? 'بريميوم Premium — تصميم الهوية والكتالوج الصناعي | ديجيتال إفكت' : 'Premium Machinery — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'business-partner-case-study') {
+      document.title = isAr ? 'بيزنس بارتنرز Business Partners — تصميم الهوية المؤسسية | ديجيتال إفكت' : 'Business Partners — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'overview-case-study') {
+      document.title = isAr ? 'أوفرفيو لأعمال الديكور OVERVIEW — تصميم الهوية المؤسسية | ديجيتال إفكت' : 'OVERVIEW For Decoration Work — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'oro-case-study') {
+      document.title = isAr ? 'أورو للصناعات المغذية ORO — تصميم الهوية المؤسسية | ديجيتال إفكت' : 'ORO Feeding Industries — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'afro-energy-case-study') {
+      document.title = isAr ? 'أفرو إنرجي Afro Energy Ltd — تصميم الهوية المؤسسية | ديجيتال إفكت' : 'Afro Energy Ltd. — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'sadko-case-study') {
+      document.title = isAr ? 'صادكو بلاست SADKO PLAST — تصميم الهوية المؤسسية | ديجيتال إفكت' : 'SADKO PLAST (Since 1992) — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'ufar-case-study') {
+      document.title = isAr ? 'يوفار UFAR — تصميم الهوية المؤسسية | ديجيتال إفكت' : 'UFAR (United For A Reason) — Corporate Identity Case Study | Digital Effect';
+    } else if (currentPage === 'siltal-identity-case-study') {
+      document.title = isAr ? 'سيلتال SILTAL — الهوية المؤسسية وتغليف المنتجات والكتالوج | ديجيتال إفكت' : 'SILTAL Home Appliances — Corporate Identity & Packaging Case Study | Digital Effect';
+    } else if (currentPage === 'bilton-case-study') {
+      document.title = isAr ? 'بيلتون BILTON — تصميم الهوية المؤسسية والكتالوج العرضي | ديجيتال إفكت' : 'BILTON Electronics — Corporate Identity & Catalog Case Study | Digital Effect';
+    } else if (currentPage === 'penguin-web-case-study') {
+      document.title = isAr ? 'متجر بينجوين الإلكتروني Penguin Appliances Website — دراسة حالة | ديجيتال إفكت' : 'Penguin Appliances E-Commerce Website Case Study | Digital Effect';
     }
   }, [currentPage, isAr]);
 
@@ -81,6 +114,8 @@ const AppContent: React.FC = () => {
         return <IptCaseStudyPage />;
       case 'penguin-case-study':
         return <PenguinCaseStudyPage />;
+      case 'penguin-web-case-study':
+        return <PenguinWebsiteCaseStudyPage />;
       case 'bsizia-case-study':
         return <BsiziaCaseStudyPage />;
       case 'binaryracks-case-study':
@@ -103,6 +138,26 @@ const AppContent: React.FC = () => {
         return <PassapCaseStudyPage />;
       case 'alwaad-case-study':
         return <AlwaadCaseStudyPage />;
+      case 'agu-case-study':
+        return <AguCaseStudyPage />;
+      case 'premium-case-study':
+        return <PremiumCaseStudyPage />;
+      case 'business-partner-case-study':
+        return <BusinessPartnerCaseStudyPage />;
+      case 'overview-case-study':
+        return <OverviewCaseStudyPage />;
+      case 'oro-case-study':
+        return <OroCaseStudyPage />;
+      case 'afro-energy-case-study':
+        return <AfroEnergyCaseStudyPage />;
+      case 'sadko-case-study':
+        return <SadkoCaseStudyPage />;
+      case 'ufar-case-study':
+        return <UfarCaseStudyPage />;
+      case 'siltal-identity-case-study':
+        return <SiltalIdentityCaseStudyPage />;
+      case 'bilton-case-study':
+        return <BiltonCaseStudyPage />;
       case 'home':
       default:
         return <HomePage />;

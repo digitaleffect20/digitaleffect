@@ -156,6 +156,7 @@ export const HomePage: React.FC = () => {
 
             const isIpt = study.id === 'cs-med-ipt';
             const isPenguin = study.id === 'cs-b2c-penguin';
+            const isPenguinWeb = study.id === 'cs-b2c-penguin-web';
             const isBsizia = study.id === 'cs-b2b-bsizia';
             const isBinaryracks = study.id === 'cs-b2c-binaryracks';
             const isGimoka = study.id === 'cs-b2c-gimoka';
@@ -176,6 +177,8 @@ export const HomePage: React.FC = () => {
                     setCurrentPage('ipt-case-study');
                   } else if (isPenguin) {
                     setCurrentPage('penguin-case-study');
+                  } else if (isPenguinWeb) {
+                    setCurrentPage('penguin-web-case-study');
                   } else if (isBsizia) {
                     setCurrentPage('bsizia-case-study');
                   } else if (isBinaryracks) {
@@ -206,7 +209,9 @@ export const HomePage: React.FC = () => {
                   isIpt 
                     ? 'border-emerald-300 ring-1 ring-emerald-400/20 hover:border-emerald-500' 
                     : isPenguin
-                    ? 'border-sky-300 ring-1 ring-sky-400/20 hover:border-sky-500' 
+                    ? 'border-sky-300 ring-1 ring-sky-400/20 hover:border-sky-500'
+                    : isPenguinWeb
+                    ? 'border-cyan-400 ring-1 ring-cyan-400/20 hover:border-cyan-500' 
                     : isBsizia
                     ? 'border-blue-400 ring-1 ring-blue-400/20 hover:border-blue-500'
                     : isBinaryracks
