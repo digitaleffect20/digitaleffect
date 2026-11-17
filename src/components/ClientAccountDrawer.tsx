@@ -112,9 +112,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   );
 
   // Today's Task Title
-  const [todayTaskTitle, setTodayTaskTitle] = useState<string>(
-    client?.todayTaskTitle || (isAr ? 'تصميم النسخة النهائية للمحتوى' : 'Design final approved creative assets')
-  );
+  const [todayTaskTitle, setTodayTaskTitle] = useState<string>(client?.todayTaskTitle || '');
   const [isEditingTask, setIsEditingTask] = useState<boolean>(false);
 
   const [postsDelivered, setPostsDelivered] = useState(client?.postsDelivered ?? 0);
@@ -173,7 +171,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           ? client.workflowStages
           : DEFAULT_STAGES
       );
-      setTodayTaskTitle(client.todayTaskTitle || (isAr ? 'تصميم النسخة النهائية للمحتوى' : 'Design final approved creative assets'));
+      setTodayTaskTitle(client.todayTaskTitle || '');
       setPostsDelivered(client.postsDelivered ?? 0);
       setReelsDelivered(client.reelsDelivered ?? 0);
       setStoriesDelivered(client.storiesDelivered ?? 0);
@@ -983,6 +981,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                         type="text"
                         value={todayTaskTitle}
                         onChange={(e) => setTodayTaskTitle(e.target.value)}
+                        placeholder={isAr ? 'أدخل عنوان مهمة اليوم...' : "Enter today's task..."}
                         className="w-full text-xs font-bold p-1.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         autoFocus
                       />
@@ -1000,8 +999,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                       className="group cursor-pointer flex items-center justify-between"
                       title={isAr ? 'اضغط لتعديل مهمة اليوم' : 'Click to edit task title'}
                     >
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                        {todayTaskTitle}
+                      <span className={`text-xs sm:text-sm font-bold transition-colors ${todayTaskTitle ? 'text-slate-900 group-hover:text-blue-600' : 'text-slate-400 group-hover:text-blue-600'}`}>
+                        {todayTaskTitle || (isAr ? 'لا توجد مهمة محددة (اضغط للإضافة)' : 'No task set (click to add)')}
                       </span>
                       <Edit3 className="w-3 h-3 text-slate-400 group-hover:text-blue-600 transition-colors shrink-0 ms-1" />
                     </div>

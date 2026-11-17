@@ -1251,13 +1251,13 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       merged.postsDelivered = merged.postsDelivered ?? 0;
       merged.reelsDelivered = merged.reelsDelivered ?? 0;
       merged.storiesDelivered = merged.storiesDelivered ?? 0;
-      merged.currentWorkflowDay = merged.currentWorkflowDay || 12;
-      merged.todayTaskTitle = merged.todayTaskTitle || 'تصميم النسخة النهائية للمحتوى';
+      merged.currentWorkflowDay = merged.currentWorkflowDay || 1;
+      merged.todayTaskTitle = merged.todayTaskTitle ?? '';
       if (!merged.workflowStages || merged.workflowStages.length === 0) {
         merged.workflowStages = [
-          { id: 'content_creator', title: 'Content Creator', status: 'completed' },
-          { id: 'visual_design', title: 'Visual Design', status: 'completed' },
-          { id: 'final_design', title: 'Final Design', status: 'in_progress' },
+          { id: 'content_creator', title: 'Content Creator', status: 'pending' },
+          { id: 'visual_design', title: 'Visual Design', status: 'pending' },
+          { id: 'final_design', title: 'Final Design', status: 'pending' },
           { id: 'client_approve', title: 'Client Approve', status: 'pending' },
           { id: 'publish', title: 'Publish', status: 'pending' },
         ];
@@ -1305,12 +1305,12 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         postsDelivered: inquiryData.postsDelivered ?? 0,
         reelsDelivered: inquiryData.reelsDelivered ?? 0,
         storiesDelivered: inquiryData.storiesDelivered ?? 0,
-        currentWorkflowDay: inquiryData.currentWorkflowDay || 12,
-        todayTaskTitle: inquiryData.todayTaskTitle || 'تصميم النسخة النهائية للمحتوى',
+        currentWorkflowDay: inquiryData.currentWorkflowDay || 1,
+        todayTaskTitle: inquiryData.todayTaskTitle ?? '',
         workflowStages: inquiryData.workflowStages || [
-          { id: 'content_creator', title: 'Content Creator', status: 'completed' },
-          { id: 'visual_design', title: 'Visual Design', status: 'completed' },
-          { id: 'final_design', title: 'Final Design', status: 'in_progress' },
+          { id: 'content_creator', title: 'Content Creator', status: 'pending' },
+          { id: 'visual_design', title: 'Visual Design', status: 'pending' },
+          { id: 'final_design', title: 'Final Design', status: 'pending' },
           { id: 'client_approve', title: 'Client Approve', status: 'pending' },
           { id: 'publish', title: 'Publish', status: 'pending' },
         ],

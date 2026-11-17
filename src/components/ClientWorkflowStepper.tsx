@@ -3,33 +3,30 @@ import { ClientWorkflowStage } from '../types';
 import { Check, Clock, Calendar, CheckCircle2 } from 'lucide-react';
 
 export const DEFAULT_WORKFLOW_STAGES: ClientWorkflowStage[] = [
-  { 
-    id: 'content_creator', 
-    title: 'Content Creator', 
-    status: 'completed', 
-    completedAt: new Date(Date.now() - 36 * 3600 * 1000).toISOString() 
+  {
+    id: 'content_creator',
+    title: 'Content Creator',
+    status: 'pending',
   },
-  { 
-    id: 'visual_design', 
-    title: 'Visual Design', 
-    status: 'completed', 
-    completedAt: new Date(Date.now() - 14 * 3600 * 1000).toISOString() 
+  {
+    id: 'visual_design',
+    title: 'Visual Design',
+    status: 'pending',
   },
-  { 
-    id: 'final_design', 
-    title: 'Final Design', 
-    status: 'in_progress', 
-    completedAt: new Date().toISOString() 
+  {
+    id: 'final_design',
+    title: 'Final Design',
+    status: 'pending',
   },
-  { 
-    id: 'client_approve', 
-    title: 'Client Approve', 
-    status: 'pending' 
+  {
+    id: 'client_approve',
+    title: 'Client Approve',
+    status: 'pending',
   },
-  { 
-    id: 'publish', 
-    title: 'Publish', 
-    status: 'pending' 
+  {
+    id: 'publish',
+    title: 'Publish',
+    status: 'pending',
   },
 ];
 
