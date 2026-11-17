@@ -105,6 +105,7 @@ export const AdminPortalPage: React.FC = () => {
     updateInquiry,
     logInquiryActivity,
     deleteInquiry,
+    clearAllCrmData,
     cloudSyncStatus,
     supabaseMigrationNeeded,
     lastCloudSyncAt,
@@ -156,6 +157,11 @@ export const AdminPortalPage: React.FC = () => {
     onConfirm: () => Promise<void> | void;
   } | null>(null);
   const [isConfirmActionLoading, setIsConfirmActionLoading] = useState(false);
+  const [rlsClearHelpModal, setRlsClearHelpModal] = useState<{
+    error: string;
+    remainingCount?: number;
+  } | null>(null);
+  const [rlsClearSqlCopied, setRlsClearSqlCopied] = useState(false);
   const [clientSectorFilter, setClientSectorFilter] = useState<'all' | 'b2b' | 'b2c' | 'medical'>('all');
   const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'renewal_due' | 'paused' | 'completed'>('all');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
@@ -724,6 +730,38 @@ export const AdminPortalPage: React.FC = () => {
         } else {
           setCloudInquiries(prev => prev.filter(inq => inq.id !== id));
           showNotice(isAr ? 'تم حذف الطلب بنجاح.' : 'Deleted locally.');
+        }
+      },
+    });
+  };
+
+  // Wipe all CRM inquiries, clients, and invoices from CRM + Supabase DB for clean production start
+  const handleRequestClearAllCrm = () => {
+    setPendingConfirmAction({
+      title: isAr ? 'تفريغ كافة الطلبات والعملاء والفواتير نهائياً' : 'Clear All CRM Data & Database',
+      message: isAr
+        ? 'سيتم مسح جميع الطلبات والاستشارات، العملاء والتعاقدات، وأرشيف الفواتير وسجل النشاط من لوحة التحكم ومن قاعدة بيانات Supabase بالكامل لتبدأ ببيانات حقيقية. لن تتأثر الباقات أو دراسات الحالة أو إعدادات الموقع.'
+        : 'This permanently deletes all inquiries, contracted clients, and invoices from CRM and Supabase so you can start with real data. Packages and Case Studies remain untouched.',
+      confirmLabel: isAr ? 'نعم، أفرغ جميع السجلات والداتابيز' : 'Yes, Empty All CRM Records',
+      onConfirm: async () => {
+        const res = await clearAllCrmData();
+        setCloudInquiries([]);
+        if (isSupabaseConfigured && sessionUser) {
+          await loadInquiries();
+        }
+        if (res.success) {
+          showNotice(
+            isAr
+              ? 'تم تفريغ الطلبات والعملاء وأرشيف الفواتير من النظام والداتابيز بنجاح!'
+              : 'All inquiries, clients, and invoices cleared from CRM & Database!'
+          );
+        } else if (res.rlsBlocked || res.remainingCount) {
+          setRlsClearHelpModal({
+            error: res.error || '',
+            remainingCount: res.remainingCount,
+          });
+        } else {
+          showNotice(res.error || (isAr ? 'تم التفريغ محلياً مع وجود ملاحظة بالسحابة.' : 'Cleared locally with cloud warning.'));
         }
       },
     });
@@ -1779,6 +1817,18 @@ export const AdminPortalPage: React.FC = () => {
                   <Download className="w-3.5 h-3.5 text-slate-600" />
                   <span>{isAr ? 'تصدير Excel (CSV)' : 'Export CSV'}</span>
                 </button>
+
+                {(activeInquiriesList.length > 0 || (data.invoices?.length || 0) > 0) && (
+                  <button
+                    type="button"
+                    onClick={handleRequestClearAllCrm}
+                    className="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                    title={isAr ? 'تفريغ الطلبات والعملاء والفواتير من النظام والداتابيز' : 'Empty all CRM records & DB'}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>{isAr ? 'تفريغ الكل' : 'Clear All'}</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2433,6 +2483,18 @@ export const AdminPortalPage: React.FC = () => {
                   <UserPlus className="w-4 h-4" />
                   <span>{isAr ? 'إضافة عميل وتحديد باقة' : 'Add Client & Scope'}</span>
                 </button>
+
+                {(contractedClients.length > 0 || (data.invoices?.length || 0) > 0) && (
+                  <button
+                    type="button"
+                    onClick={handleRequestClearAllCrm}
+                    className="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                    title={isAr ? 'تفريغ الطلبات والعملاء والفواتير من النظام والداتابيز' : 'Clear All CRM & DB'}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>{isAr ? 'تفريغ السجلات' : 'Clear All'}</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -4019,6 +4081,36 @@ export const AdminPortalPage: React.FC = () => {
                 </label>
               </div>
             </div>
+
+            {/* Clean Slate / Empty CRM & Database Card */}
+            <div className="bg-rose-50/60 p-6 rounded-2xl border border-rose-200 space-y-4">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="space-y-1 max-w-2xl">
+                  <h3 className="text-sm font-black text-rose-950 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                    <span>
+                      {isAr
+                        ? 'تفريغ بيانات التجارب (الطلبات والعملاء والفواتير) للبدء ببيانات حقيقية'
+                        : 'Reset CRM Workspace (Empty Inquiries, Clients & Invoices in DB)'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-rose-800 leading-relaxed">
+                    {isAr
+                      ? 'يمسح جميع الطلبات والاستشارات، العملاء والتعاقدات، وأرشيف الفواتير وسجلات النشاط من المتصفح والسيرفر وقاعدة بيانات Supabase بالكامل لتبدأ إدخال بياناتك الحقيقية على نظافة — مع الحفاظ على الباقات ودراسات الحالة وإعدادات الموقع كما هي.'
+                      : 'Permanently empties inquiries, contracted clients, and invoices across browser state, server storage, and Supabase PostgreSQL so you can start entering real production data. Packages and Case Studies remain untouched.'}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRequestClearAllCrm}
+                  className="px-4 py-2.5 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm inline-flex items-center gap-2 cursor-pointer shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isAr ? 'تفريغ الطلبات والعملاء والفواتير من الداتابيز' : 'Empty All CRM & Database'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>
@@ -4885,6 +4977,88 @@ export const AdminPortalPage: React.FC = () => {
               >
                 {isConfirmActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 <span>{pendingConfirmAction.confirmLabel}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Supabase RLS Clear Helper Modal (shown only if Supabase RLS blocks client-side DELETE) */}
+      {rlsClearHelpModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setRlsClearHelpModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-xl w-full p-6 border border-slate-200 shadow-2xl space-y-4 text-start"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-base font-black text-slate-900">
+                    {isAr
+                      ? 'إفراغ السجلات المتبقية من Supabase (صلاحيات RLS)'
+                      : 'Complete Supabase Wipe (RLS Policy Required)'}
+                  </h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {rlsClearHelpModal.error}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRlsClearHelpModal(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-slate-950 rounded-2xl p-4 space-y-3 border border-slate-800">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold text-emerald-400">
+                  {isAr
+                    ? 'انسخ هذا الكود وشغّله مرة واحدة في Supabase Dashboard → SQL Editor:'
+                    : 'Copy & run once in Supabase Dashboard -> SQL Editor:'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sqlSnippet = `DELETE FROM public.client_invoices;\nDELETE FROM public.crm_client_accounts;\nDELETE FROM public.inquiries;\nDELETE FROM public.customers;\n\nCREATE POLICY "Authenticated admins delete inquiries" ON public.inquiries FOR DELETE TO authenticated USING (true);\nCREATE POLICY "Authenticated admins delete crm_client_accounts" ON public.crm_client_accounts FOR DELETE TO authenticated USING (true);`;
+                    navigator.clipboard?.writeText(sqlSnippet);
+                    setRlsClearSqlCopied(true);
+                    setTimeout(() => setRlsClearSqlCopied(false), 2500);
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  {rlsClearSqlCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{rlsClearSqlCopied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ كود SQL' : 'Copy SQL')}</span>
+                </button>
+              </div>
+              <pre dir="ltr" className="text-[11px] font-mono text-emerald-200/90 whitespace-pre-wrap leading-relaxed select-all">
+{`DELETE FROM public.client_invoices;
+DELETE FROM public.crm_client_accounts;
+DELETE FROM public.inquiries;
+DELETE FROM public.customers;`}
+              </pre>
+            </div>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  setRlsClearHelpModal(null);
+                  await refreshFromSupabase();
+                  await loadInquiries();
+                }}
+                className="px-4 py-2 text-xs font-black text-white bg-slate-900 hover:bg-slate-800 rounded-xl cursor-pointer inline-flex items-center gap-1.5"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تحديث البيانات الآن' : 'Refresh Now'}</span>
               </button>
             </div>
           </div>

@@ -187,3 +187,54 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.crm_client_accounts TO auth
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.client_invoices TO authenticated, service_role;
 GRANT SELECT ON TABLE public.agency_crm_store TO anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.agency_crm_store TO authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.inquiries TO authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.customers TO authenticated, service_role;
+
+-- 8. SECURITY DEFINER RPC: CLEAR ALL CRM DATA (INQUIRIES, CLIENTS, CUSTOMERS, INVOICES)
+-- Keeps service_packages and agency_crm_store (public catalog) completely intact.
+CREATE OR REPLACE FUNCTION public.clear_all_crm_data()
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+    v_inv_count INT := 0;
+    v_crm_count INT := 0;
+    v_inq_count INT := 0;
+    v_cust_count INT := 0;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Unauthorized: Authentication required';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.admin_users) AND NOT public.is_admin() THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+
+    DELETE FROM public.client_invoices;
+    GET DIAGNOSTICS v_inv_count = ROW_COUNT;
+
+    DELETE FROM public.crm_client_accounts;
+    GET DIAGNOSTICS v_crm_count = ROW_COUNT;
+
+    DELETE FROM public.inquiries;
+    GET DIAGNOSTICS v_inq_count = ROW_COUNT;
+
+    DELETE FROM public.customers;
+    GET DIAGNOSTICS v_cust_count = ROW_COUNT;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'deleted_invoices', v_inv_count,
+        'deleted_crm_clients', v_crm_count,
+        'deleted_inquiries', v_inq_count,
+        'deleted_customers', v_cust_count
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.clear_all_crm_data() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.clear_all_crm_data() FROM anon;
+GRANT EXECUTE ON FUNCTION public.clear_all_crm_data() TO authenticated;
+

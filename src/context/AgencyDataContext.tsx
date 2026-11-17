@@ -13,6 +13,7 @@ import {
   deleteCrmClientFromSupabase,
   upsertInvoiceToSupabase,
   deleteInvoiceFromSupabase,
+  clearAllCrmRecordsInSupabase,
   migrateFullLocalDataToSupabase,
 } from '../lib/supabase';
 
@@ -86,6 +87,7 @@ interface AgencyContextType {
   ) => Inquiry | null;
   deleteInquiry: (id: string) => void;
   clearAllInquiries: () => void;
+  clearAllCrmData: () => Promise<{ success: boolean; rlsBlocked?: boolean; remainingCount?: number; error?: string }>;
 
   // Invoices Archive & Account Statements
   addInvoice: (invoice: Omit<ClientInvoiceRecord, 'id' | 'createdAt'>) => ClientInvoiceRecord;
@@ -123,7 +125,7 @@ interface AgencyContextType {
   refreshFromSupabase: () => Promise<void>;
 }
 
-const STORAGE_KEY = 'digital_effect_agency_state_v14';
+const STORAGE_KEY = 'digital_effect_agency_state_v15';
 const LANG_STORAGE_KEY = 'digital_effect_language_v2';
 
 const AgencyDataContext = createContext<AgencyContextType | undefined>(undefined);
@@ -397,12 +399,40 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [data, setData] = useState<AgencyDataState>(() => {
     try {
-      // Clear legacy state keys to avoid stale case studies
+      // Clear legacy state keys to avoid stale case studies and old test CRM records
       localStorage.removeItem('digital_effect_agency_state_v9');
       localStorage.removeItem('digital_effect_agency_state_v10');
       localStorage.removeItem('digital_effect_agency_state_v11');
       localStorage.removeItem('digital_effect_agency_state_v12');
       localStorage.removeItem('digital_effect_agency_state_v13');
+
+      // One-time clean migration from v14 -> v15: preserve catalog settings while clearing stale cached test CRM records
+      const v14Raw = localStorage.getItem('digital_effect_agency_state_v14');
+      if (v14Raw && !localStorage.getItem(STORAGE_KEY)) {
+        try {
+          const parsedV14 = JSON.parse(v14Raw);
+          if (parsedV14 && parsedV14.caseStudies && parsedV14.packages) {
+            const migratedClean: AgencyDataState = {
+              ...INITIAL_AGENCY_DATA,
+              ...parsedV14,
+              caseStudies: ensureCanonicalStudies(
+                parsedV14.caseStudies.filter(
+                  (c: any) => c.id !== 'cs-med-1' && c.id !== 'cs-med-2' && c.id !== 'cs-b2b-1' && c.id !== 'cs-b2b-2' && c.id !== 'cs-b2c-1' && c.id !== 'cs-b2c-2'
+                )
+              ),
+              promoCodes: parsedV14.promoCodes && parsedV14.promoCodes.length > 0 ? parsedV14.promoCodes : (INITIAL_AGENCY_DATA.promoCodes || []),
+              customRates: parsedV14.customRates || DEFAULT_CUSTOM_PACKAGE_RATES,
+              inquiries: [],
+              invoices: [],
+            };
+            localStorage.removeItem('digital_effect_agency_state_v14');
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(migratedClean));
+            return migratedClean;
+          }
+        } catch {}
+      }
+      localStorage.removeItem('digital_effect_agency_state_v14');
+
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -415,11 +445,11 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (!parsed.promoCodes || parsed.promoCodes.length === 0) {
             parsed.promoCodes = INITIAL_AGENCY_DATA.promoCodes || [];
           }
-          if (!parsed.inquiries || parsed.inquiries.length === 0) {
-            parsed.inquiries = INITIAL_AGENCY_DATA.inquiries || [];
+          if (!Array.isArray(parsed.inquiries)) {
+            parsed.inquiries = [];
           }
-          if (!parsed.invoices || parsed.invoices.length === 0) {
-            parsed.invoices = INITIAL_AGENCY_DATA.invoices || [];
+          if (!Array.isArray(parsed.invoices)) {
+            parsed.invoices = [];
           }
           if (!parsed.customRates) {
             parsed.customRates = DEFAULT_CUSTOM_PACKAGE_RATES;
@@ -454,6 +484,8 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const dataRef = useRef<AgencyDataState>(data);
   dataRef.current = data;
   const catalogDirtyRef = useRef(false);
+  const isClearingCrmRef = useRef(false);
+  const pendingSyncTimerRef = useRef<number | null>(null);
 
   // Language setter with HTML document update
   const setLanguage = (lang: Language) => {
@@ -571,13 +603,14 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Helper: Refresh CRM bundle (clients & invoices) when admin session is authenticated
   const refreshFromSupabase = async () => {
+    if (isClearingCrmRef.current) return;
     if (!isSupabaseConfigured || !supabase) {
       setCloudSyncStatus('offline');
       return;
     }
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) return;
+      if (!sessionData?.session || isClearingCrmRef.current) return;
 
       setCloudSyncStatus('syncing');
       const [catRes, crmRes] = await Promise.all([
@@ -621,22 +654,35 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }
         }
 
-        // Hydrate CRM clients if cloud already has records
-        if (crmRes.clients.length > 0) {
-          const cloudIds = new Set(crmRes.clients.map((c) => c.id));
+        // Hydrate CRM clients from Supabase (and drop old sample seed entries)
+        const legacySampleClientIds = new Set(['inq-client-101', 'inq-client-102', 'inq-client-103']);
+        const legacySampleInvoiceIds = new Set(['inv-rec-101-nov', 'inv-rec-101-oct', 'inv-rec-102-nov', 'inv-rec-103-oct']);
+
+        const cloudClientsFiltered = crmRes.clients.filter((c) => !legacySampleClientIds.has(c.id));
+        if (cloudClientsFiltered.length > 0) {
+          const cloudIds = new Set(cloudClientsFiltered.map((c) => c.id));
           const localOnlyNonSample = (prev.inquiries || []).filter(
-            (c) => !cloudIds.has(c.id) && !sampleClientIds.has(c.id)
+            (c) => !cloudIds.has(c.id) && !sampleClientIds.has(c.id) && !legacySampleClientIds.has(c.id)
           );
-          next.inquiries = [...crmRes.clients, ...localOnlyNonSample];
+          next.inquiries = [...cloudClientsFiltered, ...localOnlyNonSample];
+        } else if (!crmRes.error) {
+          next.inquiries = (prev.inquiries || []).filter(
+            (c) => !sampleClientIds.has(c.id) && !legacySampleClientIds.has(c.id)
+          );
         }
 
-        // Hydrate invoices if cloud already has records
-        if (crmRes.invoices.length > 0) {
-          const cloudInvIds = new Set(crmRes.invoices.map((i) => i.id));
+        // Hydrate invoices from Supabase (and drop old sample seed entries)
+        const cloudInvoicesFiltered = crmRes.invoices.filter((i) => !legacySampleInvoiceIds.has(i.id));
+        if (cloudInvoicesFiltered.length > 0) {
+          const cloudInvIds = new Set(cloudInvoicesFiltered.map((i) => i.id));
           const localOnlyInvoices = (prev.invoices || []).filter(
-            (i) => !cloudInvIds.has(i.id) && !sampleInvoiceIds.has(i.id)
+            (i) => !cloudInvIds.has(i.id) && !sampleInvoiceIds.has(i.id) && !legacySampleInvoiceIds.has(i.id)
           );
-          next.invoices = [...crmRes.invoices, ...localOnlyInvoices];
+          next.invoices = [...cloudInvoicesFiltered, ...localOnlyInvoices];
+        } else if (!crmRes.error) {
+          next.invoices = (prev.invoices || []).filter(
+            (i) => !sampleInvoiceIds.has(i.id) && !legacySampleInvoiceIds.has(i.id)
+          );
         }
 
         return next;
@@ -672,6 +718,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     fetch('/api/agency-data')
       .then((res) => (res.ok ? res.json() : null))
       .then((serverData) => {
+        if (isClearingCrmRef.current) return;
         if (serverData && serverData.caseStudies && Array.isArray(serverData.caseStudies)) {
           const verifiedStudies = ensureCanonicalStudies(serverData.caseStudies);
           const sanitizedData = {
@@ -679,6 +726,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             caseStudies: verifiedStudies,
           };
           setData((prev) => {
+            if (isClearingCrmRef.current) return prev;
             const sampleIds = new Set((INITIAL_AGENCY_DATA.inquiries || []).map((c) => c.id));
             const prevInq = prev.inquiries || [];
             const prevIds = new Set(prevInq.map((c) => c.id));
@@ -690,7 +738,6 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               inquiries: [...serverExtras, ...prevInq],
             };
           });
-          safeSaveToLocalStorage(sanitizedData);
         }
       })
       .catch(() => {})
@@ -738,8 +785,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     safeSaveToLocalStorage(data);
 
+    if (pendingSyncTimerRef.current !== null) {
+      window.clearTimeout(pendingSyncTimerRef.current);
+      pendingSyncTimerRef.current = null;
+    }
+
     // Server-side persistence so all visitors and published sites see changes
-    const timer = setTimeout(() => {
+    pendingSyncTimerRef.current = window.setTimeout(() => {
+      pendingSyncTimerRef.current = null;
+      if (isClearingCrmRef.current) return;
       fetch('/api/agency-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -761,7 +815,12 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }, 600);
 
-    return () => clearTimeout(timer);
+    return () => {
+      if (pendingSyncTimerRef.current !== null) {
+        window.clearTimeout(pendingSyncTimerRef.current);
+        pendingSyncTimerRef.current = null;
+      }
+    };
   }, [data]);
 
   // Case Studies CRUD
@@ -1372,6 +1431,54 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
   };
 
+  const clearAllCrmData = async (): Promise<{
+    success: boolean;
+    rlsBlocked?: boolean;
+    remainingCount?: number;
+    error?: string;
+  }> => {
+    isClearingCrmRef.current = true;
+    if (pendingSyncTimerRef.current !== null) {
+      window.clearTimeout(pendingSyncTimerRef.current);
+      pendingSyncTimerRef.current = null;
+    }
+
+    const emptyCrmState: AgencyDataState = {
+      ...dataRef.current,
+      inquiries: [],
+      invoices: [],
+    };
+    dataRef.current = emptyCrmState;
+    setData(emptyCrmState);
+    safeSaveToLocalStorage(emptyCrmState);
+
+    try {
+      await fetch('/api/agency-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emptyCrmState),
+      });
+    } catch {
+      // Server sync best effort
+    }
+
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const res = await clearAllCrmRecordsInSupabase();
+        if (!res.success) {
+          return res;
+        }
+        setLastCloudSyncAt(new Date().toISOString());
+        setCloudSyncStatus('synced');
+      }
+      return { success: true, remainingCount: 0 };
+    } finally {
+      window.setTimeout(() => {
+        isClearingCrmRef.current = false;
+      }, 1500);
+    }
+  };
+
   // Invoices Archive Actions
   const addInvoice = (invoiceData: Omit<ClientInvoiceRecord, 'id' | 'createdAt'>): ClientInvoiceRecord => {
     const id = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -1638,6 +1745,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         logInquiryActivity,
         deleteInquiry,
         clearAllInquiries,
+        clearAllCrmData,
         addInvoice,
         updateInvoice,
         deleteInvoice,

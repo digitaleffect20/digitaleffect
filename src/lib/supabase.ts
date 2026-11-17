@@ -808,6 +808,107 @@ export async function deleteInvoiceFromSupabase(id: string): Promise<{ success: 
 }
 
 /**
+ * Wipe all CRM test/demo records (invoices, client accounts, inquiries, customers) from Supabase
+ * while keeping public catalog (packages, promo codes, case studies, banner) intact.
+ */
+export async function clearAllCrmRecordsInSupabase(): Promise<{
+  success: boolean;
+  rlsBlocked?: boolean;
+  remainingCount?: number;
+  error?: string;
+}> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: true };
+  }
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) {
+      return {
+        success: false,
+        error: 'يرجى تسجيل الدخول بحساب الأدمن لمسح السجلات من قاعدة بيانات Supabase.',
+      };
+    }
+
+    // 1. Try SECURITY DEFINER RPC first (bypasses any restrictive DELETE RLS cleanly)
+    const { error: rpcError } = await supabase.rpc('clear_all_crm_data');
+    if (!rpcError) {
+      return { success: true, remainingCount: 0 };
+    }
+
+    const errors: string[] = [];
+
+    const deleteAllFromTable = async (tableName: string, extraIds: string[] = []) => {
+      const ids = new Set<string>(extraIds.filter(Boolean));
+      const { data: rows, error: selErr } = await supabase!.from(tableName).select('id');
+      if (selErr) {
+        if (!isSchemaMissingError(selErr)) {
+          errors.push(`${tableName} (select): ${selErr.message}`);
+        }
+      } else if (Array.isArray(rows)) {
+        rows.forEach((r: any) => {
+          if (r?.id) ids.add(String(r.id));
+        });
+      }
+
+      const idList = Array.from(ids);
+      for (let i = 0; i < idList.length; i += 100) {
+        const chunk = idList.slice(i, i + 100);
+        const { error: chunkErr } = await supabase!.from(tableName).delete().in('id', chunk);
+        if (chunkErr && !isSchemaMissingError(chunkErr)) {
+          errors.push(`${tableName} (delete): ${chunkErr.message}`);
+        }
+      }
+
+      const { error: allErr } = await supabase!.from(tableName).delete().not('id', 'is', null);
+      if (allErr && !isSchemaMissingError(allErr)) {
+        errors.push(`${tableName} (delete all): ${allErr.message}`);
+      }
+    };
+
+    // Gather UUID inquiry IDs via get_admin_inquiries() in case direct SELECT is RLS-restricted
+    const adminInqRes = await fetchAdminInquiries();
+    const adminInqIds = (adminInqRes.data || []).map((r) => String(r.id));
+
+    await deleteAllFromTable('client_invoices');
+    await deleteAllFromTable('crm_client_accounts');
+    await deleteAllFromTable('inquiries', adminInqIds);
+    await deleteAllFromTable('customers');
+
+    // 2. Verify whether any rows actually survived (e.g., silent RLS DELETE denial returns error: null with 0 rows affected)
+    let remainingCount = 0;
+    const [remInv, remCrm, remInq] = await Promise.all([
+      supabase.from('client_invoices').select('id', { count: 'exact', head: true }),
+      supabase.from('crm_client_accounts').select('id', { count: 'exact', head: true }),
+      fetchAdminInquiries(),
+    ]);
+
+    if (!remInv.error && typeof remInv.count === 'number') remainingCount += remInv.count;
+    if (!remCrm.error && typeof remCrm.count === 'number') remainingCount += remCrm.count;
+    if (!remInq.error && Array.isArray(remInq.data)) remainingCount += remInq.data.length;
+
+    if (remainingCount > 0) {
+      return {
+        success: false,
+        rlsBlocked: true,
+        remainingCount,
+        error:
+          errors.length > 0
+            ? errors.join(' | ')
+            : `تعذر حذف (${remainingCount}) سجل من Supabase بسبب قيود صلاحيات RLS على الحذف. نفّذ كود SQL السريع في لوحة Supabase لإكمال التفريغ فوراً.`,
+      };
+    }
+
+    if (errors.length > 0) {
+      return { success: false, error: errors.join(' | ') };
+    }
+
+    return { success: true, remainingCount: 0 };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Failed to clear Supabase CRM tables' };
+  }
+}
+
+/**
  * One-click full migration of all local CRM clients, invoices, and catalog to Supabase PostgreSQL.
  */
 export async function migrateFullLocalDataToSupabase(state: AgencyDataState): Promise<{
