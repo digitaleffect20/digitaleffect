@@ -1,7 +1,5 @@
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas-pro';
-import { toPng } from 'html-to-image';
 import { Inquiry, AccountLedgerEntry, ClientInvoiceRecord } from '../types';
+import { captureElementToPdf } from './invoicePdfGenerator';
 
 export interface GenerateStatementPdfOptions {
   client: Inquiry;
@@ -41,20 +39,17 @@ export async function generateAccountStatementPdf(
   const cleanCompany = (client.company || client.name).replace(/\s+/g, '_');
   const filename = `كشف_حساب_${cleanCompany}_${fromDate}_إلى_${toDate}.pdf`;
 
-  // Offscreen high-definition container
+  // Clean container passed to captureElementToPdf for unclipped A4 export
   const targetElement = document.createElement('div');
   targetElement.id = 'temp-statement-generator';
   targetElement.dir = isAr ? 'rtl' : 'ltr';
-  targetElement.style.position = 'fixed';
-  targetElement.style.top = '-9999px';
-  targetElement.style.left = '-9999px';
-  targetElement.style.width = '794px'; // Standard A4 width at 96 DPI
-  targetElement.style.minHeight = '1123px'; // Standard A4 height
+  targetElement.style.width = '794px';
   targetElement.style.backgroundColor = '#ffffff';
   targetElement.style.padding = '36px 40px';
   targetElement.style.fontFamily = 'Cairo, system-ui, -apple-system, sans-serif';
   targetElement.style.color = '#0f172a';
   targetElement.style.boxSizing = 'border-box';
+  targetElement.style.letterSpacing = '0px';
 
   const formatCurrency = (amount: number) => {
     return `${amount.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`;
@@ -115,7 +110,7 @@ export async function generateAccountStatementPdf(
               DE
             </div>
             <div>
-              <div style="font-size: 19px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">ديجيتال إفكت | Digital Effect</div>
+              <div style="font-size: 19px; font-weight: 900; color: #0f172a;">ديجيتال إفكت | Digital Effect</div>
               <div style="font-size: 11px; color: #64748b; font-weight: 600;">للحلول الرقمية، التسويق الإلكتروني وإدارة الحملات</div>
             </div>
           </div>
@@ -126,7 +121,7 @@ export async function generateAccountStatementPdf(
         </div>
 
         <div style="text-align: ${isAr ? 'left' : 'right'};">
-          <div style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 900; letter-spacing: 0.5px;">
+          <div style="display: inline-block; background-color: #0f172a; color: #ffffff; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 900;">
             ${isAr ? 'كشف حساب مالي رسمي' : 'STATEMENT OF ACCOUNT'}
           </div>
           <div style="margin-top: 8px; font-size: 11px; color: #475569; font-weight: 700;">
@@ -295,58 +290,6 @@ export async function generateAccountStatementPdf(
     </div>
   `;
 
-  document.body.appendChild(targetElement);
-
-  try {
-    // Generate high quality canvas
-    const canvas = await html2canvas(targetElement, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-    });
-
-    const imgData = canvas.toDataURL('image/png', 1.0);
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-      compress: true,
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, 297));
-
-    // Save and download
-    pdf.save(filename);
-
-    return { success: true, filename };
-  } catch (error: any) {
-    console.error('generateAccountStatementPdf error:', error);
-    try {
-      // Fallback via html-to-image
-      const dataUrl = await toPng(targetElement, { quality: 0.95, pixelRatio: 2 });
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (targetElement.clientHeight * pdfWidth) / targetElement.clientWidth;
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, Math.min(pdfHeight, 297));
-      pdf.save(filename);
-      return { success: true, filename };
-    } catch (fbErr: any) {
-      return { success: false, filename, error: fbErr?.message || error?.message };
-    }
-  } finally {
-    if (targetElement.parentNode) {
-      document.body.removeChild(targetElement);
-    }
-  }
+  const result = await captureElementToPdf(targetElement, { filename, action: 'download' });
+  return { success: result.success, filename: result.filename, error: result.error };
 }

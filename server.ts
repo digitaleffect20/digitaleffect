@@ -41,10 +41,27 @@ app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 const DATA_STORE_PATH = path.resolve(__dirname, 'data-store.json');
 const UPLOADS_DIR = path.resolve(__dirname, 'public', 'assets', 'uploads');
+const INVOICES_UPLOADS_DIR = path.join(UPLOADS_DIR, 'invoices');
 
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 }
+if (!fs.existsSync(INVOICES_UPLOADS_DIR)) {
+  fs.mkdirSync(INVOICES_UPLOADS_DIR, { recursive: true });
+}
+
+// Serve invoice PDFs with explicit MIME and inline disposition
+app.use(
+  '/assets/uploads/invoices',
+  (req, res, next) => {
+    if (req.path.toLowerCase().endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline');
+    }
+    next();
+  },
+  express.static(INVOICES_UPLOADS_DIR)
+);
 
 // Serve uploaded media directly in both dev and production
 app.use('/assets/uploads', express.static(UPLOADS_DIR));
@@ -174,6 +191,46 @@ app.post('/api/agency-data', (req, res) => {
   } catch (err: any) {
     console.error('Error saving data-store.json:', err);
     res.status(500).json({ error: 'Failed to write agency data on server' });
+  }
+});
+
+// Endpoint: Host generated invoice PDF so it can be linked/shared cleanly via WhatsApp
+app.post('/api/invoices/upload-pdf', (req, res) => {
+  try {
+    const { invoiceNumber, pdfBase64 } = req.body || {};
+    if (!pdfBase64 || typeof pdfBase64 !== 'string') {
+      return res.status(400).json({ error: 'PDF payload is required' });
+    }
+
+    const base64Clean = pdfBase64.replace(/^data:application\/pdf(?:;[^,]*)?;base64,/i, '').trim();
+    const buffer = Buffer.from(base64Clean, 'base64');
+
+    if (buffer.length < 100 || buffer.length > 20 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Invalid PDF size' });
+    }
+    if (buffer.subarray(0, 4).toString('ascii') !== '%PDF') {
+      return res.status(400).json({ error: 'Invalid PDF file signature' });
+    }
+
+    const safeInv = String(invoiceNumber || 'DE-INV')
+      .replace(/[^a-zA-Z0-9_-]/g, '')
+      .slice(0, 48) || 'DE-INV';
+    const hash = crypto.createHash('sha1').update(buffer).digest('hex').slice(0, 10);
+    const filename = `${safeInv}-${hash}.pdf`;
+    const filePath = path.join(INVOICES_UPLOADS_DIR, filename);
+
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, buffer);
+    }
+
+    return res.json({
+      success: true,
+      url: `/assets/uploads/invoices/${filename}`,
+      filename,
+    });
+  } catch (err: any) {
+    console.error('Error uploading invoice PDF:', err);
+    return res.status(500).json({ error: 'Failed to store invoice PDF' });
   }
 });
 

@@ -101,6 +101,249 @@ async function waitForImages(container: HTMLElement): Promise<void> {
   );
 }
 
+/**
+ * Captures any DOM invoice element cleanly offscreen at full A4 width & unrestricted height,
+ * normalizes Arabic letter-spacing so ligatures never break in html2canvas,
+ * and scales or slices cleanly across A4 page(s) without clipping.
+ */
+export async function captureElementToPdf(
+  sourceElement: HTMLElement,
+  options: {
+    filename: string;
+    action?: 'download' | 'print' | 'blob';
+  }
+): Promise<{ success: boolean; filename: string; pdf?: jsPDF; blob?: Blob; error?: string }> {
+  const { filename, action = 'download' } = options;
+
+  // Create isolated offscreen host at top: 0 (avoids html2canvas scroll/clip artifacts)
+  const host = document.createElement('div');
+  host.style.position = 'fixed';
+  host.style.top = '0';
+  host.style.left = '-12000px';
+  host.style.width = '794px';
+  host.style.height = 'auto';
+  host.style.maxHeight = 'none';
+  host.style.overflow = 'visible';
+  host.style.backgroundColor = '#ffffff';
+  host.style.zIndex = '-100';
+  host.style.pointerEvents = 'none';
+
+  const clone = sourceElement.cloneNode(true) as HTMLElement;
+  clone.id = `pdf-capture-clone-${Date.now()}`;
+  clone.style.position = 'relative';
+  clone.style.top = '0';
+  clone.style.left = '0';
+  clone.style.width = '794px';
+  clone.style.maxWidth = '794px';
+  clone.style.height = 'auto';
+  clone.style.maxHeight = 'none';
+  clone.style.overflow = 'visible';
+  clone.style.margin = '0';
+  clone.style.boxShadow = 'none';
+  clone.style.borderRadius = '0';
+
+  // Ensure Arabic text never suffers from letter-spacing ligature splitting in html2canvas
+  const allNodes = [clone, ...Array.from(clone.querySelectorAll<HTMLElement>('*'))];
+  for (const el of allNodes) {
+    const text = el.textContent || '';
+    if (/[\u0600-\u06FF]/.test(text)) {
+      el.style.letterSpacing = '0px';
+    }
+  }
+
+  host.appendChild(clone);
+  document.body.appendChild(host);
+
+  try {
+    if (typeof document !== 'undefined' && (document as any).fonts?.ready) {
+      await (document as any).fonts.ready.catch(() => undefined);
+    }
+    await waitForImages(clone);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    const fullWidth = Math.max(clone.scrollWidth, clone.offsetWidth, 794);
+    const fullHeight = Math.max(clone.scrollHeight, clone.offsetHeight, 1000);
+
+    let canvas: HTMLCanvasElement | null = null;
+    let fallbackPng: string | null = null;
+    let imgWidth = fullWidth * 2;
+    let imgHeight = fullHeight * 2;
+
+    try {
+      canvas = await html2canvas(clone, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: fullWidth,
+        height: fullHeight,
+        windowWidth: fullWidth,
+        windowHeight: fullHeight,
+        scrollX: 0,
+        scrollY: 0,
+      });
+      imgWidth = canvas.width;
+      imgHeight = canvas.height;
+    } catch (proErr) {
+      console.warn('html2canvas-pro fallback to html-to-image:', proErr);
+      fallbackPng = await toPng(clone, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        width: fullWidth,
+        height: fullHeight,
+        cacheBust: true,
+      });
+      const img = new Image();
+      img.src = fallbackPng;
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
+        img.onerror = () => resolve();
+      });
+      imgWidth = img.naturalWidth || fullWidth * 2;
+      imgHeight = img.naturalHeight || fullHeight * 2;
+    }
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
+    const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+    const renderedHeight = (imgHeight * pageWidth) / imgWidth;
+
+    if (renderedHeight <= pageHeight) {
+      const dataUrl = canvas ? canvas.toDataURL('image/jpeg', 0.98) : (fallbackPng as string);
+      const fmt = canvas ? 'JPEG' : 'PNG';
+      pdf.addImage(dataUrl, fmt, 0, 0, pageWidth, renderedHeight);
+    } else if (renderedHeight <= pageHeight * 1.18) {
+      // Slightly taller than 1 A4 page: fit cleanly onto 1 crisp page with margins
+      const fitScale = pageHeight / renderedHeight;
+      const drawWidth = pageWidth * fitScale;
+      const offsetX = (pageWidth - drawWidth) / 2;
+      const dataUrl = canvas ? canvas.toDataURL('image/jpeg', 0.98) : (fallbackPng as string);
+      const fmt = canvas ? 'JPEG' : 'PNG';
+      pdf.addImage(dataUrl, fmt, offsetX, 0, drawWidth, pageHeight);
+    } else if (canvas) {
+      // Multi-page vertical slicing when content legitimately spans >1 page
+      const pxPerMm = imgWidth / pageWidth;
+      const sliceHeightPx = Math.floor(pageHeight * pxPerMm);
+      let yOffsetPx = 0;
+      let pageIndex = 0;
+
+      while (yOffsetPx < imgHeight) {
+        const currentSlicePx = Math.min(sliceHeightPx, imgHeight - yOffsetPx);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = imgWidth;
+        pageCanvas.height = currentSlicePx;
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, imgWidth, currentSlicePx);
+          ctx.drawImage(
+            canvas,
+            0,
+            yOffsetPx,
+            imgWidth,
+            currentSlicePx,
+            0,
+            0,
+            imgWidth,
+            currentSlicePx
+          );
+        }
+        const sliceDataUrl = pageCanvas.toDataURL('image/jpeg', 0.98);
+        const sliceHeightMm = (currentSlicePx * pageWidth) / imgWidth;
+        if (pageIndex > 0) {
+          pdf.addPage();
+        }
+        pdf.addImage(sliceDataUrl, 'JPEG', 0, 0, pageWidth, sliceHeightMm);
+        yOffsetPx += currentSlicePx;
+        pageIndex += 1;
+      }
+    } else if (fallbackPng) {
+      const fitScale = pageHeight / renderedHeight;
+      const drawWidth = pageWidth * fitScale;
+      const offsetX = (pageWidth - drawWidth) / 2;
+      pdf.addImage(fallbackPng, 'PNG', offsetX, 0, drawWidth, pageHeight);
+    }
+
+    const pdfBlob = pdf.output('blob');
+
+    if (action === 'download') {
+      pdf.save(filename);
+    } else if (action === 'print') {
+      const blobUrl = pdf.output('bloburl');
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.src = blobUrl as any;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 15000);
+      };
+    }
+
+    return { success: true, filename, pdf, blob: pdfBlob };
+  } catch (error: any) {
+    console.error('captureElementToPdf error:', error);
+    return {
+      success: false,
+      filename,
+      error: error?.message || 'Error creating PDF',
+    };
+  } finally {
+    if (document.body.contains(host)) {
+      document.body.removeChild(host);
+    }
+  }
+}
+
+export async function uploadInvoicePdfForShare(
+  blob: Blob,
+  invoiceNumber: string
+): Promise<string | null> {
+  try {
+    const base64DataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+      reader.readAsDataURL(blob);
+    });
+
+    const resp = await fetch('/api/invoices/upload-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoiceNumber,
+        pdfBase64: base64DataUrl,
+      }),
+    });
+
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data?.url && typeof window !== 'undefined') {
+      return `${window.location.origin}${data.url}`;
+    }
+    return null;
+  } catch (err) {
+    console.warn('Could not upload invoice PDF for sharing:', err);
+    return null;
+  }
+}
+
 export interface GenerateInvoicePdfOptions {
   client: Inquiry;
   packageName?: string;
@@ -187,33 +430,34 @@ export async function generateClientInvoicePdf(
       ? (isAr ? 'ربع سنوي (Quarterly Retainer)' : 'Quarterly Retainer')
       : (isAr ? 'شهري (Monthly Retainer)' : 'Monthly Retainer');
 
-  // Check if an existing visible invoice container exists in the DOM (e.g. inside open modal)
+  // If the full invoice modal document is currently open, capture a fresh unclipped clone of it;
+  // otherwise build a crisp offscreen A4 invoice template.
   const existingDom = document.getElementById('invoice-document-capture');
 
-  // Otherwise, construct an offscreen high-definition container
-  let targetElement: HTMLElement;
-  let isTemp = false;
+  if (existingDom && existingDom.scrollHeight > 200) {
+    return captureElementToPdf(existingDom, { filename, action: 'download' });
+  }
 
-  if (existingDom && existingDom.clientHeight > 200) {
-    targetElement = existingDom;
-  } else {
-    isTemp = true;
-    targetElement = document.createElement('div');
-    targetElement.id = 'temp-invoice-generator';
-    targetElement.dir = isAr ? 'rtl' : 'ltr';
-    targetElement.style.position = 'fixed';
-    targetElement.style.top = '-9999px';
-    targetElement.style.left = '-9999px';
-    targetElement.style.width = '794px'; // Standard A4 width at 96 DPI
-    targetElement.style.minHeight = '1123px'; // Standard A4 height
-    targetElement.style.backgroundColor = '#ffffff';
-    targetElement.style.padding = '36px 40px';
-    targetElement.style.fontFamily = 'Cairo, system-ui, -apple-system, sans-serif';
-    targetElement.style.color = '#0f172a';
-    targetElement.style.boxSizing = 'border-box';
-    targetElement.style.zIndex = '-100';
+  const targetElement = document.createElement('div');
+  targetElement.id = 'temp-invoice-generator';
+  targetElement.dir = isAr ? 'rtl' : 'ltr';
+  targetElement.style.width = '794px';
+  targetElement.style.backgroundColor = '#ffffff';
+  targetElement.style.padding = '32px 38px';
+  targetElement.style.fontFamily = 'Cairo, system-ui, -apple-system, sans-serif';
+  targetElement.style.color = '#0f172a';
+  targetElement.style.boxSizing = 'border-box';
+  targetElement.style.letterSpacing = '0px';
 
-    targetElement.innerHTML = `
+  const paymentStatus = client.paymentStatus || 'paid';
+  const paymentBadge =
+    paymentStatus === 'paid'
+      ? { bg: '#ecfdf5', color: '#065f46', border: '#a7f3d0', text: isAr ? 'مدفوعة بالكامل (PAID)' : 'PAID IN FULL' }
+      : paymentStatus === 'partially_paid'
+      ? { bg: '#fffbeb', color: '#92400e', border: '#fde68a', text: isAr ? 'دفعة مقدمة (PARTIAL)' : 'PARTIAL DEPOSIT' }
+      : { bg: '#fff1f2', color: '#9f1239', border: '#fecdd3', text: isAr ? 'مستحقة السداد (PENDING)' : 'PENDING PAYMENT' };
+
+  targetElement.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; border-bottom: 2px solid #0f172a;">
         <div>
           <div style="margin-bottom: 6px;">
@@ -227,31 +471,35 @@ export async function generateClientInvoicePdf(
           <p style="margin: 2px 0 0; font-size: 11px; font-weight: 800; color: #2563eb;">
             ${isAr ? 'ديجيتال إفكت للحلول الرقمية والتسويق الإلكتروني المتكامل' : 'Digital Effect — Digital Solutions & Integrated Marketing'}
           </p>
-          <div style="margin-top: 5px; font-size: 10px; color: #64748b; line-height: 1.4;">
-            <span>📍 ${isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</span> • 
-            <span>📞 01505000349</span> • 
-            <span>✉️ sales@digitaleffect.net</span>
+          <div style="margin-top: 5px; font-size: 10px; color: #64748b; line-height: 1.5;">
+            <div>📍 ${isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</div>
+            <div>📞 01505000349 • ✉️ Sales@digitaleffect.net | www.digitaleffect.net</div>
           </div>
         </div>
 
         <div style="text-align: ${isAr ? 'left' : 'right'};">
-          <div style="display: inline-block; padding: 4px 12px; background-color: #0f172a; color: #ffffff; border-radius: 8px; font-size: 11px; font-weight: 900; text-transform: uppercase;">
+          <div style="display: inline-block; padding: 5px 12px; background-color: #0f172a; color: #ffffff; border-radius: 8px; font-size: 11px; font-weight: 900;">
             ${isAr ? 'بيان فاتورة تعاقد رسمي' : 'OFFICIAL INVOICE STATEMENT'}
           </div>
           <div style="font-family: monospace; font-size: 12px; font-weight: 900; color: #1e293b; margin-top: 6px;">
             #${invoiceNumber}
           </div>
-          <div style="font-size: 10.5px; color: #475569; margin-top: 4px; line-height: 1.4;">
+          <div style="font-size: 10.5px; color: #475569; margin-top: 4px; line-height: 1.5;">
             <div><strong>${isAr ? 'تاريخ الإصدار:' : 'Date:'}</strong> ${contractStartDate}</div>
             <div><strong>${isAr ? 'تاريخ الاستحقاق:' : 'Due Date:'}</strong> ${renewalDate}</div>
+          </div>
+          <div style="margin-top: 5px;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 9.5px; font-weight: 800; background-color: ${paymentBadge.bg}; color: ${paymentBadge.color}; border: 1px solid ${paymentBadge.border};">
+              ${paymentBadge.text}
+            </span>
           </div>
         </div>
       </div>
 
       <!-- Billed to grid -->
-      <div style="display: flex; justify-content: space-between; gap: 16px; margin-top: 18px; padding: 14px 18px; border-radius: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px;">
+      <div style="display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; padding: 14px 18px; border-radius: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px;">
         <div>
-          <span style="font-size: 9.5px; font-weight: 900; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 3px;">
+          <span style="font-size: 9.5px; font-weight: 900; color: #64748b; display: block; margin-bottom: 3px;">
             ${isAr ? 'بيانات العميل / الجهة المتعاقدة:' : 'BILLED TO:'}
           </span>
           <div style="font-size: 14px; font-weight: 900; color: #0f172a;">
@@ -264,7 +512,7 @@ export async function generateClientInvoicePdf(
         </div>
 
         <div style="text-align: ${isAr ? 'left' : 'right'};">
-          <span style="font-size: 9.5px; font-weight: 900; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 3px;">
+          <span style="font-size: 9.5px; font-weight: 900; color: #64748b; display: block; margin-bottom: 3px;">
             ${isAr ? 'تفاصيل التعاقد والقطاع:' : 'CONTRACT DETAILS:'}
           </span>
           <div style="color: #0f172a; font-weight: 700;">
@@ -277,9 +525,9 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Package Title Banner -->
-      <div style="margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #1e3a8a 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+      <div style="margin-top: 14px; padding: 14px 18px; border-radius: 12px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #1e3a8a 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
         <div>
-          <span style="font-size: 9.5px; font-weight: 800; color: #93c5fd; text-transform: uppercase; display: block;">
+          <span style="font-size: 9.5px; font-weight: 800; color: #93c5fd; display: block;">
             ${isAr ? 'الباقة التسويقية المعتمدة:' : 'OFFICIAL MARKETING PACKAGE:'}
           </span>
           <div style="font-size: 15px; font-weight: 900; color: #ffffff; margin-top: 2px;">
@@ -297,104 +545,109 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Deliverables Table -->
-      <div style="margin-top: 16px;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+      <div style="margin-top: 14px;">
+        <div style="font-size: 11px; font-weight: 900; color: #0f172a; margin-bottom: 6px;">
+          ${isAr ? 'محتويات وبنود الباقة المشمولة في التعاقد:' : 'Included Package Deliverables & Scope:'}
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #e2e8f0;">
           <thead>
             <tr style="background-color: #f1f5f9; color: #0f172a; border-bottom: 2px solid #cbd5e1; text-align: ${isAr ? 'right' : 'left'};">
-              <th style="padding: 10px 12px; font-weight: 900;">${isAr ? 'البند / مخرجات الباقة' : 'Item / Deliverable'}</th>
-              <th style="padding: 10px 12px; font-weight: 900;">${isAr ? 'المواصفات والتفاصيل' : 'Specifications'}</th>
-              <th style="padding: 10px 12px; font-weight: 900; text-align: center;">${isAr ? 'الكمية الدورية' : 'Quantity'}</th>
-              <th style="padding: 10px 12px; font-weight: 900; text-align: center;">${isAr ? 'الحالة' : 'Status'}</th>
+              <th style="padding: 9px 12px; font-weight: 900;">${isAr ? 'البند / مخرجات الباقة' : 'Item / Deliverable'}</th>
+              <th style="padding: 9px 12px; font-weight: 900;">${isAr ? 'المواصفات والتفاصيل' : 'Specifications'}</th>
+              <th style="padding: 9px 12px; font-weight: 900; text-align: center;">${isAr ? 'الكمية الدورية' : 'Quantity'}</th>
+              <th style="padding: 9px 12px; font-weight: 900; text-align: center;">${isAr ? 'الحالة' : 'Status'}</th>
             </tr>
           </thead>
           <tbody>
             <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 10px 12px; font-weight: 800; color: #0f172a;">
+              <td style="padding: 9px 12px; font-weight: 800; color: #0f172a;">
                 🎨 ${isAr ? 'تصميمات ومنشورات السوشيال ميديا' : 'Social Media Creative Posts'}
               </td>
-              <td style="padding: 10px 12px; color: #475569;">
+              <td style="padding: 9px 12px; color: #475569;">
                 ${isAr ? 'تصميمات بصرية احترافية، كتابة محتوى تسويقي مدروس وكابشن، مع خطة نشر استراتيجية' : 'High-impact creative graphics, strategic copywriting, and scheduled social distribution'}
               </td>
-              <td style="padding: 10px 12px; text-align: center; font-weight: 900; color: #1d4ed8;">
+              <td style="padding: 9px 12px; text-align: center; font-weight: 900; color: #1d4ed8;">
                 ${postsCount} ${isAr ? 'منشور' : 'Posts'}
               </td>
-              <td style="padding: 10px 12px; text-align: center;">
+              <td style="padding: 9px 12px; text-align: center;">
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dcfce7; color: #166534; font-weight: 800; font-size: 9.5px;">${isAr ? 'مشمول' : 'Included'}</span>
               </td>
             </tr>
 
             <tr style="border-bottom: 1px solid #e2e8f0; background-color: #fafafa;">
-              <td style="padding: 10px 12px; font-weight: 800; color: #0f172a;">
+              <td style="padding: 9px 12px; font-weight: 800; color: #0f172a;">
                 🎬 ${isAr ? 'مقاطع فيديو ريلز إبداعية (Reels / TikTok)' : 'Short-Form Reels & TikTok Videos'}
               </td>
-              <td style="padding: 10px 12px; color: #475569;">
+              <td style="padding: 9px 12px; color: #475569;">
                 ${isAr ? 'مونتاج احترافي، مؤثرات صوتية وبصرية جذابة، هوك قوي يجذب الجمهور المستهدف' : 'Dynamic editing, hooks, sound design, and viral vertical formatting'}
               </td>
-              <td style="padding: 10px 12px; text-align: center; font-weight: 900; color: #7c3aed;">
+              <td style="padding: 9px 12px; text-align: center; font-weight: 900; color: #7c3aed;">
                 ${reelsCount} ${isAr ? 'فيديو ريلز' : 'Reels'}
               </td>
-              <td style="padding: 10px 12px; text-align: center;">
+              <td style="padding: 9px 12px; text-align: center;">
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dcfce7; color: #166534; font-weight: 800; font-size: 9.5px;">${isAr ? 'مشمول' : 'Included'}</span>
               </td>
             </tr>
 
+            ${storiesCount > 0 ? `
             <tr style="border-bottom: 1px solid #e2e8f0;">
-              <td style="padding: 10px 12px; font-weight: 800; color: #0f172a;">
+              <td style="padding: 9px 12px; font-weight: 800; color: #0f172a;">
                 📱 ${isAr ? 'الستوريز التفاعلية واستطلاعات الرأي' : 'Interactive Stories & Engagement'}
               </td>
-              <td style="padding: 10px 12px; color: #475569;">
+              <td style="padding: 9px 12px; color: #475569;">
                 ${isAr ? 'تغطية يومية وتفاعلية، استبيانات واستطلاعات رأي للحفاظ على تفاعل الجمهور' : 'Interactive polls, Q&A, and community touchpoints to maintain account reach'}
               </td>
-              <td style="padding: 10px 12px; text-align: center; font-weight: 900; color: #d97706;">
+              <td style="padding: 9px 12px; text-align: center; font-weight: 900; color: #d97706;">
                 ${storiesCount} ${isAr ? 'ستوري' : 'Stories'}
               </td>
-              <td style="padding: 10px 12px; text-align: center;">
+              <td style="padding: 9px 12px; text-align: center;">
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dcfce7; color: #166534; font-weight: 800; font-size: 9.5px;">${isAr ? 'مشمول' : 'Included'}</span>
               </td>
             </tr>
+            ` : ''}
 
             <tr style="border-bottom: 1px solid #e2e8f0; background-color: #fafafa;">
-              <td style="padding: 10px 12px; font-weight: 800; color: #0f172a;">
+              <td style="padding: 9px 12px; font-weight: 800; color: #0f172a;">
                 🎯 ${isAr ? 'إدارة الحملات الإعلانية الممولة (Paid Ads)' : 'Paid Advertising Campaign Management'}
               </td>
-              <td style="padding: 10px 12px; color: #475569;">
+              <td style="padding: 9px 12px; color: #475569;">
                 ${isAr ? 'تحديد الجماهير المستهدفة، ضبط الميزانية، تحسين معدل التحويل (A/B Testing)' : 'Audience targeting, pixel tracking, budget optimization, and conversion monitoring'}
               </td>
-              <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #475569;">
+              <td style="padding: 9px 12px; text-align: center; font-weight: 700; color: #475569;">
                 ${isAr ? 'إدارة متواصلة' : 'Continuous'}
               </td>
-              <td style="padding: 10px 12px; text-align: center;">
+              <td style="padding: 9px 12px; text-align: center;">
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dcfce7; color: #166534; font-weight: 800; font-size: 9.5px;">${isAr ? 'مشمول' : 'Included'}</span>
               </td>
             </tr>
 
             <tr style="border-bottom: ${effectiveAdCredit > 0 ? '1px solid #e2e8f0' : '2px solid #cbd5e1'};">
-              <td style="padding: 10px 12px; font-weight: 800; color: #0f172a;">
+              <td style="padding: 9px 12px; font-weight: 800; color: #0f172a;">
                 📊 ${isAr ? 'التقارير التحليلية وجلسات المتابعة' : 'Monthly Performance Analytics'}
               </td>
-              <td style="padding: 10px 12px; color: #475569;">
+              <td style="padding: 9px 12px; color: #475569;">
                 ${isAr ? 'تقرير تحليلي شامل لمؤشرات الأداء، النمو، وتوصيات التطوير للشهر التالي' : 'Comprehensive ROI/KPI reports and strategic consultation review meetings'}
               </td>
-              <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #475569;">
+              <td style="padding: 9px 12px; text-align: center; font-weight: 700; color: #475569;">
                 ${isAr ? 'دوري منتظم' : 'Periodic'}
               </td>
-              <td style="padding: 10px 12px; text-align: center;">
+              <td style="padding: 9px 12px; text-align: center;">
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dcfce7; color: #166534; font-weight: 800; font-size: 9.5px;">${isAr ? 'مشمول' : 'Included'}</span>
               </td>
             </tr>
 
             ${effectiveAdCredit > 0 ? `
             <tr style="border-bottom: 2px solid #2563eb; background-color: #eff6ff;">
-              <td style="padding: 10px 12px; font-weight: 800; color: #1e3a8a;">
+              <td style="padding: 9px 12px; font-weight: 800; color: #1e3a8a;">
                 💳 ${isAr ? 'شحن رصيد إعلاني ممول (Ad Spend Budget)' : 'Funded Ad Campaign Spend Budget'}
               </td>
-              <td style="padding: 10px 12px; color: #1e40af;">
+              <td style="padding: 9px 12px; color: #1e40af;">
                 ${isAr ? 'ميزانية إعلانية مدفوعة ومخصصة بالكامل لحملات العميل الممولة (Meta / TikTok / Google) تُودع في المحفظة فور التحصيل' : '100% dedicated paid advertising campaign budget, deposited into client ad wallet upon payment'}
               </td>
-              <td style="padding: 10px 12px; text-align: center; font-weight: 900; color: #2563eb;">
+              <td style="padding: 9px 12px; text-align: center; font-weight: 900; color: #2563eb;">
                 ${effectiveAdCredit.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}
               </td>
-              <td style="padding: 10px 12px; text-align: center;">
+              <td style="padding: 9px 12px; text-align: center;">
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dbeafe; color: #1e40af; font-weight: 800; font-size: 9.5px;">${isAr ? 'رصيد إعلاني' : 'Ad Credit'}</span>
               </td>
             </tr>
@@ -404,7 +657,7 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Financial Total Box -->
-      <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
         <div style="width: 320px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; font-size: 11px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #64748b;">
             <span>${isAr ? 'قيمة باقة التسويق الرقمي:' : 'Package Subtotal:'}</span>
@@ -430,7 +683,7 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Bank & Payment Details -->
-      <div style="margin-top: 16px; display: flex; gap: 14px; font-size: 10.5px;">
+      <div style="margin-top: 14px; display: flex; gap: 14px; font-size: 10.5px;">
         <div style="flex: 1; background-color: #f1f5f9; padding: 12px 14px; border-radius: 10px; border: 1px solid #e2e8f0;">
           <div style="font-weight: 900; color: #0f172a; margin-bottom: 5px;">
             💳 ${isAr ? 'بيانات التحويل وحسابات الدفع المعتمدة:' : 'Approved Transfer & Payment Accounts:'}
@@ -464,75 +717,6 @@ export async function generateClientInvoicePdf(
       </div>
     `;
 
-    document.body.appendChild(targetElement);
-  }
-
-  try {
-    // Wait for logo/images inside container to finish loading before rasterization
-    await waitForImages(targetElement);
-
-    let imgData: string;
-    let imgWidth: number;
-    let imgHeight: number;
-    let imgFormat: 'JPEG' | 'PNG' = 'JPEG';
-
-    try {
-      // Primary engine: html2canvas-pro with oklch & modern CSS support
-      const canvas = await html2canvas(targetElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
-      imgData = canvas.toDataURL('image/jpeg', 0.98);
-      imgWidth = canvas.width;
-      imgHeight = canvas.height;
-      imgFormat = 'JPEG';
-    } catch (proErr) {
-      console.warn('html2canvas-pro fallback to html-to-image:', proErr);
-      // Fallback engine: html-to-image using native SVG rasterization
-      imgData = await toPng(targetElement, {
-        pixelRatio: 2,
-        backgroundColor: '#ffffff',
-        cacheBust: true,
-      });
-      imgFormat = 'PNG';
-      const img = new Image();
-      img.src = imgData;
-      await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
-      });
-      imgWidth = img.naturalWidth || 1200;
-      imgHeight = img.naturalHeight || 1700;
-    }
-
-    // Assemble PDF via jsPDF
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
-    const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
-
-    pdf.addImage(imgData, imgFormat, 0, 0, pdfWidth, pdfHeight);
-
-    // Save PDF directly to user machine
-    pdf.save(filename);
-
-    return { success: true, filename };
-  } catch (error: any) {
-    console.error('generateClientInvoicePdf error:', error);
-    return {
-      success: false,
-      filename,
-      error: error?.message || 'Error creating PDF',
-    };
-  } finally {
-    if (isTemp && document.body.contains(targetElement)) {
-      document.body.removeChild(targetElement);
-    }
-  }
+  const result = await captureElementToPdf(targetElement, { filename, action: 'download' });
+  return { success: result.success, filename: result.filename, error: result.error };
 }

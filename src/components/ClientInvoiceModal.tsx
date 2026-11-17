@@ -20,15 +20,18 @@ import {
   Layers,
   CheckSquare,
   AlertCircle,
-  Wallet
+  Wallet,
+  ExternalLink,
+  Copy,
+  Check,
+  Paperclip
 } from 'lucide-react';
-import html2canvas from 'html2canvas-pro';
-import { toPng } from 'html-to-image';
-import { jsPDF } from 'jspdf';
 import {
   parseInvoiceAmount,
   loadSavedTransferInfo,
   saveTransferInfo,
+  captureElementToPdf,
+  uploadInvoicePdfForShare,
   InvoiceTransferInfo,
 } from '../utils/invoicePdfGenerator';
 
@@ -68,8 +71,16 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const { data, addInvoice } = useAgencyData();
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPreparingWhatsApp, setIsPreparingWhatsApp] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedPdfLink, setCopiedPdfLink] = useState(false);
+  const [whatsAppReady, setWhatsAppReady] = useState<{
+    waUrl: string;
+    pdfUrl: string | null;
+    filename: string;
+    sharedNatively?: boolean;
+  } | null>(null);
 
   // Editable invoice fields for full flexibility
   const autoInvoiceNo = `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${client.id.replace(/\D/g, '').slice(-3) || '101'}`;
@@ -125,7 +136,35 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Handle PDF Generation & Download with robust dual-engine support
+  const archiveInvoiceIfNeeded = () => {
+    try {
+      const existing = (data.invoices || []).find((i) => i.invoiceNumber === invoiceNumber);
+      if (!existing) {
+        addInvoice({
+          invoiceNumber,
+          clientId: client.id,
+          clientName: client.name,
+          clientCompany: client.company,
+          clientPhone: client.phone,
+          sector: client.sector,
+          issueDate,
+          dueDate,
+          packageName,
+          retainerAmount: numericBudget,
+          adCreditAmount: adCredit,
+          grandTotal: numericGrandTotal,
+          billingCycle,
+          paymentStatus,
+          notes,
+          deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
+        });
+      }
+    } catch (archErr) {
+      console.warn('Could not archive invoice:', archErr);
+    }
+  };
+
+  // Handle PDF Generation & Download with unclipped offscreen A4 rendering
   const handleGeneratePdf = async (action: 'download' | 'print' = 'download') => {
     if (!invoiceRef.current) return;
     setIsGenerating(true);
@@ -133,129 +172,23 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const element = invoiceRef.current;
-
-      // Ensure images (e.g., Digital Effect logo) have finished loading before capture
-      const imgs = Array.from(element.querySelectorAll('img'));
-      await Promise.all(
-        imgs.map((img) => {
-          if (img.complete && img.naturalWidth > 0) {
-            return typeof img.decode === 'function' ? img.decode().catch(() => undefined) : Promise.resolve();
-          }
-          return new Promise<void>((resolve) => {
-            const timer = setTimeout(resolve, 3000);
-            const done = () => {
-              clearTimeout(timer);
-              resolve();
-            };
-            img.addEventListener('load', done, { once: true });
-            img.addEventListener('error', done, { once: true });
-          });
-        })
-      );
-
-      let imgData: string;
-      let imgWidth: number;
-      let imgHeight: number;
-      let imgFormat: 'JPEG' | 'PNG' = 'JPEG';
-
-      try {
-        // Engine 1: html2canvas-pro (native support for modern CSS oklch, oklab, color())
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-        });
-        imgData = canvas.toDataURL('image/jpeg', 0.98);
-        imgWidth = canvas.width;
-        imgHeight = canvas.height;
-        imgFormat = 'JPEG';
-      } catch (proErr) {
-        console.warn('html2canvas-pro encountered an issue, seamlessly falling back to html-to-image:', proErr);
-        // Engine 2: html-to-image (browser-native SVG foreignObject rasterization, 100% immune to color syntax parser bugs)
-        imgData = await toPng(element, {
-          pixelRatio: 2,
-          backgroundColor: '#ffffff',
-          cacheBust: true,
-        });
-        imgFormat = 'PNG';
-        const img = new Image();
-        img.src = imgData;
-        await new Promise<void>((resolve) => {
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-        });
-        imgWidth = img.naturalWidth || 1200;
-        imgHeight = img.naturalHeight || 1700;
-      }
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
-      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
-
-      pdf.addImage(imgData, imgFormat, 0, 0, pdfWidth, pdfHeight);
-
       const cleanCompany = (client.company || client.name).replace(/\s+/g, '_');
       const filename = `فاتورة_${cleanCompany}_${invoiceNumber}.pdf`;
 
-      // Automatically record & persist into invoices archive
-      try {
-        const existing = (data.invoices || []).find((i) => i.invoiceNumber === invoiceNumber);
-        if (!existing) {
-          addInvoice({
-            invoiceNumber,
-            clientId: client.id,
-            clientName: client.name,
-            clientCompany: client.company,
-            clientPhone: client.phone,
-            sector: client.sector,
-            issueDate,
-            dueDate,
-            packageName,
-            retainerAmount: numericBudget,
-            adCreditAmount: adCredit,
-            grandTotal: numericGrandTotal,
-            billingCycle,
-            paymentStatus,
-            notes,
-            deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
-          });
-        }
-      } catch (archErr) {
-        console.warn('Could not archive invoice:', archErr);
+      const captureRes = await captureElementToPdf(invoiceRef.current, {
+        filename,
+        action,
+      });
+
+      if (!captureRes.success) {
+        throw new Error(captureRes.error || 'Failed to render PDF');
       }
 
+      archiveInvoiceIfNeeded();
+
       if (action === 'download') {
-        pdf.save(filename);
         setDownloadSuccess(true);
         setTimeout(() => setDownloadSuccess(false), 3500);
-      } else {
-        // Direct print via hidden iframe to avoid window.open (complies with runtime rules)
-        const blobUrl = pdf.output('bloburl');
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'fixed';
-        iframe.style.right = '0';
-        iframe.style.bottom = '0';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = '0';
-        iframe.src = blobUrl as any;
-        document.body.appendChild(iframe);
-        iframe.onload = () => {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-          setTimeout(() => {
-            if (document.body.contains(iframe)) {
-              document.body.removeChild(iframe);
-            }
-          }, 15000);
-        };
       }
     } catch (err: any) {
       console.error('Error generating PDF:', err);
@@ -269,14 +202,105 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     }
   };
 
-  // WhatsApp invoice sharing
+  // WhatsApp invoice sharing with PDF attachment / download & hosted link
   const cleanPhone = (client.phoneE164 || client.phone).replace(/\D/g, '');
   const waPhone = cleanPhone.startsWith('0') ? `20${cleanPhone.slice(1)}` : cleanPhone;
-  const waInvoiceText = encodeURIComponent(
-    isAr
-      ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nاشتراك الباقة: ${formattedBudget} (${cycleTextAr})${adCredit > 0 ? `\nرصيد إعلاني ممول: +${adCredit.toLocaleString()} ج.م` : ''}\nإجمالي المستحق: ${numericGrandTotal.toLocaleString()} ج.م\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
-      : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}). Retainer: ${formattedBudget}${adCredit > 0 ? ` + Ad Credit: ${adCredit.toLocaleString()} EGP` : ''}. Total Due: ${numericGrandTotal.toLocaleString()} EGP. Due: ${dueDate}.\n\nDigital Effect Team.`
-  );
+  const baseWaText = isAr
+    ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nاشتراك الباقة: ${formattedBudget} (${cycleTextAr})${adCredit > 0 ? `\nرصيد إعلاني ممول: +${adCredit.toLocaleString()} ج.م` : ''}\nإجمالي المستحق: ${numericGrandTotal.toLocaleString()} ج.م\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
+    : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}). Retainer: ${formattedBudget}${adCredit > 0 ? ` + Ad Credit: ${adCredit.toLocaleString()} EGP` : ''}. Total Due: ${numericGrandTotal.toLocaleString()} EGP. Due: ${dueDate}.\n\nDigital Effect Team.`;
+
+  const triggerPdfBlobDownload = (blob: Blob, filename: string) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+  };
+
+  const handleSendWhatsApp = async () => {
+    if (!invoiceRef.current) return;
+    setIsPreparingWhatsApp(true);
+    setErrorMessage(null);
+    setDownloadSuccess(false);
+    setCopiedPdfLink(false);
+
+    try {
+      const cleanCompany = (client.company || client.name).replace(/\s+/g, '_');
+      const filename = `فاتورة_${cleanCompany}_${invoiceNumber}.pdf`;
+
+      const captureRes = await captureElementToPdf(invoiceRef.current, {
+        filename,
+        action: 'blob',
+      });
+
+      if (!captureRes.success || !captureRes.blob) {
+        throw new Error(captureRes.error || 'Failed to render invoice PDF');
+      }
+
+      archiveInvoiceIfNeeded();
+
+      const pdfBlob = captureRes.blob;
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+      // Upload PDF to server so we can attach a direct downloadable PDF URL inside the WhatsApp message
+      const hostedPdfUrl = await uploadInvoicePdfForShare(pdfBlob, invoiceNumber);
+      const waTextWithAttachment = hostedPdfUrl
+        ? `${baseWaText}\n\n📎 ${isAr ? 'رابط تحميل ملف الفاتورة (PDF):' : 'Download Invoice PDF:'}\n${hostedPdfUrl}`
+        : baseWaText;
+      const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waTextWithAttachment)}`;
+
+      // Try native OS file share sheet first (attaches the actual PDF file directly on supported browsers/mobile)
+      let sharedNatively = false;
+      if (
+        typeof navigator !== 'undefined' &&
+        typeof navigator.share === 'function' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [pdfFile] })
+      ) {
+        try {
+          await navigator.share({
+            files: [pdfFile],
+            title: filename,
+            text: waTextWithAttachment,
+          });
+          sharedNatively = true;
+        } catch (shareErr: any) {
+          if (shareErr?.name === 'AbortError') {
+            setIsPreparingWhatsApp(false);
+            return;
+          }
+          // NotAllowedError in iframe or unsupported desktop context: fall through to download + WhatsApp chat link
+        }
+      }
+
+      if (!sharedNatively) {
+        if (captureRes.pdf) {
+          captureRes.pdf.save(filename);
+        } else {
+          triggerPdfBlobDownload(pdfBlob, filename);
+        }
+      }
+
+      setWhatsAppReady({
+        waUrl,
+        pdfUrl: hostedPdfUrl,
+        filename,
+        sharedNatively,
+      });
+    } catch (err: any) {
+      console.error('Error preparing WhatsApp invoice:', err);
+      setErrorMessage(
+        isAr
+          ? 'تعذر تجهيز ملف الفاتورة للواتساب حالياً، يمكنك تحميل الفاتورة وإرسالها يدوياً.'
+          : 'Could not prepare the invoice PDF for WhatsApp.'
+      );
+    } finally {
+      setIsPreparingWhatsApp(false);
+    }
+  };
 
   return (
     <div 
@@ -312,17 +336,26 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 self-end sm:self-center">
-            {/* WhatsApp Share */}
-            <a
-              href={`https://wa.me/${waPhone}?text=${waInvoiceText}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
-              title="Share on WhatsApp"
+            {/* WhatsApp Share (Prepares PDF attachment + opens chat) */}
+            <button
+              type="button"
+              disabled={isGenerating || isPreparingWhatsApp}
+              onClick={handleSendWhatsApp}
+              className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              title={isAr ? 'تجهيز ملف PDF وإرساله بالواتساب' : 'Prepare PDF & Share on WhatsApp'}
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{isAr ? 'إرسال بالواتساب' : 'WhatsApp'}</span>
-            </a>
+              {isPreparingWhatsApp ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{isAr ? 'جارٍ تجهيز المرفق...' : 'Preparing PDF...'}</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{isAr ? 'إرسال بالواتساب' : 'WhatsApp'}</span>
+                </>
+              )}
+            </button>
 
             {/* Print Button */}
             <button
@@ -381,6 +414,69 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
           <div className="bg-rose-600 text-white text-xs font-bold px-4 py-2 text-center flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
             <AlertCircle className="w-4 h-4" />
             <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* WhatsApp PDF Attachment Ready Banner */}
+        {whatsAppReady && (
+          <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                <Paperclip className="w-4 h-4" />
+              </div>
+              <div className="text-xs space-y-0.5">
+                <p className="font-black text-emerald-950">
+                  {whatsAppReady.sharedNatively
+                    ? (isAr ? 'تمت مشاركة ملف الفاتورة PDF بنجاح!' : 'Invoice PDF shared successfully!')
+                    : (isAr
+                        ? `تم تحميل ملف الفاتورة PDF على جهازك (${whatsAppReady.filename})`
+                        : `Invoice PDF downloaded (${whatsAppReady.filename})`)}
+                </p>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  {isAr
+                    ? 'افتح محادثة الواتساب الآن واسحب الملف المحمّل داخل الشات لإرساله كمرفق، كما تم إدراج رابط تحميل مباشر للفاتورة في الرسالة.'
+                    : 'Open the WhatsApp chat below and drag the downloaded PDF into the chat to attach it (a direct PDF link is also included in the message).'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
+              {whatsAppReady.pdfUrl && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(whatsAppReady.pdfUrl || '');
+                      setCopiedPdfLink(true);
+                      setTimeout(() => setCopiedPdfLink(false), 2500);
+                    } catch {}
+                  }}
+                  className="px-2.5 py-1.5 text-[11px] font-bold bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg inline-flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  {copiedPdfLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedPdfLink ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ رابط PDF' : 'Copy PDF Link')}</span>
+                </button>
+              )}
+
+              <a
+                href={whatsAppReady.waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-1.5 text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs inline-flex items-center gap-1.5 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>{isAr ? 'فتح شات واتساب العميل الآن' : 'Open Client WhatsApp'}</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setWhatsAppReady(null)}
+                className="p-1 text-emerald-700 hover:text-emerald-950 hover:bg-emerald-100 rounded-lg cursor-pointer"
+                aria-label="Close WhatsApp ready notice"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -474,7 +570,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         {/* ================================================================= */}
         {/* INVOICE DOCUMENT (A4 PRINTABLE CONTAINER)                        */}
         {/* ================================================================= */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-200/70 flex justify-center">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-200/70 flex justify-center items-start">
           {/* A4 Sheet Container */}
           <div
             id="invoice-document-capture"
@@ -506,7 +602,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
               {/* Invoice Meta Box */}
               <div className="text-end space-y-1.5 shrink-0">
-                <span className="inline-block px-3 py-1 rounded-lg bg-slate-900 text-white font-black text-xs uppercase tracking-wider">
+                <span className="inline-block px-3 py-1 rounded-lg bg-slate-900 text-white font-black text-xs">
                   {isAr ? 'بيان فاتورة تعاقد' : 'INVOICE STATEMENT'}
                 </span>
                 <p className="text-xs font-mono font-black text-slate-800">
@@ -548,7 +644,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
             {/* Bill To & Client Info Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="space-y-1">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                <span className="text-[10px] font-black text-slate-400 block">
                   {isAr ? 'بيانات العميل / الجهة المتعاقدة:' : 'BILLED TO:'}
                 </span>
                 <h4 className="text-base font-black text-slate-900">
@@ -567,7 +663,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
               </div>
 
               <div className="space-y-1 sm:text-end">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                <span className="text-[10px] font-black text-slate-400 block">
                   {isAr ? 'تفاصيل التعاقد والقطاع:' : 'CONTRACT DETAILS:'}
                 </span>
                 <p className="text-xs font-bold text-slate-800">
@@ -591,7 +687,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
             {/* ============================================================= */}
             <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
-                <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-blue-300 block">
                   {isAr ? 'الباقة التسويقية المعتمدة:' : 'OFFICIAL MARKETING PACKAGE:'}
                 </span>
                 <h3 className="text-base sm:text-lg font-black text-white">
