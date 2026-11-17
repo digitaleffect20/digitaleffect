@@ -21,7 +21,7 @@ import {
   Image as ImageIcon,
   RotateCcw
 } from 'lucide-react';
-import { submitInquiry, isSupabaseConfigured, supabase } from '../lib/supabase';
+import { submitInquiry, updateInquiryStatusInDb, isSupabaseConfigured, supabase } from '../lib/supabase';
 import { validateAndFormatPhone } from '../lib/phoneUtils';
 import { 
   calculateCustomPackageCost, 
@@ -33,6 +33,7 @@ interface AddClientModalProps {
   onClose: () => void;
   onClientAdded?: (inquiry: Inquiry) => void;
   defaultSector?: SectorType;
+  defaultStatus?: Inquiry['status'];
 }
 
 export const AddClientModal: React.FC<AddClientModalProps> = ({
@@ -40,6 +41,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
   onClose,
   onClientAdded,
   defaultSector = 'b2c',
+  defaultStatus = 'new',
 }) => {
   const { data, language, addInquiry, addPackage } = useAgencyData();
   const isAr = language === 'ar';
@@ -48,7 +50,7 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
   const [phone, setPhone] = useState('');
   const [company, setCompany] = useState('');
   const [sector, setSector] = useState<SectorType>(defaultSector);
-  const [status, setStatus] = useState<Inquiry['status']>('new');
+  const [status, setStatus] = useState<Inquiry['status']>(defaultStatus);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,14 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
   const sectorPackages = data.packages.filter(
     (p) => sector === 'all' || p.sector === sector
   );
+
+  // Sync default status when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStatus(defaultStatus || 'new');
+      setError(null);
+    }
+  }, [isOpen, defaultStatus]);
 
   // Reset defaults when sector changes
   useEffect(() => {
@@ -217,9 +227,10 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
       }
 
       // 1. Sync with Supabase if configured
+      let cloudId: string | undefined = undefined;
       if (isSupabaseConfigured && supabase) {
         try {
-          await submitInquiry({
+          const subRes = await submitInquiry({
             name: cleanName,
             phone: cleanPhone,
             phoneE164: finalPhoneE164,
@@ -232,18 +243,26 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
             budget: effectiveBudget.trim() || undefined,
             notes: notes.trim() || undefined,
           });
+          if (subRes?.success && subRes?.isDatabaseBacked && subRes?.id) {
+            cloudId = subRes.id;
+            if (status !== 'new') {
+              await updateInquiryStatusInDb(subRes.id, status);
+            }
+          }
         } catch (cloudErr) {
           console.warn('Could not sync newly created client to Supabase immediately:', cloudErr);
         }
       }
 
       // Determine deliverable targets based on mode
-      const finalPostsTarget = packageMode === 'builder' ? postsCount : (selectedCatalogPkg?.postsCount ?? (sector === 'b2b' ? 4 : sector === 'medical' ? 8 : 12));
-      const finalReelsTarget = packageMode === 'builder' ? reelsCount : (selectedCatalogPkg?.reelsCount ?? (sector === 'b2b' ? 0 : sector === 'medical' ? 4 : 2));
-      const finalStoriesTarget = packageMode === 'builder' ? storiesCount : (selectedCatalogPkg?.storiesCount ?? (sector === 'b2c' ? 2 : 0));
+      const currentCatalogPkg = data.packages.find((p) => p.id === selectedPkgId);
+      const finalPostsTarget = packageMode === 'builder' ? postsCount : (currentCatalogPkg?.postsCount ?? (sector === 'b2b' ? 4 : sector === 'medical' ? 8 : 12));
+      const finalReelsTarget = packageMode === 'builder' ? reelsCount : (currentCatalogPkg?.reelsCount ?? (sector === 'b2b' ? 0 : sector === 'medical' ? 4 : 2));
+      const finalStoriesTarget = packageMode === 'builder' ? storiesCount : (currentCatalogPkg?.storiesCount ?? (sector === 'b2c' ? 2 : 0));
 
-      // 2. Persist in agency CRM state
-      const newInquiryData = {
+      // 2. Persist in agency CRM state (and sync full record to crm_client_accounts)
+      const createdClient = addInquiry({
+        id: cloudId,
         name: cleanName,
         phone: cleanPhone,
         phoneE164: finalPhoneE164,
@@ -262,17 +281,10 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
         postsDelivered: 0,
         reelsDelivered: 0,
         storiesDelivered: 0,
-      };
-
-      addInquiry(newInquiryData);
+      });
 
       if (onClientAdded) {
-        onClientAdded({
-          ...newInquiryData,
-          id: `inq-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          status,
-        });
+        onClientAdded(createdClient);
       }
 
       // Reset and close

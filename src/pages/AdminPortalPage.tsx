@@ -99,6 +99,7 @@ export const AdminPortalPage: React.FC = () => {
     exportDataJson,
     importDataJson,
     clearAllInquiries,
+    addInquiry,
     updateInquiry,
     deleteInquiry,
     cloudSyncStatus,
@@ -568,16 +569,40 @@ export const AdminPortalPage: React.FC = () => {
 
   // Status Updater
   const handleStatusChange = async (id: string, newStatus: 'new' | 'contacted' | 'closed' | 'cancelled') => {
-    // Always update local inquiry store so changes persist in real-time
-    updateInquiry(id, { status: newStatus });
+    const existsLocally = (data.inquiries || []).some((item) => item.id === id);
+    if (existsLocally) {
+      updateInquiry(id, { status: newStatus });
+    } else if (newStatus === 'closed') {
+      const cloudLead = cloudInquiries.find((c) => c.id === id);
+      if (cloudLead) {
+        addInquiry({
+          id: cloudLead.id,
+          name: cloudLead.raw_client_name,
+          phone: cloudLead.raw_client_phone,
+          phoneE164: cloudLead.client_phone_e164 || cloudLead.customer?.phone_e164,
+          phoneCountry: cloudLead.phone_country || cloudLead.customer?.phone_country,
+          visitorCountry: cloudLead.visitor_country,
+          company: cloudLead.raw_client_company || cloudLead.customer?.company || undefined,
+          sector: cloudLead.sector,
+          packageId: cloudLead.package_id || undefined,
+          packageName: cloudLead.raw_package_name || undefined,
+          budget: cloudLead.budget || undefined,
+          notes: cloudLead.notes || undefined,
+          status: 'closed',
+        });
+      }
+    }
 
     if (isSupabaseConfigured && sessionUser) {
       const res = await updateInquiryStatusInDb(id, newStatus);
       if (res.success) {
         setCloudInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, status: newStatus } : inq));
+        if (newStatus === 'closed') {
+          setActiveTab('clients');
+        }
         showNotice(
           newStatus === 'closed'
-            ? (isAr ? 'تم التعاقد! تم نقل العميل تلقائياً إلى قسم العملاء لمتابعة حسابه.' : 'Contract closed! Client transferred to Clients section.')
+            ? (isAr ? 'تم التعاقد! تم نقل العميل تلقائياً إلى قسم العملاء والتعاقدات.' : 'Contract closed! Client transferred to Clients section.')
             : (isAr ? 'تم تحديث حالة الطلب بنجاح!' : 'Status updated!')
         );
       } else {
@@ -586,9 +611,12 @@ export const AdminPortalPage: React.FC = () => {
     } else {
       // Local fallback updater
       setCloudInquiries(prev => prev.map(inq => inq.id === id ? { ...inq, status: newStatus } : inq));
+      if (newStatus === 'closed') {
+        setActiveTab('clients');
+      }
       showNotice(
         newStatus === 'closed'
-          ? (isAr ? 'تم التعاقد! تم نقل العميل تلقائياً إلى قسم العملاء لمتابعة حسابه.' : 'Contract closed! Client transferred to Clients section.')
+          ? (isAr ? 'تم التعاقد! تم نقل العميل تلقائياً إلى قسم العملاء والتعاقدات.' : 'Contract closed! Client transferred to Clients section.')
           : (isAr ? 'تم تحديث الحالة بنجاح.' : 'Status updated successfully.')
       );
     }
@@ -725,7 +753,14 @@ export const AdminPortalPage: React.FC = () => {
         createdAt: i.createdAt,
       }));
 
-  const filteredInquiries = activeInquiriesList.filter(item => {
+  // Inquiries tab shows only non-contracted leads (new, contacted, cancelled);
+  // Once converted to 'closed' (تم التعاقد), they move exclusively to Clients & Contracts.
+  const openInquiriesList = useMemo(
+    () => activeInquiriesList.filter((item) => item.status !== 'closed'),
+    [activeInquiriesList]
+  );
+
+  const filteredInquiries = openInquiriesList.filter(item => {
     if (inquiryStatusFilter !== 'all' && item.status !== inquiryStatusFilter) return false;
     if (inquirySearch.trim()) {
       const q = inquirySearch.toLowerCase();
@@ -738,7 +773,7 @@ export const AdminPortalPage: React.FC = () => {
     return true;
   });
 
-  const newInquiriesCount = activeInquiriesList.filter(i => i.status === 'new').length;
+  const newInquiriesCount = openInquiriesList.filter(i => i.status === 'new').length;
 
   // Contracted Clients List (Clients with status === 'closed')
   const contractedClients: Inquiry[] = useMemo(() => {
@@ -1134,7 +1169,7 @@ export const AdminPortalPage: React.FC = () => {
               }`}
             >
               <Inbox className="w-3.5 h-3.5" />
-              <span>{isAr ? `الطلبات والاستشارات (${activeInquiriesList.length})` : `Inquiries & Orders (${activeInquiriesList.length})`}</span>
+              <span>{isAr ? `الطلبات والاستشارات (${openInquiriesList.length})` : `Inquiries & Orders (${openInquiriesList.length})`}</span>
               {newInquiriesCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-slate-900 rounded-full font-bold animate-pulse">
                   {newInquiriesCount} {isAr ? 'جديد' : 'new'}
@@ -1359,10 +1394,9 @@ export const AdminPortalPage: React.FC = () => {
                   onChange={(e) => setInquiryStatusFilter(e.target.value as any)}
                   className="py-2 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium text-slate-700 cursor-pointer"
                 >
-                  <option value="all">{isAr ? 'جميع الحالات' : 'All Statuses'}</option>
+                  <option value="all">{isAr ? 'جميع الطلبات الواردة' : 'All Active Inquiries'}</option>
                   <option value="new">{isAr ? 'جديد (لم يتم الرد)' : 'New'}</option>
                   <option value="contacted">{isAr ? 'قيد التواصل' : 'Contacted'}</option>
-                  <option value="closed">{isAr ? 'تم التعاقد' : 'Closed Deal'}</option>
                   <option value="cancelled">{isAr ? 'ملغي' : 'Cancelled'}</option>
                 </select>
               </div>
@@ -1428,13 +1462,13 @@ export const AdminPortalPage: React.FC = () => {
               <div className="py-16 text-center bg-white border border-slate-200 rounded-2xl p-6 space-y-3">
                 <Inbox className="w-12 h-12 text-slate-300 mx-auto" />
                 <h5 className="text-sm font-bold text-slate-700">
-                  {activeInquiriesList.length === 0 
+                  {openInquiriesList.length === 0 
                     ? (isAr ? 'لا توجد طلبات واردة حالياً' : 'No inquiries yet')
                     : (isAr ? 'لا توجد نتائج مطابقة لبحثك' : 'No matching inquiries found')}
                 </h5>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  {activeInquiriesList.length === 0
-                    ? (isAr ? 'عند قيام أي عميل باختيار باقة وإرسال نموذج الاستشارة، ستظهر بياناته هنا فوراً مع روابط التواصل الفوري.' : 'When any visitor selects a package and submits the consultation form, their details will appear here.')
+                  {openInquiriesList.length === 0
+                    ? (isAr ? 'عند قيام أي عميل باختيار باقة وإرسال نموذج الاستشارة، ستظهر بياناته هنا فوراً لحين إتمام التعاقد ونقله لقسم العملاء.' : 'When any visitor submits the consultation form, their details will appear here until contracted.')
                     : (isAr ? 'جرّب تغيير كلمات البحث أو تصفية الحالات.' : 'Try adjusting your search query or status filter.')}
                 </p>
               </div>
@@ -3923,13 +3957,28 @@ export const AdminPortalPage: React.FC = () => {
       {/* Add Client to CRM Modal */}
       <AddClientModal
         isOpen={isAddClientOpen}
+        defaultStatus={activeTab === 'clients' ? 'closed' : 'new'}
         onClose={() => setIsAddClientOpen(false)}
         onClientAdded={(newClient) => {
-          showNotice(
-            isAr 
-              ? `تم تسجيل العميل (${newClient.name}) وتحديد باقة (${newClient.packageName}) بنجاح!` 
-              : `Client (${newClient.name}) assigned to (${newClient.packageName}) successfully!`
-          );
+          if (newClient.status === 'closed') {
+            setClientSectorFilter('all');
+            setClientStatusFilter('all');
+            setWorkflowTaskFilter('all');
+            setWorkflowStageFilter('all');
+            setClientSearchQuery('');
+            setActiveTab('clients');
+            showNotice(
+              isAr
+                ? `تم التعاقد! تم تسجيل العميل (${newClient.name}) ونقله إلى قسم العملاء والتعاقدات بنجاح.`
+                : `Contract closed! Client (${newClient.name}) added and moved to Clients & Contracts.`
+            );
+          } else {
+            showNotice(
+              isAr 
+                ? `تم تسجيل العميل (${newClient.name}) وتحديد باقة (${newClient.packageName}) بنجاح!` 
+                : `Client (${newClient.name}) assigned to (${newClient.packageName}) successfully!`
+            );
+          }
           if (isSupabaseConfigured && sessionUser) {
             loadInquiries();
           }

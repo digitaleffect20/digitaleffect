@@ -71,7 +71,7 @@ interface AgencyContextType {
   };
 
   // Leads & Inquiries Management
-  addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { status?: Inquiry['status'] }) => void;
+  addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { id?: string; status?: Inquiry['status'] }) => Inquiry;
   updateInquiryStatus: (id: string, status: Inquiry['status']) => void;
   updateInquiry: (id: string, updates: Partial<Inquiry>) => void;
   deleteInquiry: (id: string) => void;
@@ -1038,14 +1038,14 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return merged;
   };
 
-  const addInquiry = (inquiryData: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { status?: Inquiry['status'] }) => {
+  const addInquiry = (inquiryData: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { id?: string; status?: Inquiry['status'] }): Inquiry => {
     const isClosed = inquiryData.status === 'closed';
     const today = new Date().toISOString().split('T')[0];
     const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     const newInquiry: Inquiry = {
       ...inquiryData,
-      id: `inq-${Date.now()}`,
+      id: inquiryData.id || `inq-${Date.now()}`,
       createdAt: new Date().toISOString(),
       status: inquiryData.status || 'new',
       ...(isClosed ? {
@@ -1087,6 +1087,8 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         else if (res.success) setLastCloudSyncAt(new Date().toISOString());
       });
     }
+
+    return newInquiry;
   };
 
   const updateInquiry = (id: string, updates: Partial<Inquiry>) => {
