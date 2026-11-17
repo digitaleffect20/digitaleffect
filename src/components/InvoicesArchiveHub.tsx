@@ -59,9 +59,14 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
   const [newInvoiceDueDate, setNewInvoiceDueDate] = useState('');
   const [newInvoiceNotes, setNewInvoiceNotes] = useState('');
 
-  // Downloading feedback state
+  // Downloading feedback & inline validation states
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [toastNotice, setToastNotice] = useState<string | null>(null);
+  const [newInvoiceError, setNewInvoiceError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{
+    type: 'delete' | 'collect';
+    invoice: ClientInvoiceRecord;
+  } | null>(null);
 
   const showToast = (msg: string) => {
     setToastNotice(msg);
@@ -194,26 +199,39 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     setIsPreviewModalOpen(true);
   };
 
-  // Mark as Paid & Collect Ad Credit
+  // Mark as Paid & Collect Ad Credit (via in-app confirmation modal)
   const handleCollectInvoice = (inv: ClientInvoiceRecord) => {
-    if (!confirm(isAr ? `هل تريد تأكيد تحصيل الفاتورة ${inv.invoiceNumber} بقيمة ${inv.grandTotal.toLocaleString()} ج.م؟` : `Confirm collection of invoice ${inv.invoiceNumber}?`)) {
-      return;
-    }
-    markInvoiceAsPaid(inv.id, 'تحويل بنكي');
-    showToast(isAr ? `تم تحصيل الفاتورة ${inv.invoiceNumber} وإيداع الرصيد الإعلاني بنجاح!` : `Invoice collected and ad credit deposited!`);
+    setPendingAction({ type: 'collect', invoice: inv });
   };
 
-  // Delete Invoice
-  const handleDeleteInvoice = (id: string, num: string) => {
-    if (!confirm(isAr ? `هل أنت متأكد من حذف الفاتورة ${num} نهائياً؟` : `Delete invoice ${num}?`)) {
-      return;
-    }
-    deleteInvoice(id);
-    showToast(isAr ? `تم حذف الفاتورة ${num} من الأرشيف.` : `Invoice ${num} deleted.`);
+  // Delete Invoice (via in-app confirmation modal — works reliably inside iframes)
+  const handleDeleteInvoice = (inv: ClientInvoiceRecord) => {
+    setPendingAction({ type: 'delete', invoice: inv });
   };
 
-  // Share via WhatsApp
-  const handleShareWhatsApp = (inv: ClientInvoiceRecord) => {
+  const handleConfirmPendingAction = () => {
+    if (!pendingAction) return;
+    const { type, invoice } = pendingAction;
+    if (type === 'collect') {
+      markInvoiceAsPaid(invoice.id, 'تحويل بنكي');
+      showToast(
+        isAr
+          ? `تم تحصيل الفاتورة ${invoice.invoiceNumber} وإيداع الرصيد الإعلاني بنجاح!`
+          : `Invoice ${invoice.invoiceNumber} collected and ad credit deposited!`
+      );
+    } else {
+      deleteInvoice(invoice.id);
+      showToast(
+        isAr
+          ? `تم حذف الفاتورة ${invoice.invoiceNumber} من الأرشيف.`
+          : `Invoice ${invoice.invoiceNumber} deleted.`
+      );
+    }
+    setPendingAction(null);
+  };
+
+  // Build WhatsApp direct URL cleanly for anchor tags (avoids window.open blocking in iframes)
+  const getInvoiceWhatsAppHref = (inv: ClientInvoiceRecord) => {
     const cleanPhone = (inv.clientPhone || '').replace(/\D/g, '');
     const waPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
 
@@ -236,14 +254,15 @@ Invoice: ${inv.invoiceNumber}
 Total: ${inv.grandTotal.toLocaleString()} EGP
 Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
 
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    return `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
   };
 
   // Create New Invoice Submit
   const handleCreateNewInvoice = (e: React.FormEvent) => {
     e.preventDefault();
+    setNewInvoiceError(null);
     if (!newInvoiceClientId) {
-      alert(isAr ? 'يرجى اختيار العميل أولاً' : 'Please select a client');
+      setNewInvoiceError(isAr ? 'يرجى اختيار العميل أولاً' : 'Please select a client');
       return;
     }
 
@@ -630,20 +649,21 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                       <Eye className="w-3.5 h-3.5" />
                     </button>
 
-                    {/* WhatsApp Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleShareWhatsApp(inv)}
-                      className="p-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer"
+                    {/* WhatsApp Direct Anchor Link */}
+                    <a
+                      href={getInvoiceWhatsAppHref(inv)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer inline-flex items-center justify-center"
                       title={isAr ? 'مشاركة عبر الواتساب' : 'WhatsApp'}
                     >
                       <Share2 className="w-3.5 h-3.5" />
-                    </button>
+                    </a>
 
                     {/* Delete Button */}
                     <button
                       type="button"
-                      onClick={() => handleDeleteInvoice(inv.id, inv.invoiceNumber)}
+                      onClick={() => handleDeleteInvoice(inv)}
                       className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                       title={isAr ? 'حذف من الأرشيف' : 'Delete'}
                     >
@@ -721,6 +741,13 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
             </div>
 
             <form onSubmit={handleCreateNewInvoice} className="space-y-3.5">
+              {newInvoiceError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{newInvoiceError}</span>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">
                   {isAr ? 'العميل المستفيد:' : 'Client:'}
@@ -841,6 +868,89 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* In-App Confirmation Modal for Delete / Collect Invoice (Iframe-safe) */}
+      {pendingAction && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPendingAction(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-4 text-start"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                  pendingAction.type === 'delete'
+                    ? 'bg-rose-100 text-rose-600'
+                    : 'bg-emerald-100 text-emerald-600'
+                }`}
+              >
+                {pendingAction.type === 'delete' ? (
+                  <AlertTriangle className="w-5 h-5" />
+                ) : (
+                  <CheckCircle2 className="w-5 h-5" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-black text-slate-900">
+                  {pendingAction.type === 'delete'
+                    ? isAr
+                      ? 'تأكيد حذف الفاتورة نهائياً'
+                      : 'Confirm Invoice Deletion'
+                    : isAr
+                    ? 'تأكيد تحصيل الفاتورة'
+                    : 'Confirm Invoice Collection'}
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {pendingAction.type === 'delete'
+                    ? isAr
+                      ? `هل أنت متأكد من حذف الفاتورة (${pendingAction.invoice.invoiceNumber}) الخاصة بـ "${pendingAction.invoice.clientCompany || pendingAction.invoice.clientName}" نهائياً من الأرشيف؟`
+                      : `Are you sure you want to permanently delete invoice ${pendingAction.invoice.invoiceNumber} from archive?`
+                    : isAr
+                    ? `هل تريد تأكيد تحصيل الفاتورة (${pendingAction.invoice.invoiceNumber}) بقيمة ${pendingAction.invoice.grandTotal.toLocaleString()} ج.م وإيداع الرصيد الإعلاني تلقائياً؟`
+                    : `Confirm collection of invoice ${pendingAction.invoice.invoiceNumber} for ${pendingAction.invoice.grandTotal.toLocaleString()} EGP?`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPendingAction(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+              >
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmPendingAction}
+                className={`px-5 py-2 text-xs font-black text-white rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer ${
+                  pendingAction.type === 'delete'
+                    ? 'bg-rose-600 hover:bg-rose-700'
+                    : 'bg-emerald-600 hover:bg-emerald-700'
+                }`}
+              >
+                {pendingAction.type === 'delete' ? (
+                  <Trash2 className="w-3.5 h-3.5" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {pendingAction.type === 'delete'
+                    ? isAr
+                      ? 'نعم، احذف الفاتورة'
+                      : 'Yes, Delete Invoice'
+                    : isAr
+                    ? 'نعم، تأكيد التحصيل'
+                    : 'Yes, Confirm Collection'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}
