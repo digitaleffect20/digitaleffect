@@ -44,6 +44,31 @@ export function parseInvoiceAmount(value: string | number | undefined | null): n
   return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
 }
 
+/**
+ * Generates a collision-free invoice number for a client, checking all existing archived invoices.
+ */
+export function generateUniqueInvoiceNumber(
+  clientId: string,
+  existingInvoices: Array<{ invoiceNumber: string; clientId?: string }> = []
+): string {
+  const now = new Date();
+  const prefix = `DE-INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-`;
+  const usedNumbers = new Set(existingInvoices.map((inv) => inv.invoiceNumber));
+
+  const rawDigits = (clientId || '').replace(/\D/g, '').slice(-3);
+  let seq = rawDigits ? parseInt(rawDigits, 10) : 101 + existingInvoices.length;
+  if (!Number.isFinite(seq) || seq <= 0) {
+    seq = 101 + existingInvoices.length;
+  }
+
+  let candidate = `${prefix}${String(seq).padStart(3, '0')}`;
+  while (usedNumbers.has(candidate)) {
+    seq += 1;
+    candidate = `${prefix}${String(seq).padStart(3, '0')}`;
+  }
+  return candidate;
+}
+
 export function loadSavedTransferInfo(): InvoiceTransferInfo {
   try {
     if (typeof window === 'undefined' || !window.localStorage) {

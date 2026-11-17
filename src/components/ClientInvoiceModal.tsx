@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Inquiry } from '../types';
 import { useAgencyData } from '../context/AgencyDataContext';
 import {
@@ -32,6 +32,7 @@ import {
   saveTransferInfo,
   captureElementToPdf,
   uploadInvoicePdfForShare,
+  generateUniqueInvoiceNumber,
   InvoiceTransferInfo,
 } from '../utils/invoicePdfGenerator';
 
@@ -46,6 +47,8 @@ interface ClientInvoiceModalProps {
   contractStartDate?: string;
   renewalDate?: string;
   paymentStatus?: Inquiry['paymentStatus'];
+  initialInvoiceNumber?: string;
+  isPreviewOnly?: boolean;
   targetPosts: number;
   targetReels: number;
   targetStories: number;
@@ -63,6 +66,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   contractStartDate,
   renewalDate,
   paymentStatus = 'pending',
+  initialInvoiceNumber,
+  isPreviewOnly = false,
   targetPosts,
   targetReels,
   targetStories,
@@ -82,9 +87,12 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     sharedNatively?: boolean;
   } | null>(null);
 
-  // Editable invoice fields for full flexibility
-  const autoInvoiceNo = `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${client.id.replace(/\D/g, '').slice(-3) || '101'}`;
-  const [invoiceNumber, setInvoiceNumber] = useState(autoInvoiceNo);
+  const [archivedNotice, setArchivedNotice] = useState(false);
+
+  // Editable invoice fields — automatically reset when modal opens for a different client
+  const [invoiceNumber, setInvoiceNumber] = useState(() =>
+    initialInvoiceNumber || generateUniqueInvoiceNumber(client.id, data.invoices || [])
+  );
   const [issueDate, setIssueDate] = useState(
     contractStartDate || new Date().toISOString().split('T')[0]
   );
@@ -99,6 +107,20 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
   const [adCredit, setAdCredit] = useState<number>(adCreditAmount || client.pendingInvoiceAdCredit || 0);
   const [transferInfo, setTransferInfo] = useState<InvoiceTransferInfo>(() => loadSavedTransferInfo());
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const nextNumber =
+      initialInvoiceNumber || generateUniqueInvoiceNumber(client.id, data.invoices || []);
+    setInvoiceNumber(nextNumber);
+    setIssueDate(contractStartDate || new Date().toISOString().split('T')[0]);
+    setDueDate(renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    setAdCredit(adCreditAmount || client.pendingInvoiceAdCredit || 0);
+    setWhatsAppReady(null);
+    setErrorMessage(null);
+    setDownloadSuccess(false);
+    setArchivedNotice(false);
+  }, [isOpen, client.id, initialInvoiceNumber, contractStartDate, renewalDate, adCreditAmount, client.pendingInvoiceAdCredit]);
 
   const handleUpdateTransferField = (field: keyof InvoiceTransferInfo, value: string) => {
     setTransferInfo((prev) => {
@@ -136,31 +158,50 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
   if (!isOpen) return null;
 
+  const isAlreadyArchived = (data.invoices || []).some(
+    (i) => i.clientId === client.id && i.invoiceNumber === invoiceNumber
+  );
+
   const archiveInvoiceIfNeeded = () => {
     try {
-      const existing = (data.invoices || []).find((i) => i.invoiceNumber === invoiceNumber);
-      if (!existing) {
-        addInvoice({
-          invoiceNumber,
-          clientId: client.id,
-          clientName: client.name,
-          clientCompany: client.company,
-          clientPhone: client.phone,
-          sector: client.sector,
-          issueDate,
-          dueDate,
-          packageName,
-          retainerAmount: numericBudget,
-          adCreditAmount: adCredit,
-          grandTotal: numericGrandTotal,
-          billingCycle,
-          paymentStatus,
-          notes,
-          deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
-        });
+      const currentInvoices = data.invoices || [];
+      const exactMatch = currentInvoices.find(
+        (i) => i.invoiceNumber === invoiceNumber && i.clientId === client.id
+      );
+      if (exactMatch) return exactMatch.invoiceNumber;
+
+      // Avoid collision if another client already uses this invoice number
+      const collision = currentInvoices.some((i) => i.invoiceNumber === invoiceNumber);
+      const finalNumber = collision
+        ? generateUniqueInvoiceNumber(client.id, currentInvoices)
+        : invoiceNumber;
+
+      if (collision) {
+        setInvoiceNumber(finalNumber);
       }
+
+      addInvoice({
+        invoiceNumber: finalNumber,
+        clientId: client.id,
+        clientName: client.name,
+        clientCompany: client.company,
+        clientPhone: client.phone,
+        sector: client.sector,
+        issueDate,
+        dueDate,
+        packageName,
+        retainerAmount: numericBudget,
+        adCreditAmount: adCredit,
+        grandTotal: numericGrandTotal,
+        billingCycle,
+        paymentStatus,
+        notes,
+        deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
+      });
+      return finalNumber;
     } catch (archErr) {
       console.warn('Could not archive invoice:', archErr);
+      return invoiceNumber;
     }
   };
 
@@ -171,9 +212,11 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     setDownloadSuccess(false);
     setErrorMessage(null);
 
+    const activeInvNo = archiveInvoiceIfNeeded();
+
     try {
       const cleanCompany = (client.company || client.name).replace(/\s+/g, '_');
-      const filename = `فاتورة_${cleanCompany}_${invoiceNumber}.pdf`;
+      const filename = `فاتورة_${cleanCompany}_${activeInvNo}.pdf`;
 
       const captureRes = await captureElementToPdf(invoiceRef.current, {
         filename,
@@ -183,8 +226,6 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       if (!captureRes.success) {
         throw new Error(captureRes.error || 'Failed to render PDF');
       }
-
-      archiveInvoiceIfNeeded();
 
       if (action === 'download') {
         setDownloadSuccess(true);
@@ -227,9 +268,11 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     setDownloadSuccess(false);
     setCopiedPdfLink(false);
 
+    const activeInvNo = archiveInvoiceIfNeeded();
+
     try {
       const cleanCompany = (client.company || client.name).replace(/\s+/g, '_');
-      const filename = `فاتورة_${cleanCompany}_${invoiceNumber}.pdf`;
+      const filename = `فاتورة_${cleanCompany}_${activeInvNo}.pdf`;
 
       const captureRes = await captureElementToPdf(invoiceRef.current, {
         filename,
@@ -240,13 +283,11 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         throw new Error(captureRes.error || 'Failed to render invoice PDF');
       }
 
-      archiveInvoiceIfNeeded();
-
       const pdfBlob = captureRes.blob;
       const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
       // Upload PDF to server so we can attach a direct downloadable PDF URL inside the WhatsApp message
-      const hostedPdfUrl = await uploadInvoicePdfForShare(pdfBlob, invoiceNumber);
+      const hostedPdfUrl = await uploadInvoicePdfForShare(pdfBlob, activeInvNo);
       const waTextWithAttachment = hostedPdfUrl
         ? `${baseWaText}\n\n📎 ${isAr ? 'رابط تحميل ملف الفاتورة (PDF):' : 'Download Invoice PDF:'}\n${hostedPdfUrl}`
         : baseWaText;
@@ -335,7 +376,37 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2 self-end sm:self-center">
+          <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+            {/* Save / Archived Indicator Button */}
+            {!isPreviewOnly && (
+              <button
+                type="button"
+                onClick={() => {
+                  archiveInvoiceIfNeeded();
+                  setArchivedNotice(true);
+                  setTimeout(() => setArchivedNotice(false), 3000);
+                }}
+                disabled={isAlreadyArchived}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all inline-flex items-center gap-1.5 ${
+                  isAlreadyArchived
+                    ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-500/40 cursor-default'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer'
+                }`}
+                title={isAr ? 'إصدار وحفظ الفاتورة في أرشيف الفواتير' : 'Save invoice to Archive'}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>
+                  {isAlreadyArchived
+                    ? isAr
+                      ? 'محفوظة بالأرشيف'
+                      : 'Archived'
+                    : isAr
+                    ? 'حفظ في الأرشيف'
+                    : 'Save to Archive'}
+                </span>
+              </button>
+            )}
+
             {/* WhatsApp Share (Prepares PDF attachment + opens chat) */}
             <button
               type="button"
@@ -402,10 +473,18 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         </div>
 
         {/* Success toast */}
-        {downloadSuccess && (
+        {(downloadSuccess || archivedNotice) && (
           <div className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 text-center flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
             <CheckCircle2 className="w-4 h-4" />
-            <span>{isAr ? 'تم تنزيل ملف الفاتورة PDF بنجاح على جهازك!' : 'Invoice PDF downloaded successfully!'}</span>
+            <span>
+              {downloadSuccess
+                ? isAr
+                  ? 'تم تنزيل ملف الفاتورة PDF وإدراجها في الأرشيف بنجاح!'
+                  : 'Invoice PDF downloaded & archived successfully!'
+                : isAr
+                ? 'تم إصدار وحفظ الفاتورة في أرشيف الفواتير بنجاح!'
+                : 'Invoice saved to archive successfully!'}
+            </span>
           </div>
         )}
 

@@ -26,7 +26,11 @@ import {
 } from 'lucide-react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { ClientInvoiceRecord, Inquiry } from '../types';
-import { generateClientInvoicePdf, parseInvoiceAmount } from '../utils/invoicePdfGenerator';
+import {
+  generateClientInvoicePdf,
+  parseInvoiceAmount,
+  generateUniqueInvoiceNumber,
+} from '../utils/invoicePdfGenerator';
 import { ClientInvoiceModal } from './ClientInvoiceModal';
 import { AccountStatementModal } from './AccountStatementModal';
 
@@ -313,7 +317,7 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
     const today = new Date().toISOString().split('T')[0];
 
     addInvoice({
-      invoiceNumber: `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(invoices.length + 101).slice(-3)}`,
+      invoiceNumber: generateUniqueInvoiceNumber(client.id, invoices),
       clientId: client.id,
       clientName: client.name,
       clientCompany: client.company,
@@ -806,6 +810,8 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
               ? 'overdue'
               : previewInvoice.paymentStatus
           }
+          initialInvoiceNumber={previewInvoice.invoiceNumber}
+          isPreviewOnly={true}
           targetPosts={previewInvoice.deliverables?.posts || 8}
           targetReels={previewInvoice.deliverables?.reels || 4}
           targetStories={previewInvoice.deliverables?.stories || 0}

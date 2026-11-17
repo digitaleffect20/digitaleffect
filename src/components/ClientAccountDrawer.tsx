@@ -48,7 +48,11 @@ import { ClientInvoiceModal } from './ClientInvoiceModal';
 import { AccountStatementModal } from './AccountStatementModal';
 import { ActivityTimelinePanel } from './ActivityTimelinePanel';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
-import { generateClientInvoicePdf, parseInvoiceAmount } from '../utils/invoicePdfGenerator';
+import {
+  generateClientInvoicePdf,
+  parseInvoiceAmount,
+  generateUniqueInvoiceNumber,
+} from '../utils/invoicePdfGenerator';
 import { CountryCode } from 'libphonenumber-js';
 import { validateAndFormatPhone } from '../lib/phoneUtils';
 import { deleteInquiryFromDb, isSupabaseConfigured } from '../lib/supabase';
@@ -194,6 +198,15 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     if (!client) return;
     setIsDirectDownloading(true);
     try {
+      const existingInvoices = data.invoices || [];
+      const existingClientInv = existingInvoices.find(
+        (i) => i.clientId === client.id && i.paymentStatus !== 'cancelled'
+      );
+      const invNum =
+        existingClientInv?.invoiceNumber ||
+        generateUniqueInvoiceNumber(client.id, existingInvoices);
+      const effectiveStatus = existingClientInv?.paymentStatus || paymentStatus || 'pending';
+
       const res = await generateClientInvoicePdf({
         client,
         packageName: packageName || client.packageName,
@@ -207,6 +220,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
         billingCycle,
         contractStartDate,
         renewalDate,
+        invoiceNumber: invNum,
+        paymentStatus: effectiveStatus === 'cancelled' ? 'pending' : effectiveStatus,
         isAr,
       });
       if (res.success) {
@@ -216,8 +231,9 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           const numRetainer = parsedRet > 0 ? parsedRet : (client.retainerAmount || 0);
           const grandTotal = numRetainer + (invoiceAdCredit || 0);
           const today = new Date().toISOString().split('T')[0];
-          const invNum = `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${client.id.replace(/\D/g, '').slice(-3) || '101'}`;
-          const existing = (data.invoices || []).find((i) => i.invoiceNumber === invNum);
+          const existing = existingInvoices.find(
+            (i) => i.invoiceNumber === invNum && i.clientId === client.id
+          );
           if (!existing) {
             addInvoice({
               invoiceNumber: invNum,

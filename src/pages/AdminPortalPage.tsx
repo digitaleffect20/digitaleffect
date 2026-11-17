@@ -76,7 +76,11 @@ import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from '../components/Cl
 import { ClientPackageDeliverablesCard } from '../components/ClientPackageDeliverablesCard';
 import { ActivityTimelinePanel, getActivityTypeMeta } from '../components/ActivityTimelinePanel';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
-import { generateClientInvoicePdf, parseInvoiceAmount } from '../utils/invoicePdfGenerator';
+import {
+  generateClientInvoicePdf,
+  parseInvoiceAmount,
+  generateUniqueInvoiceNumber,
+} from '../utils/invoicePdfGenerator';
 import { InvoicesArchiveHub } from '../components/InvoicesArchiveHub';
 import { AccountStatementModal } from '../components/AccountStatementModal';
 import crmFullMigrationSql from '../../supabase/migrations/20261117000001_crm_full_persistence.sql?raw';
@@ -105,6 +109,7 @@ export const AdminPortalPage: React.FC = () => {
     updateInquiry,
     logInquiryActivity,
     deleteInquiry,
+    addInvoice,
     clearAllCrmData,
     cloudSyncStatus,
     supabaseMigrationNeeded,
@@ -170,20 +175,65 @@ export const AdminPortalPage: React.FC = () => {
   const [downloadingInvoiceClientId, setDownloadingInvoiceClientId] = useState<string | null>(null);
   const [invoiceDownloadNotice, setInvoiceDownloadNotice] = useState<string | null>(null);
 
-  // Generate & Download Client Invoice PDF via jsPDF
+  // Generate & Download Client Invoice PDF via jsPDF + auto-archive if client has no active invoice yet
   const handleDownloadClientInvoice = async (client: Inquiry) => {
     setDownloadingInvoiceClientId(client.id);
     try {
+      const existingInvoices = data.invoices || [];
+      const existingClientInv = existingInvoices.find(
+        (i) => i.clientId === client.id && i.paymentStatus !== 'cancelled'
+      );
+      const invoiceNumber =
+        existingClientInv?.invoiceNumber ||
+        generateUniqueInvoiceNumber(client.id, existingInvoices);
+      const adAmt = existingClientInv?.adCreditAmount ?? (client.pendingInvoiceAdCredit || 0);
+      const effectiveStatus = existingClientInv?.paymentStatus || client.paymentStatus || 'pending';
+
       const res = await generateClientInvoicePdf({
         client,
-        adCreditAmount: client.pendingInvoiceAdCredit || 0,
+        adCreditAmount: adAmt,
+        invoiceNumber,
+        paymentStatus: effectiveStatus === 'cancelled' ? 'pending' : effectiveStatus,
         isAr,
       });
+
       if (res.success) {
+        if (!existingClientInv) {
+          const parsedRet = parseInvoiceAmount(client.budget);
+          const numRetainer = parsedRet > 0 ? parsedRet : (client.retainerAmount || 0);
+          const grandTotal = numRetainer + adAmt;
+          const today = new Date().toISOString().split('T')[0];
+          const targets = getClientDeliverableTargets(client, data.packages);
+
+          addInvoice({
+            invoiceNumber,
+            clientId: client.id,
+            clientName: client.name,
+            clientCompany: client.company,
+            clientPhone: client.phone,
+            sector: client.sector,
+            issueDate: client.contractStartDate || today,
+            dueDate:
+              client.renewalDate ||
+              new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            packageName: client.packageName || 'باقة تسويق رقمي',
+            retainerAmount: numRetainer,
+            adCreditAmount: adAmt,
+            grandTotal,
+            billingCycle: client.billingCycle || 'monthly',
+            paymentStatus: 'pending',
+            deliverables: {
+              posts: targets.postsTarget,
+              reels: targets.reelsTarget,
+              stories: targets.storiesTarget,
+            },
+          });
+        }
+
         setInvoiceDownloadNotice(
           isAr
-            ? `تم تحميل فاتورة ${client.company || client.name} بنجاح!`
-            : `Invoice for ${client.company || client.name} downloaded successfully!`
+            ? `تم تحميل فاتورة ${client.company || client.name} وحفظها بالأرشيف بنجاح!`
+            : `Invoice for ${client.company || client.name} downloaded & archived!`
         );
         setTimeout(() => setInvoiceDownloadNotice(null), 3500);
       }
