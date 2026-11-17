@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
-import { Inquiry, ClientAccountNote, ClientWorkflowStage } from '../types';
+import { ClientAccountNote, ClientWorkflowStage, Inquiry, ActivityLogType } from '../types';
 import { 
   X, 
   Building2, 
@@ -38,13 +38,15 @@ import {
   Download,
   Trash2,
   User,
-  Package
+  Package,
+  Activity
 } from 'lucide-react';
 import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from './ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from './ClientPackageDeliverablesCard';
 import { ClientPerformanceSummary } from './ClientPerformanceSummary';
 import { ClientInvoiceModal } from './ClientInvoiceModal';
 import { AccountStatementModal } from './AccountStatementModal';
+import { ActivityTimelinePanel } from './ActivityTimelinePanel';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
 import { generateClientInvoicePdf, parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 import { CountryCode } from 'libphonenumber-js';
@@ -72,7 +74,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   onClientDeleted,
   initialTab = 'overview',
 }) => {
-  const { language, updateInquiry, deleteInquiry, data, addInvoice } = useAgencyData();
+  const { language, updateInquiry, logInquiryActivity, deleteInquiry, data, addInvoice } = useAgencyData();
   const isAr = language === 'ar';
 
   // Local editable states initialized safely from client data
@@ -119,9 +121,6 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   const [reelsDelivered, setReelsDelivered] = useState(client?.reelsDelivered ?? 0);
   const [storiesDelivered, setStoriesDelivered] = useState(client?.storiesDelivered ?? 0);
 
-  // New Note
-  const [newNoteText, setNewNoteText] = useState('');
-  const [newNoteType, setNewNoteType] = useState<ClientAccountNote['type']>('update');
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState<boolean>(false);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState<boolean>(false);
@@ -348,9 +347,11 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     );
   };
 
-  // Two-way real-time sync: cycle stage status and propagate instantly to context and parent
+  // Two-way real-time sync: cycle stage status, log workflow activity, and propagate instantly
   const handleToggleStageStatus = (stageId: string) => {
     if (!client) return;
+    let changedStageTitle = '';
+    let changedStageNextStatus = '';
     const updatedStages = workflowStages.map((stage) => {
       if (stage.id === stageId) {
         const nextStatus: 'completed' | 'in_progress' | 'pending' =
@@ -360,15 +361,44 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
             ? 'completed'
             : 'pending';
         const completedAt = nextStatus === 'pending' ? undefined : new Date().toISOString();
+        changedStageTitle = stage.title;
+        changedStageNextStatus =
+          nextStatus === 'completed'
+            ? (isAr ? 'مكتملة' : 'Completed')
+            : nextStatus === 'in_progress'
+            ? (isAr ? 'قيد التنفيذ' : 'In Progress')
+            : (isAr ? 'قيد الانتظار' : 'Pending');
         return { ...stage, status: nextStatus, completedAt };
       }
       return stage;
     });
 
+    const stageActivity: ClientAccountNote | null = changedStageTitle
+      ? {
+          id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          text: isAr
+            ? `تحديث مرحلة التنفيذ «${changedStageTitle}» إلى «${changedStageNextStatus}».`
+            : `Updated workflow stage "${changedStageTitle}" to "${changedStageNextStatus}".`,
+          createdAt: new Date().toISOString(),
+          author: isAr ? 'فريق التنفيذ' : 'Delivery Team',
+          type: 'workflow',
+          meta: { stageTitle: changedStageTitle },
+        }
+      : null;
+
+    const updatedNotes = stageActivity ? [stageActivity, ...(client.clientNotes || [])] : client.clientNotes;
+
     setWorkflowStages(updatedStages);
-    updateInquiry(client.id, { workflowStages: updatedStages });
+    updateInquiry(client.id, {
+      workflowStages: updatedStages,
+      ...(updatedNotes ? { clientNotes: updatedNotes } : {}),
+    });
     if (onClientUpdated) {
-      onClientUpdated({ ...client, workflowStages: updatedStages });
+      onClientUpdated({
+        ...client,
+        workflowStages: updatedStages,
+        ...(updatedNotes ? { clientNotes: updatedNotes } : {}),
+      });
     }
   };
 
@@ -478,25 +508,17 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     }
   };
 
-  // Add new account note
-  const handleAddNote = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!client || !newNoteText.trim()) return;
-
-    const newNote: ClientAccountNote = {
-      id: `note-${Date.now()}`,
-      text: newNoteText.trim(),
-      createdAt: new Date().toISOString(),
-      author: 'Account Manager',
-      type: newNoteType,
-    };
-
-    const updatedNotes = [newNote, ...(client.clientNotes || [])];
-    updateInquiry(client.id, { clientNotes: updatedNotes });
-    setNewNoteText('');
-    showNotification(isAr ? 'تمت إضافة الملاحظة إلى سجل متابعة العميل.' : 'Note added to client activity log.');
-    if (onClientUpdated) {
-      onClientUpdated({ ...client, clientNotes: updatedNotes });
+  // Add new entry to Activity Log
+  const handleAddActivityEntry = (entry: { text: string; type: ActivityLogType; author?: string }) => {
+    if (!client || !entry.text.trim()) return;
+    const updated = logInquiryActivity(client.id, {
+      text: entry.text.trim(),
+      type: entry.type,
+      author: entry.author || (isAr ? 'مدير الحساب' : 'Account Manager'),
+    });
+    showNotification(isAr ? 'تمت إضافة النشاط إلى سجل المتابعة بنجاح.' : 'Activity logged to client history.');
+    if (updated && onClientUpdated) {
+      onClientUpdated(updated);
     }
   };
 
@@ -622,6 +644,15 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 href={`https://wa.me/${waPhone}?text=${waText}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  const updated = logInquiryActivity(client.id, {
+                    type: 'whatsapp',
+                    text: isAr
+                      ? `تم فتح محادثة واتساب مباشرة مع العميل (${client.phone}).`
+                      : `Opened direct WhatsApp conversation with client (${client.phone}).`,
+                  });
+                  if (updated && onClientUpdated) onClientUpdated(updated);
+                }}
                 className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer"
                 title="WhatsApp Direct"
               >
@@ -631,6 +662,15 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
 
               <a
                 href={`tel:${clientPhone || client.phone}`}
+                onClick={() => {
+                  const updated = logInquiryActivity(client.id, {
+                    type: 'call',
+                    text: isAr
+                      ? `تم بدء اتصال هاتفي بالعميل على رقم (${clientPhone || client.phone}).`
+                      : `Initiated phone call to client (${clientPhone || client.phone}).`,
+                  });
+                  if (updated && onClientUpdated) onClientUpdated(updated);
+                }}
                 className="p-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                 title={isAr ? 'اتصال هاتفي' : 'Call Client'}
               >
@@ -738,13 +778,14 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab('notes')}
-              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'notes'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-white text-slate-900 shadow-sm font-black'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
               }`}
             >
-              {isAr ? `سجل المتابعة (${(client.clientNotes || []).length})` : `Activity Log (${(client.clientNotes || []).length})`}
+              <Activity className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isAr ? `سجل النشاط (${(client.clientNotes || []).length})` : `Activity Log (${(client.clientNotes || []).length})`}</span>
             </button>
           </div>
         </div>
@@ -2152,83 +2193,29 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
             </div>
           )}
 
-          {/* TAB 4: ACTIVITY LOG & NOTES */}
+          {/* TAB 4: ACTIVITY LOG & INTERACTIONS TIMELINE */}
           {activeTab === 'notes' && (
             <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-bold text-slate-900">{isAr ? 'سجل متابعة الحساب وملاحظات فريق العمل' : 'Account Activity & Team Notes'}</h4>
-                <p className="text-xs text-slate-500">{isAr ? 'أضف ملاحظات الاتفاق، التعديلات المطلوبة، تقارير الاجتماعات، وحالة التحويلات المالية.' : 'Log meetings, payments, deliverables feedback, and milestones.'}</p>
+                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-sky-600" />
+                  <span>{isAr ? 'سجل النشاط وتاريخ التفاعلات والحالات' : 'Activity Log, Status History & Interactions'}</span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {isAr
+                    ? 'سجل زمني كامل لتغييرات الحالة، المكالمات، محادثات الواتساب، الفواتير، المراحل التنفيذية وملاحظات الفريق.'
+                    : 'Complete chronological log of status transitions, calls, WhatsApp chats, invoices, workflow updates, and notes.'}
+                </p>
               </div>
 
-              {/* Add Note Form */}
-              <form onSubmit={handleAddNote} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
-                <textarea
-                  rows={2}
-                  required
-                  value={newNoteText}
-                  onChange={(e) => setNewNoteText(e.target.value)}
-                  placeholder={isAr ? 'اكتب ملاحظة أو تحديث بخصوص العميل (مثال: تم الاتفاق على موعد التصوير، أو تم تحصيل الدفعة الثانية)...' : 'Write a follow-up note or update for this client...'}
-                  className="w-full p-2.5 text-xs bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-slate-500">{isAr ? 'نوع التحديث:' : 'Type:'}</span>
-                    <select
-                      value={newNoteType}
-                      onChange={(e) => setNewNoteType(e.target.value as any)}
-                      className="text-xs font-bold py-1 px-2.5 rounded-lg border border-slate-200 bg-white"
-                    >
-                      <option value="update">{isAr ? '📝 تحديث عام' : 'General Update'}</option>
-                      <option value="deliverable">{isAr ? '🎨 تسليم مخرجات' : 'Deliverable'}</option>
-                      <option value="payment">{isAr ? '💵 دفعة مالية' : 'Payment'}</option>
-                      <option value="meeting">{isAr ? '📞 اجتماع / مكالمة' : 'Meeting'}</option>
-                    </select>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="px-4 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors cursor-pointer inline-flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{isAr ? 'إضافة للسجل' : 'Add Note'}</span>
-                  </button>
-                </div>
-              </form>
-
-              {/* Notes Timeline List */}
-              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                {(client.clientNotes || []).length === 0 ? (
-                  <div className="text-center py-8 text-slate-400 text-xs">
-                    {isAr ? 'لا توجد ملاحظات مسجلة بعد لهذا العميل.' : 'No notes recorded yet.'}
-                  </div>
-                ) : (
-                  (client.clientNotes || []).map((note) => (
-                    <div 
-                      key={note.id}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-1 text-xs"
-                    >
-                      <div className="flex items-center justify-between text-[10px] text-slate-400">
-                        <span className="font-bold text-slate-700 flex items-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            note.type === 'payment' ? 'bg-emerald-500' :
-                            note.type === 'deliverable' ? 'bg-sky-500' :
-                            note.type === 'meeting' ? 'bg-purple-500' : 'bg-slate-400'
-                          }`} />
-                          <span>
-                            {note.type === 'payment' ? (isAr ? 'دفعة مالية' : 'Payment') :
-                             note.type === 'deliverable' ? (isAr ? 'مخرجات' : 'Deliverable') :
-                             note.type === 'meeting' ? (isAr ? 'اجتماع' : 'Meeting') :
-                             (isAr ? 'تحديث' : 'Update')}
-                          </span>
-                        </span>
-                        <span>{new Date(note.createdAt).toLocaleString(isAr ? 'ar-EG' : 'en-US')}</span>
-                      </div>
-                      <p className="text-slate-800 whitespace-pre-line leading-relaxed">{note.text}</p>
-                    </div>
-                  ))
-                )}
-              </div>
+              <ActivityTimelinePanel
+                entries={client.clientNotes || []}
+                isAr={isAr}
+                onAddEntry={handleAddActivityEntry}
+                createdAt={client.createdAt}
+                initialNotes={client.notes}
+                maxHeightClass="max-h-96"
+              />
             </div>
           )}
         </div>

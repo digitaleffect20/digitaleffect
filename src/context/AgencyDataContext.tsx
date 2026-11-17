@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry } from '../types';
+import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry, ClientAccountNote, ActivityLogType } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
 import { DEFAULT_CUSTOM_PACKAGE_RATES } from '../utils/pricingCalculator';
@@ -74,6 +74,16 @@ interface AgencyContextType {
   addInquiry: (inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { id?: string; status?: Inquiry['status'] }) => Inquiry;
   updateInquiryStatus: (id: string, status: Inquiry['status']) => void;
   updateInquiry: (id: string, updates: Partial<Inquiry>) => void;
+  logInquiryActivity: (
+    id: string,
+    entry: {
+      text: string;
+      type?: ActivityLogType;
+      author?: string;
+      meta?: ClientAccountNote['meta'];
+    },
+    fallbackLead?: Partial<Inquiry> & { id: string; name: string; phone: string; sector: SectorType }
+  ) => Inquiry | null;
   deleteInquiry: (id: string) => void;
   clearAllInquiries: () => void;
 
@@ -1006,8 +1016,171 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return false;
   };
 
+  const getLeadStatusLabel = (status?: Inquiry['status']): string => {
+    switch (status) {
+      case 'new':
+        return 'جديد (لم يتم الرد)';
+      case 'contacted':
+        return 'قيد التواصل';
+      case 'closed':
+        return 'تم التعاقد';
+      case 'cancelled':
+        return 'ملغي';
+      default:
+        return status || 'جديد';
+    }
+  };
+
+  const getContractStatusLabel = (status?: Inquiry['contractStatus']): string => {
+    switch (status) {
+      case 'active':
+        return 'نشط ومفعل';
+      case 'renewal_due':
+        return 'قيد التجديد';
+      case 'paused':
+        return 'موقوف مؤقتاً';
+      case 'completed':
+        return 'مكتمل / منتهي';
+      default:
+        return status || 'نشط';
+    }
+  };
+
+  const getPaymentStatusLabel = (status?: Inquiry['paymentStatus']): string => {
+    switch (status) {
+      case 'paid':
+        return 'مدفوع بالكامل';
+      case 'partially_paid':
+        return 'دفعة مقدمة 50%';
+      case 'pending':
+        return 'قيد التحصيل';
+      case 'overdue':
+        return 'متأخر عن السداد';
+      default:
+        return status || 'قيد التحصيل';
+    }
+  };
+
+  const makeActivityNote = (
+    text: string,
+    type: ActivityLogType,
+    author = 'إدارة النظام',
+    meta?: ClientAccountNote['meta']
+  ): ClientAccountNote => ({
+    id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    text,
+    createdAt: new Date().toISOString(),
+    author,
+    type,
+    ...(meta ? { meta } : {}),
+  });
+
   const buildMergedInquiry = (existing: Inquiry, updates: Partial<Inquiry>): Inquiry => {
     const merged: Inquiry = { ...existing, ...updates };
+    const autoEntries: ClientAccountNote[] = [];
+
+    // 1. Track Lead / Deal Status transitions automatically
+    if (updates.status && updates.status !== existing.status) {
+      const fromLabel = getLeadStatusLabel(existing.status);
+      const toLabel = getLeadStatusLabel(updates.status);
+      autoEntries.push(
+        makeActivityNote(
+          updates.status === 'closed'
+            ? `تم تغيير حالة الطلب من «${fromLabel}» إلى «${toLabel}» وتحويل الحساب لقسم العملاء والتعاقدات.`
+            : `تم تغيير حالة الطلب من «${fromLabel}» إلى «${toLabel}».`,
+          'status_change',
+          'إدارة الـ CRM',
+          { fromStatus: fromLabel, toStatus: toLabel, fieldChanged: 'status' }
+        )
+      );
+    }
+
+    // 2. Track Contract status transitions
+    if (
+      updates.contractStatus &&
+      existing.contractStatus &&
+      updates.contractStatus !== existing.contractStatus
+    ) {
+      const fromLabel = getContractStatusLabel(existing.contractStatus);
+      const toLabel = getContractStatusLabel(updates.contractStatus);
+      autoEntries.push(
+        makeActivityNote(
+          `تحديث حالة التعاقد من «${fromLabel}» إلى «${toLabel}».`,
+          'status_change',
+          'مدير الحساب',
+          { fromStatus: fromLabel, toStatus: toLabel, fieldChanged: 'contractStatus' }
+        )
+      );
+    }
+
+    // 3. Track Payment status transitions (avoid duplicating if caller already attached a payment note in this update)
+    const callerAttachedPaymentNote =
+      Array.isArray(updates.clientNotes) &&
+      updates.clientNotes.length > (existing.clientNotes?.length || 0) &&
+      updates.clientNotes[0]?.type === 'payment';
+
+    if (
+      !callerAttachedPaymentNote &&
+      updates.paymentStatus &&
+      existing.paymentStatus &&
+      updates.paymentStatus !== existing.paymentStatus
+    ) {
+      const fromLabel = getPaymentStatusLabel(existing.paymentStatus);
+      const toLabel = getPaymentStatusLabel(updates.paymentStatus);
+      autoEntries.push(
+        makeActivityNote(
+          `تحديث حالة السداد المالي من «${fromLabel}» إلى «${toLabel}».`,
+          'payment',
+          'الإدارة المالية',
+          { fromStatus: fromLabel, toStatus: toLabel, fieldChanged: 'paymentStatus' }
+        )
+      );
+    }
+
+    // 4. Track Package / Budget edits
+    if (
+      (updates.packageName !== undefined && updates.packageName !== existing.packageName) ||
+      (updates.budget !== undefined && updates.budget !== existing.budget)
+    ) {
+      const parts: string[] = [];
+      if (updates.packageName !== undefined && updates.packageName !== existing.packageName) {
+        parts.push(`الباقة: «${updates.packageName}»`);
+      }
+      if (updates.budget !== undefined && updates.budget !== existing.budget) {
+        parts.push(`التكلفة: «${updates.budget}»`);
+      }
+      autoEntries.push(
+        makeActivityNote(
+          `تم تعديل بيانات التعاقد والباقة (${parts.join(' • ')}).`,
+          'update',
+          'مدير الحساب',
+          { fieldChanged: 'package' }
+        )
+      );
+    }
+
+    // 5. Track Deliverable counter progress
+    const postsDelta =
+      updates.postsDelivered !== undefined ? updates.postsDelivered - (existing.postsDelivered ?? 0) : 0;
+    const reelsDelta =
+      updates.reelsDelivered !== undefined ? updates.reelsDelivered - (existing.reelsDelivered ?? 0) : 0;
+    const storiesDelta =
+      updates.storiesDelivered !== undefined ? updates.storiesDelivered - (existing.storiesDelivered ?? 0) : 0;
+
+    if (postsDelta !== 0 || reelsDelta !== 0 || storiesDelta !== 0) {
+      const items: string[] = [];
+      if (postsDelta !== 0) items.push(`البوستات: ${merged.postsDelivered ?? 0}`);
+      if (reelsDelta !== 0) items.push(`الريلز: ${merged.reelsDelivered ?? 0}`);
+      if (storiesDelta !== 0) items.push(`الستوريز: ${merged.storiesDelivered ?? 0}`);
+      autoEntries.push(
+        makeActivityNote(
+          `تحديث رصيد المخرجات المسلمة (${items.join(' • ')}).`,
+          'deliverable',
+          'فريق المحتوى'
+        )
+      );
+    }
+
     if (updates.status === 'closed' || (merged.status === 'closed' && !merged.contractStartDate)) {
       const today = new Date().toISOString().split('T')[0];
       const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -1030,17 +1203,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           { id: 'publish', title: 'Publish', status: 'pending' },
         ];
       }
-      if (!merged.clientNotes || merged.clientNotes.length === 0) {
-        merged.clientNotes = [
-          {
-            id: `note-${Date.now()}`,
-            text: 'تم تحويل العميل إلى مرحلة التعاقد وتفعيل حساب المتابعة.',
-            createdAt: new Date().toISOString(),
-            type: 'update',
-          }
-        ];
-      }
     }
+
+    if (autoEntries.length > 0) {
+      const baseNotes = Array.isArray(updates.clientNotes)
+        ? updates.clientNotes
+        : (existing.clientNotes || []);
+      merged.clientNotes = [...autoEntries, ...baseNotes];
+    }
+
     return merged;
   };
 
@@ -1049,11 +1220,23 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const today = new Date().toISOString().split('T')[0];
     const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+    const initialActivity: ClientAccountNote = makeActivityNote(
+      isClosed
+        ? `تم تسجيل العميل وتأكيد التعاقد على باقة (${inquiryData.packageName || 'باقة مخصصة'}) وبدء خطة العمل.`
+        : `تم تسجيل طلب جديد للعميل (${inquiryData.name})${inquiryData.packageName ? ` بخصوص باقة: ${inquiryData.packageName}` : ''}.`,
+      'status_change',
+      'إدارة الـ CRM',
+      { toStatus: getLeadStatusLabel(inquiryData.status || 'new'), fieldChanged: 'created' }
+    );
+
+    const existingProvidedNotes = Array.isArray(inquiryData.clientNotes) ? inquiryData.clientNotes : [];
+
     const newInquiry: Inquiry = {
       ...inquiryData,
       id: inquiryData.id || `inq-${Date.now()}`,
       createdAt: new Date().toISOString(),
       status: inquiryData.status || 'new',
+      clientNotes: existingProvidedNotes.length > 0 ? existingProvidedNotes : [initialActivity],
       ...(isClosed ? {
         contractStartDate: inquiryData.contractStartDate || today,
         renewalDate: inquiryData.renewalDate || renewal,
@@ -1072,14 +1255,6 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           { id: 'client_approve', title: 'Client Approve', status: 'pending' },
           { id: 'publish', title: 'Publish', status: 'pending' },
         ],
-        clientNotes: inquiryData.clientNotes || [
-          {
-            id: `note-${Date.now()}`,
-            text: 'تم تسجيل العميل وتأكيد التعاقد وبدء خطة العمل.',
-            createdAt: new Date().toISOString(),
-            type: 'update',
-          }
-        ]
       } : {})
     };
     setData((prev) => ({
@@ -1118,6 +1293,66 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateInquiryStatus = (id: string, status: Inquiry['status']) => {
     updateInquiry(id, { status });
+  };
+
+  const logInquiryActivity = (
+    id: string,
+    entry: {
+      text: string;
+      type?: ActivityLogType;
+      author?: string;
+      meta?: ClientAccountNote['meta'];
+    },
+    fallbackLead?: Partial<Inquiry> & { id: string; name: string; phone: string; sector: SectorType }
+  ): Inquiry | null => {
+    const newEntry = makeActivityNote(
+      entry.text,
+      entry.type || 'note',
+      entry.author || (language === 'ar' ? 'مدير الحساب' : 'Account Manager'),
+      entry.meta
+    );
+
+    const existing = (dataRef.current.inquiries || []).find((item) => item.id === id);
+    if (existing) {
+      const updatedNotes = [newEntry, ...(existing.clientNotes || [])];
+      const merged = { ...existing, clientNotes: updatedNotes };
+      setData((prev) => ({
+        ...prev,
+        inquiries: (prev.inquiries || []).map((item) =>
+          item.id === id ? { ...item, clientNotes: [newEntry, ...(item.clientNotes || [])] } : item
+        ),
+      }));
+      if (isSupabaseConfigured && supabase) {
+        upsertCrmClientToSupabase(merged).then((res) => {
+          if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
+          else if (res.success) setLastCloudSyncAt(new Date().toISOString());
+        });
+      }
+      return merged;
+    }
+
+    if (fallbackLead) {
+      const created: Inquiry = {
+        status: fallbackLead.status || 'new',
+        createdAt: fallbackLead.createdAt || new Date().toISOString(),
+        ...fallbackLead,
+        id: fallbackLead.id || id,
+        clientNotes: [newEntry, ...(fallbackLead.clientNotes || [])],
+      };
+      setData((prev) => ({
+        ...prev,
+        inquiries: [created, ...(prev.inquiries || [])],
+      }));
+      if (isSupabaseConfigured && supabase) {
+        upsertCrmClientToSupabase(created).then((res) => {
+          if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
+          else if (res.success) setLastCloudSyncAt(new Date().toISOString());
+        });
+      }
+      return created;
+    }
+
+    return null;
   };
 
   const deleteInquiry = (id: string) => {
@@ -1165,13 +1400,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const client = (dataRef.current.inquiries || []).find((c) => c.id === newInvoice.clientId);
       if (client) {
         const noteText = `تم إصدار فاتورة جديدة برقم ${newInvoice.invoiceNumber} بقيمة إجمالية ${newInvoice.grandTotal.toLocaleString()} ج.م (${newInvoice.packageName})${newInvoice.adCreditAmount ? ` تتضمن رصيد إعلاني ${newInvoice.adCreditAmount.toLocaleString()} ج.م` : ''}.`;
-        const updatedNotes = [
-          {
-            id: `note-${Date.now()}`,
-            text: noteText,
-            createdAt: new Date().toISOString(),
-            type: 'payment' as const,
-          },
+        const updatedNotes: ClientAccountNote[] = [
+          makeActivityNote(noteText, 'invoice', 'الإدارة المالية', {
+            invoiceNumber: newInvoice.invoiceNumber,
+          }),
           ...(client.clientNotes || []),
         ];
         updateInquiry(client.id, {
@@ -1403,6 +1635,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addInquiry,
         updateInquiryStatus,
         updateInquiry,
+        logInquiryActivity,
         deleteInquiry,
         clearAllInquiries,
         addInvoice,

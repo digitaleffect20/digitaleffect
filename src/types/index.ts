@@ -169,12 +169,32 @@ export interface PromoBanner {
   linkTextEn?: string;
 }
 
+export type ActivityLogType =
+  | 'status_change'
+  | 'note'
+  | 'call'
+  | 'whatsapp'
+  | 'meeting'
+  | 'payment'
+  | 'deliverable'
+  | 'invoice'
+  | 'workflow'
+  | 'update';
+
 export interface ClientAccountNote {
   id: string;
   text: string;
   createdAt: string;
   author?: string;
-  type?: 'update' | 'payment' | 'deliverable' | 'meeting';
+  type?: ActivityLogType;
+  meta?: {
+    fromStatus?: string;
+    toStatus?: string;
+    channel?: string;
+    invoiceNumber?: string;
+    stageTitle?: string;
+    fieldChanged?: string;
+  };
 }
 
 export interface ClientWorkflowStage {

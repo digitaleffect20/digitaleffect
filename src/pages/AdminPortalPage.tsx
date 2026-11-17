@@ -9,7 +9,7 @@ import {
   submitInquiry,
   DbInquiry 
 } from '../lib/supabase';
-import { ServicePackage, PromoCode, SectorType, Inquiry } from '../types';
+import { ServicePackage, PromoCode, SectorType, Inquiry, ClientAccountNote, ActivityLogType } from '../types';
 import { 
   Lock, 
   Mail, 
@@ -63,7 +63,8 @@ import {
   AlertTriangle,
   BellRing,
   CreditCard,
-  Wallet
+  Wallet,
+  Activity
 } from 'lucide-react';
 import { CrmAnalyticsHub } from '../components/CrmAnalyticsHub';
 import { SeoGeneratorWidget } from '../components/SeoGeneratorWidget';
@@ -73,6 +74,7 @@ import { AddClientModal } from '../components/AddClientModal';
 import { ClientAccountDrawer, ClientDrawerTab } from '../components/ClientAccountDrawer';
 import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from '../components/ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from '../components/ClientPackageDeliverablesCard';
+import { ActivityTimelinePanel, getActivityTypeMeta } from '../components/ActivityTimelinePanel';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
 import { generateClientInvoicePdf } from '../utils/invoicePdfGenerator';
 import { InvoicesArchiveHub } from '../components/InvoicesArchiveHub';
@@ -101,6 +103,7 @@ export const AdminPortalPage: React.FC = () => {
     clearAllInquiries,
     addInquiry,
     updateInquiry,
+    logInquiryActivity,
     deleteInquiry,
     cloudSyncStatus,
     supabaseMigrationNeeded,
@@ -134,12 +137,16 @@ export const AdminPortalPage: React.FC = () => {
   });
 
   // Dashboard Active Tab
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'clients' | 'invoices' | 'analytics' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'clients' | 'invoices' | 'activity' | 'analytics' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
   const [showAnalyticsInInquiriesTab, setShowAnalyticsInInquiriesTab] = useState(true);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [selectedClientForAccount, setSelectedClientForAccount] = useState<Inquiry | null>(null);
   const [isClientAccountOpen, setIsClientAccountOpen] = useState(false);
   const [clientDrawerInitialTab, setClientDrawerInitialTab] = useState<ClientDrawerTab>('overview');
+  const [selectedEntityForActivityLogId, setSelectedEntityForActivityLogId] = useState<string | null>(null);
+  const [activitySearch, setActivitySearch] = useState('');
+  const [activityBucketFilter, setActivityBucketFilter] = useState<'all' | 'status' | 'interactions' | 'notes' | 'billing' | 'workflow'>('all');
+  const [activityEntityFilter, setActivityEntityFilter] = useState<'all' | 'leads' | 'clients'>('all');
   const [clientPendingDelete, setClientPendingDelete] = useState<Inquiry | null>(null);
   const [isDeletingClientCard, setIsDeletingClientCard] = useState(false);
   const [pendingConfirmAction, setPendingConfirmAction] = useState<{
@@ -624,12 +631,12 @@ export const AdminPortalPage: React.FC = () => {
     showNotice(isAr ? 'تم تسجيل الخروج بنجاح.' : 'Signed out successfully.');
   };
 
-  // Status Updater
+  // Status Updater (auto-logs status transitions for both leads & clients)
   const handleStatusChange = async (id: string, newStatus: 'new' | 'contacted' | 'closed' | 'cancelled') => {
     const existsLocally = (data.inquiries || []).some((item) => item.id === id);
     if (existsLocally) {
       updateInquiry(id, { status: newStatus });
-    } else if (newStatus === 'closed') {
+    } else {
       const cloudLead = cloudInquiries.find((c) => c.id === id);
       if (cloudLead) {
         addInquiry({
@@ -645,8 +652,24 @@ export const AdminPortalPage: React.FC = () => {
           packageName: cloudLead.raw_package_name || undefined,
           budget: cloudLead.budget || undefined,
           notes: cloudLead.notes || undefined,
-          status: 'closed',
+          status: newStatus,
         });
+        if (cloudLead.status !== newStatus) {
+          const statusNames: Record<string, string> = {
+            new: 'جديد (لم يتم الرد)',
+            contacted: 'قيد التواصل',
+            closed: 'تم التعاقد',
+            cancelled: 'ملغي',
+          };
+          logInquiryActivity(id, {
+            type: 'status_change',
+            text: `تم تحديث حالة الطلب من (${statusNames[cloudLead.status] || cloudLead.status}) إلى (${statusNames[newStatus] || newStatus}).`,
+            meta: {
+              fromStatus: statusNames[cloudLead.status] || cloudLead.status,
+              toStatus: statusNames[newStatus] || newStatus,
+            },
+          });
+        }
       }
     }
 
@@ -809,6 +832,7 @@ export const AdminPortalPage: React.FC = () => {
     notes?: string | null;
     status: 'new' | 'contacted' | 'closed' | 'cancelled';
     createdAt: string;
+    clientNotes?: ClientAccountNote[];
   }> = useMemo(() => {
     if (isSupabaseConfigured && sessionUser) {
       const localById = new Map((data.inquiries || []).map((item) => [item.id, item]));
@@ -828,6 +852,7 @@ export const AdminPortalPage: React.FC = () => {
           notes: i.notes,
           status: localOverride?.status || i.status,
           createdAt: i.created_at,
+          clientNotes: localOverride?.clientNotes,
         };
       });
 
@@ -845,6 +870,7 @@ export const AdminPortalPage: React.FC = () => {
         notes: i.notes,
         status: i.status,
         createdAt: i.createdAt,
+        clientNotes: i.clientNotes,
       }));
 
       return [...localExtrasMapped, ...cloudMapped].sort(
@@ -866,6 +892,7 @@ export const AdminPortalPage: React.FC = () => {
       notes: i.notes,
       status: i.status,
       createdAt: i.createdAt,
+      clientNotes: i.clientNotes,
     }));
   }, [isSupabaseConfigured, sessionUser, cloudInquiries, data.inquiries, unsyncedLocalInquiries]);
 
@@ -895,6 +922,171 @@ export const AdminPortalPage: React.FC = () => {
   const contractedClients: Inquiry[] = useMemo(() => {
     return (data.inquiries || []).filter((inq) => inq.status === 'closed');
   }, [data.inquiries]);
+
+  // Live selected lead/entity for Per-Lead Activity Log Modal
+  const selectedEntityForActivityLog = useMemo(() => {
+    if (!selectedEntityForActivityLogId) return null;
+    const localMatch = (data.inquiries || []).find((i) => i.id === selectedEntityForActivityLogId);
+    if (localMatch) return localMatch;
+    const activeMatch = activeInquiriesList.find((i) => i.id === selectedEntityForActivityLogId);
+    if (!activeMatch) return null;
+    return {
+      id: activeMatch.id,
+      name: activeMatch.name,
+      phone: activeMatch.phone,
+      phoneE164: activeMatch.phoneE164 || undefined,
+      phoneCountry: activeMatch.phoneCountry || undefined,
+      visitorCountry: activeMatch.visitorCountry || undefined,
+      company: activeMatch.company || undefined,
+      sector: activeMatch.sector,
+      packageName: activeMatch.packageName || undefined,
+      budget: activeMatch.budget || undefined,
+      notes: activeMatch.notes || undefined,
+      status: activeMatch.status,
+      createdAt: activeMatch.createdAt,
+      clientNotes: activeMatch.clientNotes,
+    } as Inquiry;
+  }, [selectedEntityForActivityLogId, data.inquiries, activeInquiriesList]);
+
+  // Unified Global Activity Log Feed across all Leads & Contracted Clients
+  const globalActivityFeed = useMemo(() => {
+    const entityMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        company?: string | null;
+        phone: string;
+        sector: SectorType;
+        status: Inquiry['status'];
+        createdAt: string;
+        notes?: string | null;
+        clientNotes?: ClientAccountNote[];
+        fullClient?: Inquiry;
+      }
+    >();
+
+    activeInquiriesList.forEach((item) => {
+      entityMap.set(item.id, {
+        id: item.id,
+        name: item.name,
+        company: item.company,
+        phone: item.phoneE164 || item.phone,
+        sector: item.sector,
+        status: item.status,
+        createdAt: item.createdAt,
+        notes: item.notes,
+        clientNotes: item.clientNotes,
+      });
+    });
+
+    (data.inquiries || []).forEach((item) => {
+      const existing = entityMap.get(item.id);
+      entityMap.set(item.id, {
+        id: item.id,
+        name: item.name,
+        company: item.company ?? existing?.company,
+        phone: item.phoneE164 || item.phone,
+        sector: item.sector,
+        status: item.status,
+        createdAt: item.createdAt,
+        notes: item.notes ?? existing?.notes,
+        clientNotes: item.clientNotes && item.clientNotes.length > 0 ? item.clientNotes : existing?.clientNotes,
+        fullClient: item,
+      });
+    });
+
+    const items: Array<{
+      entry: ClientAccountNote;
+      entityId: string;
+      entityName: string;
+      entityCompany?: string | null;
+      entityPhone: string;
+      entitySector: SectorType;
+      entityStatus: Inquiry['status'];
+      isClient: boolean;
+      fullClient?: Inquiry;
+    }> = [];
+
+    entityMap.forEach((entity) => {
+      const entries =
+        entity.clientNotes && entity.clientNotes.length > 0
+          ? entity.clientNotes
+          : [
+              {
+                id: `${entity.id}-initial`,
+                text: entity.notes
+                  ? `${isAr ? 'تسجيل سجل جديد بالملاحظات:' : 'Initial record created:'} ${entity.notes}`
+                  : (isAr
+                      ? entity.status === 'closed'
+                        ? 'تم تفعيل حساب العميل المتعاقد في النظام.'
+                        : 'تم استلام طلب استشارة / تواصل جديد.'
+                      : entity.status === 'closed'
+                      ? 'Contracted client account activated.'
+                      : 'New lead inquiry received.'),
+                createdAt: entity.createdAt,
+                author: isAr ? 'النظام' : 'System',
+                type: 'status_change' as ActivityLogType,
+              },
+            ];
+
+      entries.forEach((entry) => {
+        items.push({
+          entry,
+          entityId: entity.id,
+          entityName: entity.name,
+          entityCompany: entity.company,
+          entityPhone: entity.phone,
+          entitySector: entity.sector,
+          entityStatus: entity.status,
+          isClient: entity.status === 'closed',
+          fullClient: entity.fullClient,
+        });
+      });
+    });
+
+    return items.sort(
+      (a, b) => new Date(b.entry.createdAt).getTime() - new Date(a.entry.createdAt).getTime()
+    );
+  }, [activeInquiriesList, data.inquiries, isAr]);
+
+  const activitySummaryStats = useMemo(() => {
+    const stats = {
+      total: globalActivityFeed.length,
+      status: 0,
+      interactions: 0,
+      notes: 0,
+      billing: 0,
+      workflow: 0,
+    };
+    globalActivityFeed.forEach(({ entry }) => {
+      const meta = getActivityTypeMeta(entry.type, isAr);
+      if (meta.bucket !== 'all') {
+        stats[meta.bucket] += 1;
+      }
+    });
+    return stats;
+  }, [globalActivityFeed, isAr]);
+
+  const filteredGlobalActivityFeed = useMemo(() => {
+    return globalActivityFeed.filter((item) => {
+      if (activityEntityFilter === 'leads' && item.isClient) return false;
+      if (activityEntityFilter === 'clients' && !item.isClient) return false;
+      if (activityBucketFilter !== 'all') {
+        const meta = getActivityTypeMeta(item.entry.type, isAr);
+        if (meta.bucket !== activityBucketFilter) return false;
+      }
+      if (activitySearch.trim()) {
+        const q = activitySearch.toLowerCase();
+        const matchName = item.entityName.toLowerCase().includes(q);
+        const matchCompany = (item.entityCompany || '').toLowerCase().includes(q);
+        const matchText = item.entry.text.toLowerCase().includes(q);
+        const matchAuthor = (item.entry.author || '').toLowerCase().includes(q);
+        if (!matchName && !matchCompany && !matchText && !matchAuthor) return false;
+      }
+      return true;
+    });
+  }, [globalActivityFeed, activityEntityFilter, activityBucketFilter, activitySearch, isAr]);
 
   // Workflow Task Status Counts across all contracted clients
   const workflowCounts = useMemo(() => {
@@ -999,6 +1191,9 @@ export const AdminPortalPage: React.FC = () => {
       ? client.workflowStages 
       : DEFAULT_WORKFLOW_STAGES;
 
+    let toggledStageTitle = stageId;
+    let nextStageStatusLabel = '';
+
     const updatedStages = currentStages.map((stage) => {
       if (stage.id === stageId) {
         const nextStatus: 'completed' | 'in_progress' | 'pending' =
@@ -1008,12 +1203,33 @@ export const AdminPortalPage: React.FC = () => {
             ? 'completed'
             : 'pending';
         const completedAt = nextStatus === 'pending' ? undefined : new Date().toISOString();
+        toggledStageTitle = stage.title;
+        nextStageStatusLabel =
+          nextStatus === 'completed'
+            ? (isAr ? 'مكتمل' : 'Completed')
+            : nextStatus === 'in_progress'
+            ? (isAr ? 'جاري التنفيذ' : 'In Progress')
+            : (isAr ? 'قيد الانتظار' : 'Pending');
         return { ...stage, status: nextStatus, completedAt };
       }
       return stage;
     });
 
-    updateInquiry(client.id, { workflowStages: updatedStages });
+    const workflowLog: ClientAccountNote = {
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      text: isAr
+        ? `تحديث مرحلة التنفيذ "${toggledStageTitle}" إلى (${nextStageStatusLabel}).`
+        : `Updated workflow stage "${toggledStageTitle}" to ${nextStageStatusLabel}.`,
+      createdAt: new Date().toISOString(),
+      author: isAr ? 'فريق التشغيل' : 'Operations Team',
+      type: 'workflow',
+      meta: { stageTitle: toggledStageTitle, toStatus: nextStageStatusLabel },
+    };
+
+    updateInquiry(client.id, {
+      workflowStages: updatedStages,
+      clientNotes: [workflowLog, ...(client.clientNotes || [])],
+    });
     showNotice(isAr ? 'تم تحديث حالة المرحلة وتسجيل تاريخ ووقت الإنجاز بنجاح!' : 'Stage updated with timestamp!');
   };
 
@@ -1323,6 +1539,23 @@ export const AdminPortalPage: React.FC = () => {
               {(data.invoices?.length || 0) > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full font-bold">
                   {data.invoices?.length || 0}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('activity')}
+              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'activity'
+                  ? 'border-amber-400 text-amber-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isAr ? `سجل النشاط والتفاعلات (${globalActivityFeed.length})` : `Activity Log (${globalActivityFeed.length})`}</span>
+              {globalActivityFeed.length > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold">
+                  {globalActivityFeed.length}
                 </span>
               )}
             </button>
@@ -1726,13 +1959,56 @@ export const AdminPortalPage: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Quick Direct Actions: WhatsApp & Call */}
+                      {/* Latest Activity Snippet if logged */}
+                      {inq.clientNotes && inq.clientNotes.length > 0 && (
+                        <div className="mt-3 px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-center justify-between gap-2 text-[11px]">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Activity className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span className="font-bold text-amber-900 shrink-0">
+                              {isAr ? 'آخر نشاط:' : 'Latest Activity:'}
+                            </span>
+                            <span className="text-slate-700 truncate">{inq.clientNotes[0].text}</span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 shrink-0">
+                            {new Date(inq.clientNotes[0].createdAt).toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Quick Direct Actions: WhatsApp, Call & Activity Log */}
                       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <a
                             href={`https://wa.me/${waPhone}?text=${waText}`}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={() =>
+                              logInquiryActivity(
+                                inq.id,
+                                {
+                                  type: 'whatsapp',
+                                  text: isAr
+                                    ? `تم فتح محادثة واتساب مباشرة مع العميل المحتمل (${inq.name}).`
+                                    : `Initiated direct WhatsApp message with lead (${inq.name}).`,
+                                  meta: { channel: 'whatsapp' },
+                                },
+                                {
+                                  id: inq.id,
+                                  name: inq.name,
+                                  phone: inq.phone,
+                                  phoneE164: inq.phoneE164 || undefined,
+                                  phoneCountry: inq.phoneCountry || undefined,
+                                  visitorCountry: inq.visitorCountry || undefined,
+                                  company: inq.company || undefined,
+                                  sector: inq.sector,
+                                  packageName: inq.packageName || undefined,
+                                  budget: inq.budget || undefined,
+                                  notes: inq.notes || undefined,
+                                  status: inq.status,
+                                  createdAt: inq.createdAt,
+                                }
+                              )
+                            }
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-2xs"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
@@ -1741,11 +2017,50 @@ export const AdminPortalPage: React.FC = () => {
 
                           <a
                             href={`tel:${inq.phoneE164 || inq.phone}`}
+                            onClick={() =>
+                              logInquiryActivity(
+                                inq.id,
+                                {
+                                  type: 'call',
+                                  text: isAr
+                                    ? `تم إجراء اتصال هاتفي مع (${inq.name}) على رقم ${inq.phoneE164 || inq.phone}.`
+                                    : `Placed phone call to (${inq.name}) at ${inq.phoneE164 || inq.phone}.`,
+                                  meta: { channel: 'phone' },
+                                },
+                                {
+                                  id: inq.id,
+                                  name: inq.name,
+                                  phone: inq.phone,
+                                  phoneE164: inq.phoneE164 || undefined,
+                                  phoneCountry: inq.phoneCountry || undefined,
+                                  visitorCountry: inq.visitorCountry || undefined,
+                                  company: inq.company || undefined,
+                                  sector: inq.sector,
+                                  packageName: inq.packageName || undefined,
+                                  budget: inq.budget || undefined,
+                                  notes: inq.notes || undefined,
+                                  status: inq.status,
+                                  createdAt: inq.createdAt,
+                                }
+                              )
+                            }
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors dir-ltr"
                           >
                             <Phone className="w-3.5 h-3.5 text-slate-500" />
                             <span className="font-mono">{inq.phoneE164 || inq.phone}</span>
                           </a>
+
+                          <button
+                            type="button"
+                            onClick={() => setSelectedEntityForActivityLogId(inq.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors cursor-pointer"
+                          >
+                            <Activity className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{isAr ? 'سجل النشاط' : 'Activity Log'}</span>
+                            <span className="px-1.5 py-0.2 text-[10px] bg-white text-amber-800 border border-amber-200 rounded-full font-black">
+                              {inq.clientNotes?.length || 0}
+                            </span>
+                          </button>
                         </div>
 
                         <div className="text-[11px] text-slate-400">
@@ -2358,6 +2673,19 @@ export const AdminPortalPage: React.FC = () => {
                             href={`https://wa.me/${waPhone}?text=${waText}`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() =>
+                              logInquiryActivity(
+                                client.id,
+                                {
+                                  type: 'whatsapp',
+                                  text: isAr
+                                    ? `تم فتح محادثة واتساب مع العميل المتعاقد (${client.company || client.name}).`
+                                    : `Initiated WhatsApp chat with client (${client.company || client.name}).`,
+                                  meta: { channel: 'whatsapp' },
+                                },
+                                client
+                              )
+                            }
                             className="p-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer"
                             title="WhatsApp"
                           >
@@ -2365,11 +2693,42 @@ export const AdminPortalPage: React.FC = () => {
                           </a>
                           <a
                             href={`tel:${client.phone}`}
+                            onClick={() =>
+                              logInquiryActivity(
+                                client.id,
+                                {
+                                  type: 'call',
+                                  text: isAr
+                                    ? `تم إجراء اتصال هاتفي مع العميل (${client.company || client.name}) على ${client.phone}.`
+                                    : `Placed phone call to client (${client.company || client.name}) at ${client.phone}.`,
+                                  meta: { channel: 'phone' },
+                                },
+                                client
+                              )
+                            }
                             className="p-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                             title="Call"
                           >
                             <Phone className="w-3.5 h-3.5" />
                           </a>
+
+                          {/* Client Activity Log Shortcut Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClientDrawerInitialTab('notes');
+                              setSelectedClientForAccount(client);
+                              setIsClientAccountOpen(true);
+                            }}
+                            className="px-2.5 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                            title={isAr ? 'فتح سجل النشاط والتفاعلات والملاحظات' : 'Open Client Activity Log'}
+                          >
+                            <Activity className="w-3.5 h-3.5 text-amber-600" />
+                            <span>{isAr ? 'السجل' : 'Log'}</span>
+                            <span className="px-1.5 py-0.2 text-[10px] bg-white text-amber-800 border border-amber-200 rounded-full font-black">
+                              {client.clientNotes?.length || 0}
+                            </span>
+                          </button>
 
                           {/* Dedicated Download Invoice Button */}
                           <button
@@ -2437,10 +2796,273 @@ export const AdminPortalPage: React.FC = () => {
         )}
 
         {/* ================================================================== */}
+        {/* ================================================================== */}
         {/* TAB: INVOICES ARCHIVE & ACCOUNT STATEMENTS                         */}
         {/* ================================================================== */}
         {activeTab === 'invoices' && (
           <InvoicesArchiveHub isAr={isAr} />
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB: GLOBAL CRM ACTIVITY LOG & INTERACTIONS TIMELINE               */}
+        {/* ================================================================== */}
+        {activeTab === 'activity' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            {/* KPI Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
+                <span className="text-[11px] font-bold text-slate-400 block">
+                  {isAr ? 'إجمالي الأنشطة المسجلة' : 'Total Logged Activities'}
+                </span>
+                <span className="text-2xl font-black text-slate-900 mt-1 block tabular-nums">
+                  {activitySummaryStats.total}
+                </span>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-2xs">
+                <span className="text-[11px] font-bold text-amber-700 block">
+                  {isAr ? 'تغييرات الحالة' : 'Status Transitions'}
+                </span>
+                <span className="text-2xl font-black text-amber-800 mt-1 block tabular-nums">
+                  {activitySummaryStats.status}
+                </span>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 shadow-2xs">
+                <span className="text-[11px] font-bold text-emerald-700 block">
+                  {isAr ? 'المكالمات والواتساب والاجتماعات' : 'Calls, WhatsApp & Meetings'}
+                </span>
+                <span className="text-2xl font-black text-emerald-800 mt-1 block tabular-nums">
+                  {activitySummaryStats.interactions}
+                </span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-2xs">
+                <span className="text-[11px] font-bold text-slate-600 block">
+                  {isAr ? 'الملاحظات والتحديثات' : 'Notes & Updates'}
+                </span>
+                <span className="text-2xl font-black text-slate-800 mt-1 block tabular-nums">
+                  {activitySummaryStats.notes}
+                </span>
+              </div>
+              <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 shadow-2xs">
+                <span className="text-[11px] font-bold text-sky-700 block">
+                  {isAr ? 'الفواتير والمخرجات والمهام' : 'Billing & Workflow'}
+                </span>
+                <span className="text-2xl font-black text-sky-800 mt-1 block tabular-nums">
+                  {activitySummaryStats.billing + activitySummaryStats.workflow}
+                </span>
+              </div>
+            </div>
+
+            {/* Search & Filters */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute start-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={activitySearch}
+                    onChange={(e) => setActivitySearch(e.target.value)}
+                    placeholder={
+                      isAr
+                        ? 'ابحث باسم العميل، الشركة، تفاصيل المكالمة، الملاحظة أو المسؤول...'
+                        : 'Search by lead/client, company, author, or activity details...'
+                    }
+                    className="w-full ps-9 pe-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {(
+                    [
+                      { id: 'all', ar: 'جميع السجلات', en: 'All Entities' },
+                      { id: 'leads', ar: 'الطلبات والعملاء المحتملين', en: 'Leads Only' },
+                      { id: 'clients', ar: 'العملاء المتعاقدين', en: 'Contracted Clients' },
+                    ] as const
+                  ).map((scope) => (
+                    <button
+                      key={scope.id}
+                      type="button"
+                      onClick={() => setActivityEntityFilter(scope.id)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        activityEntityFilter === scope.id
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {isAr ? scope.ar : scope.en}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-100">
+                {(
+                  [
+                    { id: 'all', ar: 'كل الأنشطة', en: 'All Activities', count: activitySummaryStats.total },
+                    { id: 'status', ar: 'تغييرات الحالة', en: 'Status Changes', count: activitySummaryStats.status },
+                    { id: 'interactions', ar: 'التفاعلات (مكالمات / واتساب)', en: 'Interactions', count: activitySummaryStats.interactions },
+                    { id: 'notes', ar: 'الملاحظات والتعديلات', en: 'Notes', count: activitySummaryStats.notes },
+                    { id: 'billing', ar: 'الفواتير والمدفوعات', en: 'Billing', count: activitySummaryStats.billing },
+                    { id: 'workflow', ar: 'سير العمل والمخرجات', en: 'Workflow', count: activitySummaryStats.workflow },
+                  ] as const
+                ).map((bucket) => (
+                  <button
+                    key={bucket.id}
+                    type="button"
+                    onClick={() => setActivityBucketFilter(bucket.id)}
+                    className={`px-3 py-1.5 text-[11px] font-bold rounded-xl border transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                      activityBucketFilter === bucket.id
+                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{isAr ? bucket.ar : bucket.en}</span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                        activityBucketFilter === bucket.id
+                          ? 'bg-slate-950/15 text-slate-950'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {bucket.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Chronological Activity Timeline Feed */}
+            {filteredGlobalActivityFeed.length === 0 ? (
+              <div className="py-16 text-center bg-white border border-slate-200 rounded-2xl p-6 space-y-2">
+                <Activity className="w-11 h-11 text-slate-300 mx-auto" />
+                <h5 className="text-sm font-bold text-slate-700">
+                  {isAr ? 'لا توجد أنشطة مطابقة للتصفية الحالية' : 'No matching activities found'}
+                </h5>
+                <p className="text-xs text-slate-400">
+                  {isAr
+                    ? 'جرّب تعديل كلمات البحث أو الفلتر، أو افتح أي عميل/طلب لإضافة ملاحظة أو تفاعل جديد.'
+                    : 'Adjust your filters or open any lead/client to record an interaction or note.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredGlobalActivityFeed.map((item) => {
+                  const meta = getActivityTypeMeta(item.entry.type, isAr);
+                  const IconComponent = meta.Icon;
+                  const statusBadgeLabel =
+                    item.entityStatus === 'closed'
+                      ? (isAr ? 'عميل متعاقد' : 'Contracted')
+                      : item.entityStatus === 'contacted'
+                      ? (isAr ? 'قيد التواصل' : 'Contacted')
+                      : item.entityStatus === 'cancelled'
+                      ? (isAr ? 'ملغي' : 'Cancelled')
+                      : (isAr ? 'طلب جديد' : 'New Lead');
+
+                  return (
+                    <div
+                      key={`${item.entityId}-${item.entry.id}`}
+                      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-start justify-between gap-3"
+                    >
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <div
+                          className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 mt-0.5 ${meta.iconBg}`}
+                        >
+                          <IconComponent className="w-4 h-4" />
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-2 py-0.5 text-[10px] font-black rounded-md border ${meta.badgeClass}`}>
+                              {meta.label}
+                            </span>
+
+                            <span className="text-xs font-black text-slate-900">
+                              {item.entityCompany || item.entityName}
+                            </span>
+
+                            {item.entityCompany && (
+                              <span className="text-[11px] text-slate-500">({item.entityName})</span>
+                            )}
+
+                            <span
+                              className={`px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                                item.isClient
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : item.entityStatus === 'contacted'
+                                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                  : item.entityStatus === 'cancelled'
+                                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}
+                            >
+                              {statusBadgeLabel}
+                            </span>
+
+                            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-600 uppercase">
+                              {item.entitySector}
+                            </span>
+                          </div>
+
+                          {(item.entry.meta?.fromStatus || item.entry.meta?.toStatus) && (
+                            <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                              {item.entry.meta?.fromStatus && (
+                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold border border-slate-200 line-through decoration-slate-400">
+                                  {item.entry.meta.fromStatus}
+                                </span>
+                              )}
+                              {item.entry.meta?.fromStatus && item.entry.meta?.toStatus && (
+                                <ArrowRight className={`w-3.5 h-3.5 text-amber-600 ${isAr ? 'rotate-180' : ''}`} />
+                              )}
+                              {item.entry.meta?.toStatus && (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-black border border-emerald-200">
+                                  {item.entry.meta.toStatus}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">
+                            {item.entry.text}
+                          </p>
+
+                          <div className="flex items-center gap-2 flex-wrap text-[10px] text-slate-400">
+                            {item.entry.author && (
+                              <span className="font-semibold text-slate-600">
+                                {isAr ? `بواسطة: ${item.entry.author}` : `By: ${item.entry.author}`}
+                              </span>
+                            )}
+                            <span>•</span>
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{new Date(item.entry.createdAt).toLocaleString(isAr ? 'ar-EG' : 'en-US')}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.isClient && item.fullClient) {
+                              setClientDrawerInitialTab('notes');
+                              setSelectedClientForAccount(item.fullClient);
+                              setIsClientAccountOpen(true);
+                            } else {
+                              setSelectedEntityForActivityLogId(item.entityId);
+                            }
+                          }}
+                          className="px-3 py-1.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Activity className="w-3.5 h-3.5 text-amber-600" />
+                          <span>{item.isClient ? (isAr ? 'فتح سجل العميل' : 'Open Client Log') : (isAr ? 'فتح سجل الطلب' : 'Open Lead Log')}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ================================================================== */}
@@ -4111,7 +4733,11 @@ export const AdminPortalPage: React.FC = () => {
 
       {/* Client Account Drawer / Follow-up Profile */}
       <ClientAccountDrawer
-        client={selectedClientForAccount}
+        client={
+          selectedClientForAccount
+            ? (data.inquiries || []).find((i) => i.id === selectedClientForAccount.id) || selectedClientForAccount
+            : null
+        }
         isOpen={isClientAccountOpen}
         initialTab={clientDrawerInitialTab}
         onClose={() => {
@@ -4260,6 +4886,144 @@ export const AdminPortalPage: React.FC = () => {
                 {isConfirmActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 <span>{pendingConfirmAction.confirmLabel}</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Per-Lead / Inquiry Activity Log Modal */}
+      {selectedEntityForActivityLog && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setSelectedEntityForActivityLogId(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-200 shadow-2xl overflow-hidden text-start"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center shrink-0">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm sm:text-base font-black truncate">
+                    {isAr
+                      ? `سجل النشاط والتفاعلات: ${selectedEntityForActivityLog.company || selectedEntityForActivityLog.name}`
+                      : `Activity Log: ${selectedEntityForActivityLog.company || selectedEntityForActivityLog.name}`}
+                  </h4>
+                  <p className="text-[11px] text-slate-300 truncate">
+                    {selectedEntityForActivityLog.name} • {selectedEntityForActivityLog.phoneE164 || selectedEntityForActivityLog.phone} •{' '}
+                    {selectedEntityForActivityLog.packageName || (isAr ? 'استشارة عامة' : 'General Consultation')}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedEntityForActivityLogId(null)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Lead Quick Status & Contact Actions Strip */}
+            <div className="px-6 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-500">
+                  {isAr ? 'تحديث الحالة:' : 'Status:'}
+                </span>
+                <select
+                  value={selectedEntityForActivityLog.status}
+                  onChange={(e) => {
+                    const nextStatus = e.target.value as 'new' | 'contacted' | 'closed' | 'cancelled';
+                    handleStatusChange(selectedEntityForActivityLog.id, nextStatus);
+                    if (nextStatus === 'closed') {
+                      setSelectedEntityForActivityLogId(null);
+                    }
+                  }}
+                  className="text-xs font-bold py-1.5 px-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 cursor-pointer"
+                >
+                  <option value="new">{isAr ? 'جديد (لم يتم الرد)' : 'New'}</option>
+                  <option value="contacted">{isAr ? 'قيد التواصل' : 'Contacted'}</option>
+                  <option value="closed">{isAr ? 'تم التعاقد (نقل للعملاء)' : 'Closed Deal'}</option>
+                  <option value="cancelled">{isAr ? 'ملغي' : 'Cancelled'}</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const cleanDigits = (selectedEntityForActivityLog.phoneE164 || selectedEntityForActivityLog.phone).replace(/\D/g, '');
+                  const waPhone = cleanDigits.startsWith('0') ? `20${cleanDigits.slice(1)}` : cleanDigits;
+                  return (
+                    <>
+                      <a
+                        href={`https://wa.me/${waPhone}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() =>
+                          logInquiryActivity(
+                            selectedEntityForActivityLog.id,
+                            {
+                              type: 'whatsapp',
+                              text: isAr
+                                ? `تم فتح محادثة واتساب مع (${selectedEntityForActivityLog.name}) من نافذة سجل النشاط.`
+                                : `Initiated WhatsApp chat with (${selectedEntityForActivityLog.name}) from Activity Log.`,
+                              meta: { channel: 'whatsapp' },
+                            },
+                            selectedEntityForActivityLog
+                          )
+                        }
+                        className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors inline-flex items-center gap-1"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>{isAr ? 'واتساب' : 'WhatsApp'}</span>
+                      </a>
+                      <a
+                        href={`tel:${selectedEntityForActivityLog.phoneE164 || selectedEntityForActivityLog.phone}`}
+                        onClick={() =>
+                          logInquiryActivity(
+                            selectedEntityForActivityLog.id,
+                            {
+                              type: 'call',
+                              text: isAr
+                                ? `تم إجراء مكالمة هاتفية مع (${selectedEntityForActivityLog.name}) من نافذة سجل النشاط.`
+                                : `Placed phone call to (${selectedEntityForActivityLog.name}) from Activity Log.`,
+                              meta: { channel: 'phone' },
+                            },
+                            selectedEntityForActivityLog
+                          )
+                        }
+                        className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors inline-flex items-center gap-1"
+                      >
+                        <Phone className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{isAr ? 'اتصال' : 'Call'}</span>
+                      </a>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Activity Timeline Body */}
+            <div className="p-6 overflow-y-auto flex-1">
+              <ActivityTimelinePanel
+                entries={selectedEntityForActivityLog.clientNotes || []}
+                isAr={isAr}
+                createdAt={selectedEntityForActivityLog.createdAt}
+                initialNotes={selectedEntityForActivityLog.notes}
+                maxHeightClass="max-h-[420px]"
+                onAddEntry={(entry) => {
+                  logInquiryActivity(
+                    selectedEntityForActivityLog.id,
+                    entry,
+                    selectedEntityForActivityLog
+                  );
+                  showNotice(isAr ? 'تم تسجيل النشاط في سجل العميل بنجاح!' : 'Activity recorded successfully!');
+                }}
+              />
             </div>
           </div>
         </div>
