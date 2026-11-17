@@ -17,29 +17,20 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { getAnalyticsSummary } from '../lib/analyticsTracker';
-import { ServicePackage } from '../types';
+import { ServicePackage, ClientInvoiceRecord } from '../types';
 import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
-
-interface InquiryItem {
-  id: string;
-  name: string;
-  phone: string;
-  sector: 'all' | 'b2b' | 'b2c' | 'medical';
-  packageName?: string | null;
-  budget?: string | null;
-  retainerAmount?: number;
-  status: 'new' | 'contacted' | 'closed' | 'cancelled';
-  createdAt: string;
-}
+import { FinancialChartsDashboard, AnalyticsInquiry } from './FinancialChartsDashboard';
 
 interface CrmAnalyticsHubProps {
-  inquiries: InquiryItem[];
+  inquiries: AnalyticsInquiry[];
+  invoices?: ClientInvoiceRecord[];
   packages: ServicePackage[];
   isAr: boolean;
 }
 
 export const CrmAnalyticsHub: React.FC<CrmAnalyticsHubProps> = ({
   inquiries,
+  invoices = [],
   packages,
   isAr,
 }) => {
@@ -78,7 +69,7 @@ export const CrmAnalyticsHub: React.FC<CrmAnalyticsHubProps> = ({
   }, [packages]);
 
   // Helper to extract estimated price from inquiry
-  const getInquiryValue = (inq: InquiryItem): number => {
+  const getInquiryValue = (inq: AnalyticsInquiry): number => {
     if (inq.retainerAmount && inq.retainerAmount > 0) {
       return inq.retainerAmount;
     }
@@ -319,10 +310,18 @@ export const CrmAnalyticsHub: React.FC<CrmAnalyticsHubProps> = ({
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* VIEW TAB 1: OVERVIEW & PIPELINE STATUS GRAPH                       */}
+      {/* VIEW TAB 1: OVERVIEW, RECHARTS FINANCIAL DASHBOARD & PIPELINE      */}
       {/* ------------------------------------------------------------------ */}
       {activeMetricTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-200">
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <FinancialChartsDashboard
+            inquiries={inquiries}
+            invoices={invoices}
+            packages={packages}
+            isAr={isAr}
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Status Distribution Funnel */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
             <div className="flex items-center justify-between">
@@ -498,6 +497,7 @@ export const CrmAnalyticsHub: React.FC<CrmAnalyticsHubProps> = ({
                 {isAr ? 'محدث لحظياً مع Supabase' : 'Real-time synchronized'}
               </span>
             </div>
+          </div>
           </div>
         </div>
       )}

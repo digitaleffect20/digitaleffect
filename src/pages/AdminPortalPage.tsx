@@ -1788,6 +1788,7 @@ export const AdminPortalPage: React.FC = () => {
               {showAnalyticsInInquiriesTab && (
                 <CrmAnalyticsHub
                   inquiries={activeInquiriesList}
+                  invoices={data.invoices || []}
                   packages={data.packages}
                   isAr={isAr}
                 />
@@ -3191,6 +3192,7 @@ export const AdminPortalPage: React.FC = () => {
           <div className="space-y-6 animate-in fade-in duration-200">
             <CrmAnalyticsHub
               inquiries={activeInquiriesList}
+              invoices={data.invoices || []}
               packages={data.packages}
               isAr={isAr}
             />
