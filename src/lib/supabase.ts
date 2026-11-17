@@ -434,7 +434,7 @@ function mapInquiryToCrmRow(inq: Inquiry) {
     contract_start_date: inq.contractStartDate || null,
     renewal_date: inq.renewalDate || null,
     contract_status: inq.contractStatus || 'active',
-    payment_status: inq.paymentStatus || 'paid',
+    payment_status: inq.paymentStatus || 'pending',
     billing_cycle: inq.billingCycle || 'monthly',
     retainer_amount: inq.retainerAmount ?? 0,
     posts_target: inq.postsTarget ?? 0,

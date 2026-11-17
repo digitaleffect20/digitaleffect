@@ -35,7 +35,7 @@ interface InvoicesArchiveHubProps {
 }
 
 export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = true }) => {
-  const { data, addInvoice, updateInvoice, deleteInvoice, markInvoiceAsPaid, clearAllCrmData } = useAgencyData();
+  const { data, addInvoice, updateInvoice, deleteInvoice, markInvoiceAsPaid } = useAgencyData();
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,8 +64,8 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
   const [toastNotice, setToastNotice] = useState<string | null>(null);
   const [newInvoiceError, setNewInvoiceError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{
-    type: 'delete' | 'collect' | 'clear_all';
-    invoice?: ClientInvoiceRecord;
+    type: 'delete' | 'collect';
+    invoice: ClientInvoiceRecord;
   } | null>(null);
 
   const showToast = (msg: string) => {
@@ -209,24 +209,9 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     setPendingAction({ type: 'delete', invoice: inv });
   };
 
-  const handleConfirmPendingAction = async () => {
+  const handleConfirmPendingAction = () => {
     if (!pendingAction) return;
     const { type, invoice } = pendingAction;
-    if (type === 'clear_all') {
-      const res = await clearAllCrmData();
-      setPendingAction(null);
-      if (res.success) {
-        showToast(
-          isAr
-            ? 'تم تفريغ أرشيف الفواتير والطلبات والعملاء من النظام والداتابيز بنجاح!'
-            : 'All invoices, inquiries, and clients cleared from CRM & Database!'
-        );
-      } else {
-        showToast(res.error || (isAr ? 'تم التفريغ محلياً مع ملاحظة في السحابة.' : 'Cleared locally with cloud warning.'));
-      }
-      return;
-    }
-    if (!invoice) return;
     if (type === 'collect') {
       markInvoiceAsPaid(invoice.id, 'تحويل بنكي');
       showToast(
@@ -372,18 +357,6 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
               <Plus className="w-4 h-4" />
               <span>{isAr ? 'إصدار فاتورة جديدة' : 'Issue Invoice'}</span>
             </button>
-
-            {invoices.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setPendingAction({ type: 'clear_all' })}
-                className="px-3.5 py-2.5 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-black transition-all shadow-lg inline-flex items-center gap-1.5 cursor-pointer"
-                title={isAr ? 'تفريغ أرشيف الفواتير والعملاء والطلبات للبدء ببيانات حقيقية' : 'Empty Invoices & CRM'}
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>{isAr ? 'تفريغ الأرشيف والداتابيز' : 'Clear All'}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -912,12 +885,12 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
             <div className="flex items-start gap-3">
               <div
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                  pendingAction.type === 'delete' || pendingAction.type === 'clear_all'
+                  pendingAction.type === 'delete'
                     ? 'bg-rose-100 text-rose-600'
                     : 'bg-emerald-100 text-emerald-600'
                 }`}
               >
-                {pendingAction.type === 'delete' || pendingAction.type === 'clear_all' ? (
+                {pendingAction.type === 'delete' ? (
                   <AlertTriangle className="w-5 h-5" />
                 ) : (
                   <CheckCircle2 className="w-5 h-5" />
@@ -925,11 +898,7 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
               </div>
               <div className="space-y-1">
                 <h4 className="text-base font-black text-slate-900">
-                  {pendingAction.type === 'clear_all'
-                    ? isAr
-                      ? 'تفريغ أرشيف الفواتير والعملاء والطلبات نهائياً'
-                      : 'Empty All Invoices & CRM Records'
-                    : pendingAction.type === 'delete'
+                  {pendingAction.type === 'delete'
                     ? isAr
                       ? 'تأكيد حذف الفاتورة نهائياً'
                       : 'Confirm Invoice Deletion'
@@ -938,19 +907,13 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                     : 'Confirm Invoice Collection'}
                 </h4>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  {pendingAction.type === 'clear_all'
-                    ? isAr
-                      ? 'هل أنت متأكد من مسح جميع الفواتير والطلبات والعملاء من لوحة التحكم ومن قاعدة بيانات Supabase لتبدأ ببيانات حقيقية؟ لن تتأثر الباقات أو دراسات الحالة.'
-                      : 'Permanently delete all invoices, inquiries, and clients from CRM and Supabase? Packages and Case Studies remain untouched.'
-                    : pendingAction.type === 'delete' && pendingAction.invoice
+                  {pendingAction.type === 'delete'
                     ? isAr
                       ? `هل أنت متأكد من حذف الفاتورة (${pendingAction.invoice.invoiceNumber}) الخاصة بـ "${pendingAction.invoice.clientCompany || pendingAction.invoice.clientName}" نهائياً من الأرشيف؟`
                       : `Are you sure you want to permanently delete invoice ${pendingAction.invoice.invoiceNumber} from archive?`
-                    : pendingAction.invoice
-                    ? isAr
-                      ? `هل تريد تأكيد تحصيل الفاتورة (${pendingAction.invoice.invoiceNumber}) بقيمة ${pendingAction.invoice.grandTotal.toLocaleString()} ج.م وإيداع الرصيد الإعلاني تلقائياً؟`
-                      : `Confirm collection of invoice ${pendingAction.invoice.invoiceNumber} for ${pendingAction.invoice.grandTotal.toLocaleString()} EGP?`
-                    : ''}
+                    : isAr
+                    ? `هل تريد تأكيد تحصيل الفاتورة (${pendingAction.invoice.invoiceNumber}) بقيمة ${pendingAction.invoice.grandTotal.toLocaleString()} ج.م وإيداع الرصيد الإعلاني تلقائياً؟`
+                    : `Confirm collection of invoice ${pendingAction.invoice.invoiceNumber} for ${pendingAction.invoice.grandTotal.toLocaleString()} EGP?`}
                 </p>
               </div>
             </div>
@@ -967,22 +930,18 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                 type="button"
                 onClick={handleConfirmPendingAction}
                 className={`px-5 py-2 text-xs font-black text-white rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer ${
-                  pendingAction.type === 'delete' || pendingAction.type === 'clear_all'
+                  pendingAction.type === 'delete'
                     ? 'bg-rose-600 hover:bg-rose-700'
                     : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
-                {pendingAction.type === 'delete' || pendingAction.type === 'clear_all' ? (
+                {pendingAction.type === 'delete' ? (
                   <Trash2 className="w-3.5 h-3.5" />
                 ) : (
                   <CheckCircle2 className="w-3.5 h-3.5" />
                 )}
                 <span>
-                  {pendingAction.type === 'clear_all'
-                    ? isAr
-                      ? 'نعم، أفرغ الأرشيف والداتابيز'
-                      : 'Yes, Empty Archive & DB'
-                    : pendingAction.type === 'delete'
+                  {pendingAction.type === 'delete'
                     ? isAr
                       ? 'نعم، احذف الفاتورة'
                       : 'Yes, Delete Invoice'

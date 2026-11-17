@@ -1246,7 +1246,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       merged.contractStartDate = merged.contractStartDate || today;
       merged.renewalDate = merged.renewalDate || renewal;
       merged.contractStatus = merged.contractStatus || 'active';
-      merged.paymentStatus = merged.paymentStatus || 'paid';
+      merged.paymentStatus = merged.paymentStatus || 'pending';
       merged.billingCycle = merged.billingCycle || 'monthly';
       merged.postsDelivered = merged.postsDelivered ?? 0;
       merged.reelsDelivered = merged.reelsDelivered ?? 0;
@@ -1300,7 +1300,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         contractStartDate: inquiryData.contractStartDate || today,
         renewalDate: inquiryData.renewalDate || renewal,
         contractStatus: inquiryData.contractStatus || 'active',
-        paymentStatus: inquiryData.paymentStatus || 'paid',
+        paymentStatus: inquiryData.paymentStatus || 'pending',
         billingCycle: inquiryData.billingCycle || 'monthly',
         postsDelivered: inquiryData.postsDelivered ?? 0,
         reelsDelivered: inquiryData.reelsDelivered ?? 0,
@@ -1485,6 +1485,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const invoiceNumber = invoiceData.invoiceNumber || `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String((dataRef.current.invoices?.length || 0) + 101).slice(-3)}`;
     const newInvoice: ClientInvoiceRecord = {
       ...invoiceData,
+      paymentStatus: invoiceData.paymentStatus || 'pending',
       id,
       invoiceNumber,
       createdAt: new Date().toISOString(),
@@ -1515,6 +1516,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         ];
         updateInquiry(client.id, {
           clientNotes: updatedNotes,
+          paymentStatus: newInvoice.paymentStatus === 'paid' ? 'paid' : 'pending',
           pendingInvoiceAdCredit: newInvoice.adCreditAmount ? newInvoice.adCreditAmount : client.pendingInvoiceAdCredit,
         });
       }

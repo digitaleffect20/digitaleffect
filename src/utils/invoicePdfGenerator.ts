@@ -449,13 +449,13 @@ export async function generateClientInvoicePdf(
   targetElement.style.boxSizing = 'border-box';
   targetElement.style.letterSpacing = '0px';
 
-  const paymentStatus = client.paymentStatus || 'paid';
+  const paymentStatus = client.paymentStatus || 'pending';
   const paymentBadge =
     paymentStatus === 'paid'
       ? { bg: '#ecfdf5', color: '#065f46', border: '#a7f3d0', text: isAr ? 'مدفوعة بالكامل (PAID)' : 'PAID IN FULL' }
       : paymentStatus === 'partially_paid'
       ? { bg: '#fffbeb', color: '#92400e', border: '#fde68a', text: isAr ? 'دفعة مقدمة (PARTIAL)' : 'PARTIAL DEPOSIT' }
-      : { bg: '#fff1f2', color: '#9f1239', border: '#fecdd3', text: isAr ? 'مستحقة السداد (PENDING)' : 'PENDING PAYMENT' };
+      : { bg: '#fff1f2', color: '#9f1239', border: '#fecdd3', text: isAr ? 'قيد التحصيل (PENDING)' : 'PENDING PAYMENT' };
 
   targetElement.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; border-bottom: 2px solid #0f172a;">
@@ -671,10 +671,6 @@ export async function generateClientInvoicePdf(
           </div>
           ` : ''}
 
-          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #64748b;">
-            <span>${isAr ? 'الضرائب ومصاريف الإشراف:' : 'Taxes & Management:'}</span>
-            <span style="font-weight: 700; color: #16a34a;">${isAr ? 'مشمولة بالكامل' : '0.00 (Included)'}</span>
-          </div>
           <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 2px solid #0f172a; font-weight: 900; font-size: 13.5px; color: #0f172a;">
             <span>${isAr ? 'المبلغ الإجمالي المستحق:' : 'Total Amount Due:'}</span>
             <span style="color: #2563eb;">${finalGrandTotalStr}</span>

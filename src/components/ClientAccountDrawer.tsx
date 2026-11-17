@@ -80,7 +80,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   // Local editable states initialized safely from client data
   const [activeTab, setActiveTab] = useState<ClientDrawerTab>(initialTab);
   const [contractStatus, setContractStatus] = useState<Inquiry['contractStatus']>(client?.contractStatus || 'active');
-  const [paymentStatus, setPaymentStatus] = useState<Inquiry['paymentStatus']>(client?.paymentStatus || 'paid');
+  const [paymentStatus, setPaymentStatus] = useState<Inquiry['paymentStatus']>(client?.paymentStatus || 'pending');
   const [billingCycle, setBillingCycle] = useState<Inquiry['billingCycle']>(client?.billingCycle || 'monthly');
   const [contractStartDate, setContractStartDate] = useState(client?.contractStartDate || client?.createdAt?.split('T')[0] || '');
   const [renewalDate, setRenewalDate] = useState(
@@ -138,7 +138,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     if (client && isOpen) {
       const initialResolved = getClientDeliverableTargets(client, data?.packages || []);
       setContractStatus(client.contractStatus || 'active');
-      setPaymentStatus(client.paymentStatus || 'paid');
+      setPaymentStatus(client.paymentStatus || 'pending');
       setBillingCycle(client.billingCycle || 'monthly');
       setContractStartDate(client.contractStartDate || client.createdAt?.split('T')[0] || '');
       setRenewalDate(client.renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -233,7 +233,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
               adCreditAmount: invoiceAdCredit,
               grandTotal,
               billingCycle,
-              paymentStatus: paymentStatus || 'paid',
+              paymentStatus: 'pending',
               deliverables: { posts: targetPosts, reels: targetReels, stories: targetStories },
             });
           }
@@ -2262,7 +2262,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           billingCycle={billingCycle}
           contractStartDate={contractStartDate}
           renewalDate={renewalDate}
-          paymentStatus={paymentStatus}
+          paymentStatus="pending"
           targetPosts={targetPosts}
           targetReels={targetReels}
           targetStories={targetStories}

@@ -62,7 +62,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   billingCycle = 'quarterly',
   contractStartDate,
   renewalDate,
-  paymentStatus = 'paid',
+  paymentStatus = 'pending',
   targetPosts,
   targetReels,
   targetStories,
@@ -634,7 +634,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                         ? (isAr ? 'مدفوعة بالكامل (PAID)' : 'PAID IN FULL')
                         : paymentStatus === 'partially_paid'
                         ? (isAr ? 'دفعة مقدمة 50% (PARTIAL)' : 'PARTIAL DEPOSIT')
-                        : (isAr ? 'مستحقة السداد (PENDING)' : 'PENDING PAYMENT')}
+                        : (isAr ? 'قيد التحصيل (PENDING)' : 'PENDING PAYMENT')}
                     </span>
                   </span>
                 </div>
@@ -908,10 +908,6 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>{isAr ? 'قيمة باقة التسويق الرقمي:' : 'Retainer Subtotal:'}</span>
                   <span className="font-black text-slate-900 tabular-nums">{formattedBudget}</span>
-                </div>
-                <div className="flex justify-between text-xs text-slate-600">
-                  <span>{isAr ? 'ضريبة القيمة المضافة / الرسوم:' : 'VAT / Handling:'}</span>
-                  <span className="font-bold text-emerald-700">{isAr ? 'معفاة / مشمولة' : '0% Included'}</span>
                 </div>
 
                 {adCredit > 0 && (
