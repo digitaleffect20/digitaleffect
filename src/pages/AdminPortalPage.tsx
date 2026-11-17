@@ -142,6 +142,13 @@ export const AdminPortalPage: React.FC = () => {
   const [clientDrawerInitialTab, setClientDrawerInitialTab] = useState<ClientDrawerTab>('overview');
   const [clientPendingDelete, setClientPendingDelete] = useState<Inquiry | null>(null);
   const [isDeletingClientCard, setIsDeletingClientCard] = useState(false);
+  const [pendingConfirmAction, setPendingConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+  const [isConfirmActionLoading, setIsConfirmActionLoading] = useState(false);
   const [clientSectorFilter, setClientSectorFilter] = useState<'all' | 'b2b' | 'b2c' | 'medical'>('all');
   const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'renewal_due' | 'paused' | 'completed'>('all');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
@@ -287,17 +294,21 @@ export const AdminPortalPage: React.FC = () => {
   };
 
   const handleDeletePackage = (pkg: ServicePackage) => {
-    const confirmMsg = isAr
-      ? `هل أنت متأكد من رغبتك في حذف باقة "${pkg.name}" نهائياً من الموقع؟`
-      : `Are you sure you want to delete package "${pkg.nameEn || pkg.name}"?`;
-    if (window.confirm(confirmMsg)) {
-      deletePackage(pkg.id);
-      if (editingPackage?.id === pkg.id) {
-        setEditingPackage(null);
-        setIsCreatingNewPackage(false);
-      }
-      showNotice(isAr ? 'تم حذف الباقة بنجاح من الموقع.' : 'Package deleted successfully.');
-    }
+    setPendingConfirmAction({
+      title: isAr ? 'تأكيد حذف الباقة' : 'Confirm Package Deletion',
+      message: isAr
+        ? `هل أنت متأكد من رغبتك في حذف باقة "${pkg.name}" نهائياً من الموقع؟`
+        : `Are you sure you want to delete package "${pkg.nameEn || pkg.name}"?`,
+      confirmLabel: isAr ? 'نعم، احذف الباقة' : 'Delete Package',
+      onConfirm: () => {
+        deletePackage(pkg.id);
+        if (editingPackage?.id === pkg.id) {
+          setEditingPackage(null);
+          setIsCreatingNewPackage(false);
+        }
+        showNotice(isAr ? 'تم حذف الباقة بنجاح من الموقع.' : 'Package deleted successfully.');
+      },
+    });
   };
 
   const handleSavePackage = (e: React.FormEvent) => {
@@ -476,32 +487,78 @@ export const AdminPortalPage: React.FC = () => {
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // 2. Fetch inquiries when user is authenticated
-  const loadInquiries = async () => {
+  // 2. Fetch inquiries when user is authenticated (supports silent background refreshes)
+  const loadInquiries = async (options?: { silent?: boolean }) => {
     if (!isSupabaseConfigured || !supabase) return;
-    setLoadingInquiries(true);
-    setLoadError(null);
+    const shouldShowSpinner = !options?.silent && cloudInquiries.length === 0;
+    if (shouldShowSpinner) setLoadingInquiries(true);
+    if (!options?.silent) setLoadError(null);
     try {
       const res = await fetchAdminInquiries();
       if (!res.error) {
         setCloudInquiries(res.data);
+        setLoadError(null);
       } else {
         console.warn('Could not fetch cloud inquiries:', res.error);
-        setLoadError(res.error);
+        if (!options?.silent) setLoadError(res.error);
       }
     } catch (err: any) {
       console.error('Error fetching inquiries:', err);
-      setLoadError(err?.message || 'Error fetching inquiries');
+      if (!options?.silent) setLoadError(err?.message || 'Error fetching inquiries');
     } finally {
-      setLoadingInquiries(false);
+      if (shouldShowSpinner) setLoadingInquiries(false);
     }
   };
 
   useEffect(() => {
-    if (sessionUser && isSupabaseConfigured) {
-      loadInquiries();
-    }
+    if (!sessionUser || !isSupabaseConfigured || !supabase) return;
+    const sb = supabase;
+
+    loadInquiries();
+
+    // Live Supabase Realtime listener so website submissions appear instantly
+    const realtimeChannel = sb
+      .channel('admin-inquiries-live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'inquiries' },
+        () => {
+          loadInquiries({ silent: true });
+          refreshFromSupabase();
+        }
+      )
+      .subscribe();
+
+    // Auto-refresh when admin switches back to this browser tab or focuses window
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadInquiries({ silent: true });
+      }
+    };
+    window.addEventListener('focus', handleFocusOrVisible);
+    document.addEventListener('visibilitychange', handleFocusOrVisible);
+
+    // Lightweight background polling fallback (every 20s while visible)
+    const pollInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadInquiries({ silent: true });
+      }
+    }, 20000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocusOrVisible);
+      document.removeEventListener('visibilitychange', handleFocusOrVisible);
+      window.clearInterval(pollInterval);
+      sb.removeChannel(realtimeChannel);
+    };
   }, [sessionUser]);
+
+  // Refresh inquiries automatically whenever admin opens/switches to the Inquiries tab
+  useEffect(() => {
+    if (activeTab === 'inquiries' && sessionUser && isSupabaseConfigured) {
+      loadInquiries({ silent: true });
+    }
+  }, [activeTab, sessionUser]);
 
   // Handle Login Submission
   const handleLogin = async (e: React.FormEvent) => {
@@ -606,7 +663,7 @@ export const AdminPortalPage: React.FC = () => {
             : (isAr ? 'تم تحديث حالة الطلب بنجاح!' : 'Status updated!')
         );
       } else {
-        alert(res.error || 'Failed to update status in cloud');
+        showNotice(res.error || (isAr ? 'تعذر تحديث الحالة في السحابة.' : 'Failed to update status in cloud'));
       }
     } else {
       // Local fallback updater
@@ -622,38 +679,62 @@ export const AdminPortalPage: React.FC = () => {
     }
   };
 
-  // Delete Inquiry
-  const handleDeleteInquiry = async (id: string) => {
-    if (!confirm(isAr ? 'هل أنت متأكد من حذف هذا السجل نهائياً؟' : 'Are you sure you want to permanently delete this record?')) {
-      return;
-    }
+  // Delete Inquiry (via in-app React confirmation modal so it works inside iframes)
+  const handleDeleteInquiry = (id: string, clientName?: string) => {
+    setPendingConfirmAction({
+      title: isAr ? 'تأكيد حذف الطلب نهائياً' : 'Confirm Inquiry Deletion',
+      message: isAr
+        ? `هل أنت متأكد من حذف طلب "${clientName || 'هذا العميل'}" نهائياً؟ سيتم مسحه من لوحة التحكم وقاعدة بيانات Supabase.`
+        : `Are you sure you want to permanently delete "${clientName || 'this inquiry'}" from CRM and Supabase?`,
+      confirmLabel: isAr ? 'نعم، احذف الطلب' : 'Yes, Delete Inquiry',
+      onConfirm: async () => {
+        deleteInquiry(id);
 
-    deleteInquiry(id);
-
-    if (isSupabaseConfigured && sessionUser) {
-      const res = await deleteInquiryFromDb(id);
-      if (res.success) {
-        setCloudInquiries(prev => prev.filter(inq => inq.id !== id));
-        showNotice(isAr ? 'تم حذف السجل بنجاح.' : 'Deleted successfully.');
-      } else {
-        alert(res.error || 'Failed to delete inquiry');
-      }
-    } else {
-      setCloudInquiries(prev => prev.filter(inq => inq.id !== id));
-      showNotice(isAr ? 'تم حذف السجل محلياً.' : 'Deleted locally.');
-    }
+        if (isSupabaseConfigured && sessionUser) {
+          const res = await deleteInquiryFromDb(id);
+          setCloudInquiries(prev => prev.filter(inq => inq.id !== id));
+          if (res.success) {
+            showNotice(isAr ? 'تم حذف الطلب بنجاح.' : 'Deleted successfully.');
+          } else {
+            showNotice(res.error || (isAr ? 'تم حذف السجل محلياً مع تعذر الحذف السحابي.' : 'Failed to delete inquiry from cloud.'));
+          }
+        } else {
+          setCloudInquiries(prev => prev.filter(inq => inq.id !== id));
+          showNotice(isAr ? 'تم حذف الطلب بنجاح.' : 'Deleted locally.');
+        }
+      },
+    });
   };
 
-  // Safe Migration Tool: Migrate existing localStorage records into Supabase using Security Definer RPC
+  // Unsynced local open inquiries (excludes contracted clients, sample seeds, and records already in cloudInquiries)
+  const unsyncedLocalInquiries = useMemo(() => {
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const cloudIds = new Set(cloudInquiries.map((c) => c.id));
+    return (data.inquiries || []).filter((item) => {
+      if (item.id.startsWith('inq-client-')) return false;
+      if (item.status === 'closed') return false;
+      if (cloudIds.has(item.id)) return false;
+      if (uuidRe.test(item.id)) return false;
+      const itemPhone = (item.phoneE164 || item.phone || '').replace(/\D/g, '');
+      const itemTime = new Date(item.createdAt).getTime();
+      const dupInCloud = cloudInquiries.some((c) => {
+        const cPhone = (c.client_phone_e164 || c.raw_client_phone || '').replace(/\D/g, '');
+        const cTime = new Date(c.created_at).getTime();
+        return itemPhone && cPhone && itemPhone.slice(-9) === cPhone.slice(-9) && Math.abs(itemTime - cTime) < 300000;
+      });
+      return !dupInCloud;
+    });
+  }, [data.inquiries, cloudInquiries]);
+
+  // Safe Migration Tool: Migrate unsynced localStorage open inquiries into Supabase without touching contracted clients
   const handleMigrateLocalInquiries = async () => {
-    const localList = data.inquiries || [];
-    if (localList.length === 0) {
-      alert(isAr ? 'لا توجد طلبات مخزنة محلياً لترحيلها.' : 'No local inquiries found to migrate.');
+    if (unsyncedLocalInquiries.length === 0) {
+      showNotice(isAr ? 'لا توجد طلبات محلية غير مزامنة لترحيلها.' : 'No unsynced local inquiries found to migrate.');
       return;
     }
 
     if (!isSupabaseConfigured || !supabase || !sessionUser) {
-      alert(isAr ? 'يجب تسجيل الدخول كمسؤول وتهيئة Supabase أولاً.' : 'Must be authenticated with Supabase first.');
+      showNotice(isAr ? 'يجب تسجيل الدخول كمسؤول وتهيئة Supabase أولاً.' : 'Must be authenticated with Supabase first.');
       return;
     }
 
@@ -661,52 +742,59 @@ export const AdminPortalPage: React.FC = () => {
     let successCount = 0;
 
     try {
-      for (const item of localList) {
+      for (const item of unsyncedLocalInquiries) {
         const cleanPhone = item.phone.trim();
         const digits = cleanPhone.replace(/\D/g, '');
-        const e164 = cleanPhone.startsWith('+') ? cleanPhone : (digits.startsWith('0') ? `+20${digits.slice(1)}` : `+20${digits}`);
+        const e164 = item.phoneE164 || (cleanPhone.startsWith('+') ? cleanPhone : (digits.startsWith('0') ? `+20${digits.slice(1)}` : `+20${digits}`));
 
         const res = await submitInquiry({
           name: item.name,
           phone: cleanPhone,
           phoneE164: e164,
-          phoneCountry: 'EG',
-          visitorCountry: 'Local Migration',
+          phoneCountry: item.phoneCountry || 'EG',
+          visitorCountry: item.visitorCountry || 'Local',
           company: item.company || undefined,
           sector: item.sector,
           packageName: item.packageName || undefined,
           budget: item.budget || undefined,
           notes: item.notes || undefined,
         });
-        if (res.success) successCount++;
+        if (res.success && res.isDatabaseBacked) {
+          successCount++;
+          deleteInquiry(item.id);
+        }
       }
-
-      // Clear local storage inquiries so this banner never appears again!
-      clearAllInquiries();
 
       showNotice(
         isAr 
           ? `تم نقل ${successCount} طلب إلى قاعدة البيانات السحابية المركزية بنجاح!` 
           : `Migrated ${successCount} inquiries to cloud database successfully!`
       );
-      loadInquiries();
+      await loadInquiries();
     } catch (err: any) {
-      alert(err?.message || 'Migration error');
+      showNotice(err?.message || (isAr ? 'حدث خطأ أثناء الترحيل.' : 'Migration error'));
     } finally {
       setIsMigratingLocal(false);
     }
   };
 
-  // Dismiss local temporary inquiries from localStorage without uploading
+  // Dismiss only unsynced local open inquiries without removing contracted clients
   const handleDismissLocalInquiries = () => {
-    if (confirm(isAr ? 'هل تريد إخفاء وحذف هذه الطلبات التجريبية المحلية من المتصفح؟' : 'Dismiss and remove local temporary inquiries?')) {
-      clearAllInquiries();
-      showNotice(isAr ? 'تم إخفاء الطلبات المحلية.' : 'Local inquiries dismissed.');
-    }
+    setPendingConfirmAction({
+      title: isAr ? 'حذف الطلبات المحلية غير المزامنة' : 'Dismiss Local Inquiries',
+      message: isAr
+        ? 'هل تريد حذف الطلبات المحلية غير المرفوعة من هذا المتصفح؟'
+        : 'Dismiss and remove unsynced local inquiries?',
+      confirmLabel: isAr ? 'نعم، احذفها' : 'Dismiss',
+      onConfirm: () => {
+        unsyncedLocalInquiries.forEach((item) => deleteInquiry(item.id));
+        showNotice(isAr ? 'تم إخفاء الطلبات المحلية.' : 'Local inquiries dismissed.');
+      },
+    });
   };
 
-  // Determine current active inquiries to display
-  // If Supabase is connected and authenticated, use cloudInquiries. Otherwise fall back to local inquiries if in bypass mode.
+  // Determine current active inquiries to display:
+  // Merge cloudInquiries with any unsynced/fallback local inquiries so no website submission is ever hidden.
   const activeInquiriesList: Array<{
     id: string;
     name: string;
@@ -721,29 +809,35 @@ export const AdminPortalPage: React.FC = () => {
     notes?: string | null;
     status: 'new' | 'contacted' | 'closed' | 'cancelled';
     createdAt: string;
-  }> = (isSupabaseConfigured && sessionUser)
-    ? cloudInquiries.map(i => ({
-        id: i.id,
-        name: i.raw_client_name,
-        phone: i.raw_client_phone,
-        phoneE164: i.client_phone_e164 || i.customer?.phone_e164,
-        phoneCountry: i.phone_country || i.customer?.phone_country,
-        visitorCountry: i.visitor_country,
-        company: i.raw_client_company || i.customer?.company,
-        sector: i.sector,
-        packageName: i.raw_package_name,
-        budget: i.budget,
-        notes: i.notes,
-        status: i.status,
-        createdAt: i.created_at,
-      }))
-    : (data.inquiries || []).map(i => ({
+  }> = useMemo(() => {
+    if (isSupabaseConfigured && sessionUser) {
+      const localById = new Map((data.inquiries || []).map((item) => [item.id, item]));
+      const cloudMapped = cloudInquiries.map((i) => {
+        const localOverride = localById.get(i.id);
+        return {
+          id: i.id,
+          name: i.raw_client_name,
+          phone: i.raw_client_phone,
+          phoneE164: i.client_phone_e164 || i.customer?.phone_e164,
+          phoneCountry: i.phone_country || i.customer?.phone_country,
+          visitorCountry: i.visitor_country,
+          company: i.raw_client_company || i.customer?.company,
+          sector: i.sector,
+          packageName: i.raw_package_name,
+          budget: i.budget,
+          notes: i.notes,
+          status: localOverride?.status || i.status,
+          createdAt: i.created_at,
+        };
+      });
+
+      const localExtrasMapped = unsyncedLocalInquiries.map((i) => ({
         id: i.id,
         name: i.name,
         phone: i.phone,
-        phoneE164: i.phone,
-        phoneCountry: 'EG',
-        visitorCountry: 'Local Dev',
+        phoneE164: i.phoneE164 || i.phone,
+        phoneCountry: i.phoneCountry || 'EG',
+        visitorCountry: i.visitorCountry || 'Local',
         company: i.company,
         sector: i.sector,
         packageName: i.packageName,
@@ -752,6 +846,28 @@ export const AdminPortalPage: React.FC = () => {
         status: i.status,
         createdAt: i.createdAt,
       }));
+
+      return [...localExtrasMapped, ...cloudMapped].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    }
+
+    return (data.inquiries || []).map((i) => ({
+      id: i.id,
+      name: i.name,
+      phone: i.phone,
+      phoneE164: i.phoneE164 || i.phone,
+      phoneCountry: i.phoneCountry || 'EG',
+      visitorCountry: i.visitorCountry || 'Local Dev',
+      company: i.company,
+      sector: i.sector,
+      packageName: i.packageName,
+      budget: i.budget,
+      notes: i.notes,
+      status: i.status,
+      createdAt: i.createdAt,
+    }));
+  }, [isSupabaseConfigured, sessionUser, cloudInquiries, data.inquiries, unsyncedLocalInquiries]);
 
   // Inquiries tab shows only non-contracted leads (new, contacted, cancelled);
   // Once converted to 'closed' (تم التعاقد), they move exclusively to Clients & Contracts.
@@ -904,7 +1020,7 @@ export const AdminPortalPage: React.FC = () => {
   // Export to Excel / CSV with UTF-8 BOM
   const exportInquiriesCsv = () => {
     if (activeInquiriesList.length === 0) {
-      alert(isAr ? 'لا توجد طلبات لتصديرها.' : 'No inquiries to export.');
+      showNotice(isAr ? 'لا توجد طلبات لتصديرها.' : 'No inquiries to export.');
       return;
     }
 
@@ -1281,18 +1397,18 @@ export const AdminPortalPage: React.FC = () => {
         {/* ================================================================== */}
         {activeTab === 'inquiries' && (
           <div className="space-y-6">
-            {/* Safe Migration Banner if local inquiries exist */}
-            {isSupabaseConfigured && sessionUser && (data.inquiries || []).length > 0 && (
+            {/* Safe Migration Banner if unsynced local open inquiries exist */}
+            {isSupabaseConfigured && sessionUser && unsyncedLocalInquiries.length > 0 && (
               <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
                 <div className="space-y-1">
                   <h4 className="text-xs font-bold text-sky-900 flex items-center gap-1.5">
                     <Database className="w-4 h-4 text-sky-600" />
-                    <span>{isAr ? 'اكتشاف طلبات سابقة في المتصفح المحلي' : 'Local browser inquiries detected'}</span>
+                    <span>{isAr ? 'اكتشاف طلبات محلية غير مزامنة مع السحابة' : 'Unsynced local inquiries detected'}</span>
                   </h4>
                   <p className="text-[11px] text-sky-700">
                     {isAr 
-                      ? `يوجد ${(data.inquiries || []).length} طلب مسجل على هذا الجهاز. يمكنك نقلهم إلى قاعدة بيانات Supabase السحابية بضغطة واحدة لمشاركتهم عبر كافة أجهزتك.`
-                      : `Found ${(data.inquiries || []).length} local inquiries. Migrate them to Supabase to access them from any device.`}
+                      ? `يوجد ${unsyncedLocalInquiries.length} طلب مسجل محلياً على هذا المتصفح ولم يُرحّل بعد إلى Supabase. يمكنك رفعه الآن بضغطة واحدة.`
+                      : `Found ${unsyncedLocalInquiries.length} local inquiries not yet synced to Supabase.`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -1404,7 +1520,7 @@ export const AdminPortalPage: React.FC = () => {
               <div className="flex items-center gap-2 shrink-0">
                 {isSupabaseConfigured && sessionUser && (
                   <button
-                    onClick={loadInquiries}
+                    onClick={() => loadInquiries()}
                     disabled={loadingInquiries}
                     className="p-2 text-slate-600 hover:text-sky-600 bg-slate-100 hover:bg-sky-50 rounded-xl transition-colors cursor-pointer"
                     title={isAr ? 'تحديث البيانات من السحابة' : 'Refresh from Supabase'}
@@ -1444,7 +1560,7 @@ export const AdminPortalPage: React.FC = () => {
                   </div>
                 </div>
                 <button
-                  onClick={loadInquiries}
+                  onClick={() => loadInquiries()}
                   className="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-xl font-bold cursor-pointer transition-colors shrink-0"
                 >
                   {isAr ? 'إعادة المحاولة' : 'Retry'}
@@ -1575,7 +1691,8 @@ export const AdminPortalPage: React.FC = () => {
                           )}
 
                           <button
-                            onClick={() => handleDeleteInquiry(inq.id)}
+                            type="button"
+                            onClick={() => handleDeleteInquiry(inq.id, inq.name)}
                             className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                             title={isAr ? 'حذف الطلب' : 'Delete'}
                           >
@@ -2767,10 +2884,17 @@ export const AdminPortalPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (window.confirm(isAr ? `هل أنت متأكد من حذف كود الخصم (${promo.code})؟` : `Delete promo code ${promo.code}?`)) {
-                                    deletePromoCode(promo.id);
-                                    showNotice(isAr ? 'تم حذف كود الخصم بنجاح.' : 'Promo code deleted.');
-                                  }
+                                  setPendingConfirmAction({
+                                    title: isAr ? 'تأكيد حذف كود الخصم' : 'Confirm Promo Deletion',
+                                    message: isAr
+                                      ? `هل أنت متأكد من حذف كود الخصم (${promo.code})؟`
+                                      : `Delete promo code ${promo.code}?`,
+                                    confirmLabel: isAr ? 'نعم، احذف الكود' : 'Delete Code',
+                                    onConfirm: () => {
+                                      deletePromoCode(promo.id);
+                                      showNotice(isAr ? 'تم حذف كود الخصم بنجاح.' : 'Promo code deleted.');
+                                    },
+                                  });
                                 }}
                                 className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-slate-200"
                                 title={isAr ? 'حذف الكود' : 'Delete Code'}
@@ -4080,6 +4204,61 @@ export const AdminPortalPage: React.FC = () => {
               >
                 {isDeletingClientCard ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 <span>{isAr ? 'نعم، احذف العميل' : 'Yes, Delete Client'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unified In-App Confirmation Modal (Iframe-safe replacement for window.confirm) */}
+      {pendingConfirmAction && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => !isConfirmActionLoading && setPendingConfirmAction(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-4 text-start"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-black text-slate-900">
+                  {pendingConfirmAction.title}
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {pendingConfirmAction.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isConfirmActionLoading}
+                onClick={() => setPendingConfirmAction(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+              >
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={isConfirmActionLoading}
+                onClick={async () => {
+                  setIsConfirmActionLoading(true);
+                  try {
+                    await pendingConfirmAction.onConfirm();
+                    setPendingConfirmAction(null);
+                  } finally {
+                    setIsConfirmActionLoading(false);
+                  }
+                }}
+                className="px-5 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {isConfirmActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>{pendingConfirmAction.confirmLabel}</span>
               </button>
             </div>
           </div>

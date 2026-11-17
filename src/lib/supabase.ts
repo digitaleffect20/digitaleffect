@@ -107,14 +107,20 @@ export async function submitInquiry(payload: InquirySubmissionPayload): Promise<
   isDatabaseBacked: boolean;
   error?: string;
 }> {
-  // Client-side sanitization
-  const cleanName = payload.name.trim();
-  const cleanPhone = payload.phone.trim();
-  const cleanCompany = payload.company?.trim() || null;
-  const cleanBudget = payload.budget?.trim() || null;
+  // Client-side sanitization & SQL boundary clamping
+  const cleanName = payload.name.trim().slice(0, 100);
+  const cleanPhone = payload.phone.trim().slice(0, 35);
+  const cleanCompany = payload.company?.trim() ? payload.company.trim().slice(0, 150) : null;
+  const cleanBudget = payload.budget?.trim() ? payload.budget.trim().slice(0, 100) : null;
   const cleanNotes = payload.notes?.trim() || null;
-  const cleanPackageName = payload.packageName?.trim() || null;
+  const cleanPackageName = payload.packageName?.trim() ? payload.packageName.trim().slice(0, 200) : null;
   const cleanPackageId = payload.packageId?.trim() || null;
+  const cleanPhoneCountry = (payload.phoneCountry || 'EG').trim().slice(0, 5) || 'EG';
+  const cleanVisitorCountry = (payload.visitorCountry || 'Unknown').trim().slice(0, 10) || 'Unknown';
+  const rawE164 = (payload.phoneE164 || cleanPhone).trim();
+  const normalizedE164 = rawE164.startsWith('+')
+    ? `+${rawE164.slice(1).replace(/\D/g, '')}`
+    : `+${rawE164.replace(/\D/g, '')}`;
 
   if (!cleanName || cleanName.length < 2) {
     return {
@@ -164,21 +170,24 @@ export async function submitInquiry(payload: InquirySubmissionPayload): Promise<
       const promoTag = `[كود الخصم: ${payload.promoCode}${payload.discountAmount ? ` | وفر: ${payload.discountAmount.toLocaleString()} ج.م` : ''}${payload.finalPrice ? ` | السعر بعد الخصم: ${payload.finalPrice.toLocaleString()} ج.م` : ''}]`;
       finalNotes = finalNotes ? `${finalNotes}\n${promoTag}` : promoTag;
     }
+    if (finalNotes && finalNotes.length > 3000) {
+      finalNotes = finalNotes.slice(0, 3000);
+    }
 
     // Hardened RPC call with international phone, country tracking, and idempotency key
     const { data: rpcInquiryId, error: rpcError } = await supabase.rpc('submit_inquiry', {
       p_name: cleanName,
       p_raw_phone: cleanPhone,
-      p_phone_e164: payload.phoneE164 || cleanPhone,
-      p_phone_country: payload.phoneCountry || 'EG',
-      p_visitor_country: payload.visitorCountry || 'Unknown',
+      p_phone_e164: normalizedE164,
+      p_phone_country: cleanPhoneCountry,
+      p_visitor_country: cleanVisitorCountry,
       p_company: cleanCompany,
       p_sector: payload.sector,
       p_package_id: cleanPackageId,
       p_package_name: cleanPackageName,
       p_budget: cleanBudget,
       p_notes: finalNotes,
-      p_email: payload.email?.trim() || null,
+      p_email: payload.email?.trim().slice(0, 150) || null,
       p_idempotency_key: payload.idempotencyKey || null,
     });
 
@@ -186,14 +195,14 @@ export async function submitInquiry(payload: InquirySubmissionPayload): Promise<
       console.error('Supabase submit_inquiry RPC error:', rpcError);
       let userFriendlyError = 'تعذر تسجيل الطلب في قاعدة البيانات المركزية.';
       if (rpcError.message.includes('Rate limit reached')) {
-        userFriendlyError = 'تم بلوغ الحد الأقصى للطلبات خلال فترة قصيرة (٣ طلبات / ١٠ دقائق). يرجى الانتظار قبل المحاولة مجدداً.';
+        userFriendlyError = 'تم بلوغ الحد الأقصى للطلبات خلال فترة قصيرة (٥ طلبات / ١٠ دقائق). يرجى الانتظار قبل المحاولة مجدداً.';
         return {
           success: false,
           id: '',
           isDatabaseBacked: false,
           error: userFriendlyError,
         };
-      } else if (rpcError.message.includes('Invalid phone number')) {
+      } else if (rpcError.message.includes('Invalid phone number') || rpcError.message.includes('Invalid international E.164')) {
         userFriendlyError = 'صيغة رقم الهاتف غير صالحة.';
         return {
           success: false,
@@ -216,6 +225,7 @@ export async function submitInquiry(payload: InquirySubmissionPayload): Promise<
         success: true,
         id: `fallback-inq-${Date.now()}`,
         isDatabaseBacked: false,
+        error: rpcError.message,
       };
     }
 

@@ -669,9 +669,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             caseStudies: verifiedStudies,
           };
           setData((prev) => {
+            const sampleIds = new Set((INITIAL_AGENCY_DATA.inquiries || []).map((c) => c.id));
+            const prevInq = prev.inquiries || [];
+            const prevIds = new Set(prevInq.map((c) => c.id));
+            const serverExtras = Array.isArray(serverData.inquiries)
+              ? serverData.inquiries.filter((c: any) => c?.id && !prevIds.has(c.id) && !sampleIds.has(c.id))
+              : [];
             return {
               ...sanitizedData,
-              inquiries: prev.inquiries || serverData.inquiries || []
+              inquiries: [...serverExtras, ...prevInq],
             };
           });
           safeSaveToLocalStorage(sanitizedData);

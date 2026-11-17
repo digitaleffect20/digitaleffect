@@ -39,7 +39,7 @@ export const ConsultationModal: React.FC = () => {
   const [sector, setSector] = useState<SectorType>(
     selectedPackageForInquiry ? selectedPackageForInquiry.sector : (activeSector !== 'all' ? activeSector : 'b2b')
   );
-  const [budget, setBudget] = useState(isAr ? '20,000 - 40,000 ج.م' : '20,000 - 40,000 EGP');
+  const [budget, setBudget] = useState(isAr ? '25,000 - 45,000 ج.م' : '25,000 - 45,000 EGP');
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,6 +105,7 @@ export const ConsultationModal: React.FC = () => {
   if (!isConsultationOpen) return null;
 
   const handleClose = () => {
+    const wasSubmitted = submitted;
     setIsConsultationOpen(false);
     setSelectedPackageForInquiry(null);
     setSubmitted(false);
@@ -114,6 +115,12 @@ export const ConsultationModal: React.FC = () => {
     setPromoError(null);
     setPromoCodeInput('');
     setIsCustomBuilderOpen(false);
+    if (wasSubmitted) {
+      setName('');
+      setPhone('');
+      setCompany('');
+      setNotes('');
+    }
     // Refresh idempotency key for the next session
     setIdempotencyKey(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}`);
   };
@@ -180,6 +187,7 @@ export const ConsultationModal: React.FC = () => {
 
     try {
       let isDbBacked = false;
+      let cloudId: string | undefined = undefined;
 
       // 1. Attempt submitting to cloud database
       try {
@@ -203,7 +211,10 @@ export const ConsultationModal: React.FC = () => {
 
         if (res.success) {
           isDbBacked = res.isDatabaseBacked;
-        } else if (res.error && (res.error.includes('الحد الأقصى') || res.error.includes('Rate limit'))) {
+          if (res.isDatabaseBacked && res.id) {
+            cloudId = res.id;
+          }
+        } else if (res.error) {
           setSubmitError(res.error);
           setIsSubmitting(false);
           return;
@@ -212,8 +223,9 @@ export const ConsultationModal: React.FC = () => {
         console.warn('Cloud submission skipped or failed, fallback to local store:', cloudErr);
       }
 
-      // 2. Persist in agency CRM data context so the inquiry is recorded immediately in the Admin Panel
+      // 2. Persist in agency CRM data context so the inquiry is recorded immediately with unified UUID
       addInquiry({
+        id: cloudId,
         name: cleanName,
         phone: cleanPhone,
         phoneE164: phoneVal.e164,
