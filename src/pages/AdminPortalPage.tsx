@@ -25,6 +25,7 @@ import {
   MessageSquare, 
   Trash2, 
   Download, 
+  Upload,
   Building, 
   RefreshCw, 
   CheckCircle2, 
@@ -69,13 +70,14 @@ import { SeoGeneratorWidget } from '../components/SeoGeneratorWidget';
 import { CaseStudyMediaManager } from '../components/CaseStudyMediaManager';
 import { CustomPackageCalculator } from '../components/CustomPackageCalculator';
 import { AddClientModal } from '../components/AddClientModal';
-import { ClientAccountDrawer } from '../components/ClientAccountDrawer';
+import { ClientAccountDrawer, ClientDrawerTab } from '../components/ClientAccountDrawer';
 import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from '../components/ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from '../components/ClientPackageDeliverablesCard';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
 import { generateClientInvoicePdf } from '../utils/invoicePdfGenerator';
 import { InvoicesArchiveHub } from '../components/InvoicesArchiveHub';
 import { AccountStatementModal } from '../components/AccountStatementModal';
+import crmFullMigrationSql from '../../supabase/migrations/20261117000001_crm_full_persistence.sql?raw';
 
 export const AdminPortalPage: React.FC = () => {
   const { 
@@ -98,8 +100,17 @@ export const AdminPortalPage: React.FC = () => {
     importDataJson,
     clearAllInquiries,
     updateInquiry,
-    deleteInquiry
+    deleteInquiry,
+    cloudSyncStatus,
+    supabaseMigrationNeeded,
+    lastCloudSyncAt,
+    syncNowToSupabase,
+    refreshFromSupabase,
   } = useAgencyData();
+
+  const [isCloudMigrating, setIsCloudMigrating] = useState(false);
+  const [cloudSyncFeedback, setCloudSyncFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [sqlCopied, setSqlCopied] = useState(false);
 
   const isAr = language === 'ar';
 
@@ -111,8 +122,9 @@ export const AdminPortalPage: React.FC = () => {
   const [loginLoading, setLoginLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Local testing bypass state (persisted across page reloads in sessionStorage)
+  // Local testing bypass state (only allowed when Supabase is not configured)
   const [localBypassAuth, setLocalBypassAuth] = useState(() => {
+    if (isSupabaseConfigured) return false;
     try {
       return sessionStorage.getItem('digital_effect_admin_session') === 'true';
     } catch {
@@ -126,6 +138,9 @@ export const AdminPortalPage: React.FC = () => {
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [selectedClientForAccount, setSelectedClientForAccount] = useState<Inquiry | null>(null);
   const [isClientAccountOpen, setIsClientAccountOpen] = useState(false);
+  const [clientDrawerInitialTab, setClientDrawerInitialTab] = useState<ClientDrawerTab>('overview');
+  const [clientPendingDelete, setClientPendingDelete] = useState<Inquiry | null>(null);
+  const [isDeletingClientCard, setIsDeletingClientCard] = useState(false);
   const [clientSectorFilter, setClientSectorFilter] = useState<'all' | 'b2b' | 'b2c' | 'medical'>('all');
   const [clientStatusFilter, setClientStatusFilter] = useState<'all' | 'active' | 'renewal_due' | 'paused' | 'completed'>('all');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
@@ -405,24 +420,31 @@ export const AdminPortalPage: React.FC = () => {
     let mounted = true;
 
     async function checkAuth() {
-      try {
-        const isLocalSession = sessionStorage.getItem('digital_effect_admin_session') === 'true';
-        if (isLocalSession && mounted) {
-          setLocalBypassAuth(true);
-          setSessionUser({ email: 'digitaleffect20@gmail.com', user_metadata: { role: 'admin' } });
-        }
-      } catch {}
-
       if (!isSupabaseConfigured || !supabase) {
+        try {
+          const isLocalSession = sessionStorage.getItem('digital_effect_admin_session') === 'true';
+          if (isLocalSession && mounted) {
+            setLocalBypassAuth(true);
+            setSessionUser({ email: 'digitaleffect20@gmail.com', user_metadata: { role: 'admin' } });
+          }
+        } catch {}
         if (mounted) setAuthChecking(false);
         return;
       }
+
+      // When Supabase is configured, clear any stale Local Dev Mode bypass so a real Supabase JWT is enforced
+      try {
+        sessionStorage.removeItem('digital_effect_admin_session');
+      } catch {}
+      if (mounted) setLocalBypassAuth(false);
 
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (mounted) {
           if (!error && session) {
             setSessionUser(session.user);
+          } else {
+            setSessionUser(null);
           }
           setAuthChecking(false);
         }
@@ -1506,6 +1528,7 @@ export const AdminPortalPage: React.FC = () => {
                               type="button"
                               onClick={() => {
                                 const fullClient = (data.inquiries || []).find(i => i.id === inq.id) || inq;
+                                setClientDrawerInitialTab('overview');
                                 setSelectedClientForAccount(fullClient as Inquiry);
                                 setIsClientAccountOpen(true);
                               }}
@@ -2212,11 +2235,37 @@ export const AdminPortalPage: React.FC = () => {
                             )}
                             <span>{isAr ? 'تحميل الفاتورة' : 'Download Invoice'}</span>
                           </button>
+
+                          {/* Edit Client & Package Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClientDrawerInitialTab('profile');
+                              setSelectedClientForAccount(client);
+                              setIsClientAccountOpen(true);
+                            }}
+                            className="px-2.5 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                            title={isAr ? 'تعديل بيانات العميل والباقة' : 'Edit Client & Package'}
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                            <span>{isAr ? 'تعديل' : 'Edit'}</span>
+                          </button>
+
+                          {/* Delete Client Button */}
+                          <button
+                            type="button"
+                            onClick={() => setClientPendingDelete(client)}
+                            className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/90 rounded-xl transition-colors cursor-pointer"
+                            title={isAr ? 'حذف العميل نهائياً' : 'Delete Client'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
 
                         <button
                           type="button"
                           onClick={() => {
+                            setClientDrawerInitialTab('overview');
                             setSelectedClientForAccount(client);
                             setIsClientAccountOpen(true);
                           }}
@@ -2923,32 +2972,272 @@ export const AdminPortalPage: React.FC = () => {
         )}
 
         {/* ================================================================== */}
-        {/* TAB 5: BACKUP & DATA CONTROL                                       */}
+        {/* TAB 5: BACKUP, SUPABASE CLOUD SYNC & SQL MIGRATION                 */}
         {/* ================================================================== */}
         {activeTab === 'backup' && (
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-6">
-            <div className="space-y-1 pb-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900">{isAr ? 'إدارة النسخ الاحتياطية وتصدير البيانات' : 'Backup & Data Export'}</h3>
-              <p className="text-xs text-slate-500">{isAr ? 'تصدير كامل بيانات الموقع والإعدادات في ملف JSON آمن' : 'Export and import website state JSON'}</p>
+          <div className="space-y-6">
+            {/* Supabase Cloud Persistence Card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-5 shadow-xs">
+              <div className="flex items-start justify-between gap-4 flex-wrap pb-4 border-b border-slate-100">
+                <div className="space-y-1">
+                  <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <Database className="w-5 h-5 text-emerald-600" />
+                    <span>
+                      {isAr
+                        ? 'مزامنة وحفظ البيانات السحابي (Supabase PostgreSQL)'
+                        : 'Cloud Persistence & Migration (Supabase PostgreSQL)'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-600">
+                    {isAr
+                      ? 'يحفظ حسابات العملاء المتعاقدين، أرشيف الفواتير، أرصدة الإعلانات، مراحل التنفيذ، والباقات مباشرة في Supabase حتى لا تتأثر بأي Publish مستقبلي.'
+                      : 'Persists CRM client accounts, invoices archive, ad wallets, workflow stages, and public catalog directly to Supabase across deployments.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                      supabaseMigrationNeeded
+                        ? 'bg-amber-50 text-amber-800 border-amber-300'
+                        : cloudSyncStatus === 'synced'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : isSupabaseConfigured
+                        ? 'bg-sky-50 text-sky-800 border-sky-300'
+                        : 'bg-slate-100 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        supabaseMigrationNeeded
+                          ? 'bg-amber-500 animate-pulse'
+                          : cloudSyncStatus === 'synced'
+                          ? 'bg-emerald-500'
+                          : isSupabaseConfigured
+                          ? 'bg-sky-500'
+                          : 'bg-slate-400'
+                      }`}
+                    />
+                    <span>
+                      {supabaseMigrationNeeded
+                        ? isAr ? 'بانتظار تشغيل كود SQL في Supabase' : 'SQL Migration Required'
+                        : cloudSyncStatus === 'synced'
+                        ? isAr ? 'متزامن بالكامل مع Supabase' : 'Synced with Supabase'
+                        : isSupabaseConfigured
+                        ? isAr ? 'Supabase مهيّأ وجاهز للمزامنة' : 'Supabase Ready'
+                        : isAr ? 'وضع محلي (بيئة تطوير بدون مفاتيح Supabase)' : 'Local Dev Mode'}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {supabaseMigrationNeeded && (
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-2">
+                  <div className="font-black flex items-center gap-1.5 text-amber-900">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      {isAr
+                        ? 'مطلوب خطوة واحدة لمرة واحدة: تنفيذ كود الترحيل SQL داخل Supabase'
+                        : 'One-time setup required: Execute SQL migration in Supabase SQL Editor'}
+                    </span>
+                  </div>
+                  <p className="text-amber-800 leading-relaxed">
+                    {isAr
+                      ? 'قم بنسخ كود الـ SQL بالأسفل وتشغيله مرة واحدة داخل Supabase ← SQL Editor، ثم اضغط على زر "رفع ومزامنة كافة البيانات الحالية إلى Supabase".'
+                      : 'Copy the SQL script below, run it once inside Supabase Dashboard -> SQL Editor, then click "Sync All Current Data to Supabase".'}
+                  </p>
+                </div>
+              )}
+
+              {cloudSyncFeedback && (
+                <div
+                  className={`p-3.5 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                    cloudSyncFeedback.ok
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-rose-50 border-rose-200 text-rose-900'
+                  }`}
+                >
+                  {cloudSyncFeedback.ok ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>{cloudSyncFeedback.msg}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  disabled={isCloudMigrating}
+                  onClick={async () => {
+                    setIsCloudMigrating(true);
+                    setCloudSyncFeedback(null);
+                    const res = await syncNowToSupabase();
+                    setIsCloudMigrating(false);
+                    if (res.success) {
+                      setCloudSyncFeedback({
+                        ok: true,
+                        msg: isAr
+                          ? `تم ترحيل وحفظ (${res.clientsSynced}) عميل و (${res.invoicesSynced}) فاتورة وإعدادات الموقع في Supabase بنجاح!`
+                          : `Synced ${res.clientsSynced} clients, ${res.invoicesSynced} invoices, and catalog to Supabase!`,
+                      });
+                    } else {
+                      setCloudSyncFeedback({
+                        ok: false,
+                        msg: res.migrationNeeded
+                          ? isAr
+                            ? 'الجداول الجديدة غير موجودة بعد في Supabase. يرجى تشغيل كود الترحيل SQL بالأسفل أولاً ثم إعادة المحاولة.'
+                            : 'Tables missing in Supabase. Run the SQL migration below first.'
+                          : res.error || (isAr ? 'تعذر إتمام المزامنة مع Supabase' : 'Cloud sync failed'),
+                      });
+                    }
+                  }}
+                  className="px-4 py-2.5 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer disabled:opacity-60 shadow-xs"
+                >
+                  {isCloudMigrating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Database className="w-4 h-4" />
+                  )}
+                  <span>
+                    {isAr
+                      ? 'رفع ومزامنة كافة البيانات الحالية إلى Supabase'
+                      : 'Sync & Migrate All Data to Supabase'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await refreshFromSupabase();
+                    showNotice(isAr ? 'تم تحديث البيانات من Supabase بنجاح!' : 'Refreshed data from Supabase!');
+                  }}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'سحب أحدث البيانات من Supabase' : 'Pull Latest from Supabase'}</span>
+                </button>
+
+                {lastCloudSyncAt && (
+                  <span className="text-[11px] text-slate-500 font-medium">
+                    {isAr ? 'آخر مزامنة:' : 'Last sync:'}{' '}
+                    {new Date(lastCloudSyncAt).toLocaleString(isAr ? 'ar-EG' : 'en-US')}
+                  </span>
+                )}
+              </div>
+
+              {/* SQL Migration Viewer & One-Click Copy/Download */}
+              <div className="p-4 rounded-xl bg-slate-950 text-slate-100 space-y-3 border border-slate-800">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <span className="text-xs font-black text-emerald-400 block">
+                      {isAr
+                        ? 'كود الترحيل SQL (20261117000001_crm_full_persistence.sql)'
+                        : 'PostgreSQL Migration Script (20261117000001_crm_full_persistence.sql)'}
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {isAr
+                        ? 'انسخ هذا الكود ونفّذه داخل Supabase Dashboard ← SQL Editor لإنشاء جداول الفواتير وحسابات العملاء.'
+                        : 'Copy and run inside Supabase Dashboard -> SQL Editor to create persistent CRM & Invoice tables.'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(crmFullMigrationSql);
+                        setSqlCopied(true);
+                        setTimeout(() => setSqlCopied(false), 2500);
+                      }}
+                      className="px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700 inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {sqlCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{sqlCopied ? (isAr ? 'تم النسخ!' : 'Copied!') : (isAr ? 'نسخ كود SQL' : 'Copy SQL')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const blob = new Blob([crmFullMigrationSql], { type: 'text/sql' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = '20261117000001_crm_full_persistence.sql';
+                        a.click();
+                      }}
+                      className="px-3 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'تحميل .sql' : 'Download .sql'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <pre
+                  dir="ltr"
+                  className="text-[11px] font-mono text-emerald-200/90 bg-slate-900/90 p-3 rounded-lg border border-slate-800 max-h-56 overflow-y-auto whitespace-pre-wrap leading-relaxed"
+                >
+                  {crmFullMigrationSql}
+                </pre>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              <button
-                onClick={() => {
-                  const json = exportDataJson();
-                  const blob = new Blob([json], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `digital-effect-backup-${new Date().toISOString().slice(0, 10)}.json`;
-                  a.click();
-                  showNotice(isAr ? 'تم تصدير ملف النسخة الاحتياطية بنجاح!' : 'Backup exported successfully!');
-                }}
-                className="px-4 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{isAr ? 'تصدير ملف النسخة الاحتياطية JSON' : 'Export Backup JSON'}</span>
-              </button>
+            {/* JSON Backup & Restore Card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+              <div className="space-y-1 pb-3 border-b border-slate-100">
+                <h3 className="text-sm font-bold text-slate-900">{isAr ? 'النسخ الاحتياطي السريع (ملف JSON)' : 'Quick Local Backup (JSON)'}</h3>
+                <p className="text-xs text-slate-500">{isAr ? 'تصدير أو استيراد كامل بيانات العملاء والفواتير والإعدادات كنسخة احتياطية إضافية على جهازك.' : 'Export and import website state JSON as an extra offline backup.'}</p>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const json = exportDataJson();
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `digital-effect-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    showNotice(isAr ? 'تم تصدير ملف النسخة الاحتياطية بنجاح!' : 'Backup exported successfully!');
+                  }}
+                  className="px-4 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'تصدير ملف النسخة الاحتياطية JSON' : 'Export Backup JSON'}</span>
+                </button>
+
+                <label className="px-4 py-2.5 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'استيراد نسخة احتياطية JSON' : 'Import Backup JSON'}</span>
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const content = ev.target?.result;
+                        if (typeof content === 'string' && importDataJson(content)) {
+                          showNotice(isAr ? 'تم استيراد النسخة الاحتياطية بنجاح! يمكنك الآن مزامنتها مع Supabase.' : 'Backup imported successfully!');
+                        } else {
+                          setCloudSyncFeedback({
+                            ok: false,
+                            msg: isAr ? 'ملف JSON غير صالح.' : 'Invalid JSON backup file.',
+                          });
+                        }
+                      };
+                      reader.readAsText(file);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              </div>
             </div>
           </div>
         )}
@@ -2956,7 +3245,7 @@ export const AdminPortalPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        Digital Effect Enterprise Administration Portal • Phase 1 PostgreSQL Integration
+        Digital Effect Enterprise Administration Portal • Phase 2 Full Supabase Cloud Persistence
       </footer>
 
       {/* ================================================================== */}
@@ -3651,15 +3940,102 @@ export const AdminPortalPage: React.FC = () => {
       <ClientAccountDrawer
         client={selectedClientForAccount}
         isOpen={isClientAccountOpen}
+        initialTab={clientDrawerInitialTab}
         onClose={() => {
           setIsClientAccountOpen(false);
           setSelectedClientForAccount(null);
+          setClientDrawerInitialTab('overview');
         }}
         onClientUpdated={(updated) => {
           setSelectedClientForAccount(updated);
-          showNotice(isAr ? 'تم تحديث بيانات حساب العميل بنجاح!' : 'Client account updated successfully!');
+          setCloudInquiries((prev) =>
+            prev.map((inq) =>
+              inq.id === updated.id
+                ? {
+                    ...inq,
+                    raw_client_name: updated.name,
+                    raw_client_phone: updated.phone,
+                    raw_client_company: updated.company || null,
+                    raw_package_name: updated.packageName || null,
+                    budget: updated.budget || null,
+                    sector: updated.sector,
+                    notes: updated.notes || null,
+                  }
+                : inq
+            )
+          );
+          showNotice(isAr ? 'تم تحديث بيانات العميل والباقة بنجاح!' : 'Client account updated successfully!');
+        }}
+        onClientDeleted={(deletedId) => {
+          setCloudInquiries((prev) => prev.filter((inq) => inq.id !== deletedId));
+          setSelectedClientForAccount(null);
+          setIsClientAccountOpen(false);
+          showNotice(isAr ? 'تم حذف العميل من النظام نهائياً.' : 'Client deleted permanently.');
         }}
       />
+
+      {/* Delete Client Confirmation Modal (from Clients Cards) */}
+      {clientPendingDelete && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => !isDeletingClientCard && setClientPendingDelete(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-md w-full p-6 border border-slate-200 shadow-2xl space-y-4 text-start"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-black text-slate-900">
+                  {isAr ? 'تأكيد حذف العميل نهائياً' : 'Confirm Client Deletion'}
+                </h4>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {isAr
+                    ? `هل أنت متأكد من حذف العميل "${clientPendingDelete.company || clientPendingDelete.name}"؟ سيتم مسح ملف العميل وبيانات الباقة من لوحة التحكم وقاعدة بيانات Supabase.`
+                    : `Permanently remove "${clientPendingDelete.company || clientPendingDelete.name}" from CRM and Supabase?`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingClientCard}
+                onClick={() => setClientPendingDelete(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
+              >
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingClientCard}
+                onClick={async () => {
+                  const targetId = clientPendingDelete.id;
+                  setIsDeletingClientCard(true);
+                  try {
+                    deleteInquiry(targetId);
+                    if (isSupabaseConfigured && sessionUser) {
+                      await deleteInquiryFromDb(targetId);
+                    }
+                    setCloudInquiries((prev) => prev.filter((inq) => inq.id !== targetId));
+                    setClientPendingDelete(null);
+                    showNotice(isAr ? 'تم حذف العميل نهائياً.' : 'Client deleted permanently.');
+                  } finally {
+                    setIsDeletingClientCard(false);
+                  }
+                }}
+                className="px-5 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {isDeletingClientCard ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>{isAr ? 'نعم، احذف العميل' : 'Yes, Delete Client'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

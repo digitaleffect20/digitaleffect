@@ -1,8 +1,22 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
 import { DEFAULT_CUSTOM_PACKAGE_RATES } from '../utils/pricingCalculator';
+import {
+  supabase,
+  isSupabaseConfigured,
+  fetchPublicCatalogFromSupabase,
+  savePublicCatalogToSupabase,
+  fetchAdminCrmBundleFromSupabase,
+  upsertCrmClientToSupabase,
+  deleteCrmClientFromSupabase,
+  upsertInvoiceToSupabase,
+  deleteInvoiceFromSupabase,
+  migrateFullLocalDataToSupabase,
+} from '../lib/supabase';
+
+export type CloudSyncStatus = 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
 
 interface AgencyContextType {
   data: AgencyDataState;
@@ -83,6 +97,20 @@ interface AgencyContextType {
   resetToDefaults: () => void;
   exportDataJson: () => string;
   importDataJson: (jsonString: string) => boolean;
+
+  // Cloud Persistence Status & Actions (Supabase Phase 2)
+  cloudSyncStatus: CloudSyncStatus;
+  supabaseMigrationNeeded: boolean;
+  lastCloudSyncAt: string | null;
+  syncNowToSupabase: () => Promise<{
+    success: boolean;
+    clientsSynced: number;
+    invoicesSynced: number;
+    catalogSynced: boolean;
+    migrationNeeded?: boolean;
+    error?: string;
+  }>;
+  refreshFromSupabase: () => Promise<void>;
 }
 
 const STORAGE_KEY = 'digital_effect_agency_state_v14';
@@ -407,6 +435,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedCaseStudy, setSelectedCaseStudy] = useState<CaseStudy | null>(null);
   const [customPackageConfig, setCustomPackageConfig] = useState<CustomPackageConfig | null>(null);
 
+  // Supabase Phase 2 Cloud Sync State
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>(
+    isSupabaseConfigured ? 'idle' : 'offline'
+  );
+  const [supabaseMigrationNeeded, setSupabaseMigrationNeeded] = useState(false);
+  const [lastCloudSyncAt, setLastCloudSyncAt] = useState<string | null>(null);
+  const dataRef = useRef<AgencyDataState>(data);
+  dataRef.current = data;
+  const catalogDirtyRef = useRef(false);
+
   // Language setter with HTML document update
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
@@ -521,7 +559,105 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  // Fetch persisted data from server on mount
+  // Helper: Refresh CRM bundle (clients & invoices) when admin session is authenticated
+  const refreshFromSupabase = async () => {
+    if (!isSupabaseConfigured || !supabase) {
+      setCloudSyncStatus('offline');
+      return;
+    }
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) return;
+
+      setCloudSyncStatus('syncing');
+      const [catRes, crmRes] = await Promise.all([
+        fetchPublicCatalogFromSupabase(),
+        fetchAdminCrmBundleFromSupabase(),
+      ]);
+
+      if (catRes.migrationNeeded || crmRes.migrationNeeded) {
+        setSupabaseMigrationNeeded(true);
+        setCloudSyncStatus('error');
+        return;
+      }
+
+      setSupabaseMigrationNeeded(false);
+
+      const sampleClientIds = new Set((INITIAL_AGENCY_DATA.inquiries || []).map((c) => c.id));
+      const sampleInvoiceIds = new Set((INITIAL_AGENCY_DATA.invoices || []).map((i) => i.id));
+
+      setData((prev) => {
+        const next: AgencyDataState = { ...prev };
+
+        // Hydrate public catalog if present in Supabase
+        if (catRes.catalog) {
+          if (Array.isArray(catRes.catalog.caseStudies) && catRes.catalog.caseStudies.length > 0) {
+            next.caseStudies = ensureCanonicalStudies(catRes.catalog.caseStudies);
+          }
+          if (Array.isArray(catRes.catalog.packages) && catRes.catalog.packages.length > 0) {
+            next.packages = catRes.catalog.packages;
+          }
+          if (Array.isArray(catRes.catalog.promoCodes)) {
+            next.promoCodes = catRes.catalog.promoCodes;
+          }
+          if (catRes.catalog.customRates) {
+            next.customRates = catRes.catalog.customRates;
+          }
+          if (catRes.catalog.banner) {
+            next.banner = catRes.catalog.banner;
+          }
+          if (catRes.catalog.agencyInfo) {
+            next.agencyInfo = catRes.catalog.agencyInfo;
+          }
+        }
+
+        // Hydrate CRM clients if cloud already has records
+        if (crmRes.clients.length > 0) {
+          const cloudIds = new Set(crmRes.clients.map((c) => c.id));
+          const localOnlyNonSample = (prev.inquiries || []).filter(
+            (c) => !cloudIds.has(c.id) && !sampleClientIds.has(c.id)
+          );
+          next.inquiries = [...crmRes.clients, ...localOnlyNonSample];
+        }
+
+        // Hydrate invoices if cloud already has records
+        if (crmRes.invoices.length > 0) {
+          const cloudInvIds = new Set(crmRes.invoices.map((i) => i.id));
+          const localOnlyInvoices = (prev.invoices || []).filter(
+            (i) => !cloudInvIds.has(i.id) && !sampleInvoiceIds.has(i.id)
+          );
+          next.invoices = [...crmRes.invoices, ...localOnlyInvoices];
+        }
+
+        return next;
+      });
+
+      setLastCloudSyncAt(new Date().toISOString());
+      setCloudSyncStatus('synced');
+    } catch (err) {
+      console.warn('Supabase refresh notice:', err);
+      setCloudSyncStatus('error');
+    }
+  };
+
+  const syncNowToSupabase = async () => {
+    setCloudSyncStatus('syncing');
+    const res = await migrateFullLocalDataToSupabase(dataRef.current);
+    if (res.migrationNeeded) {
+      setSupabaseMigrationNeeded(true);
+      setCloudSyncStatus('error');
+    } else if (res.success) {
+      setSupabaseMigrationNeeded(false);
+      setLastCloudSyncAt(new Date().toISOString());
+      setCloudSyncStatus('synced');
+      catalogDirtyRef.current = false;
+    } else {
+      setCloudSyncStatus('error');
+    }
+    return res;
+  };
+
+  // Fetch persisted data from server AND Supabase on mount
   useEffect(() => {
     fetch('/api/agency-data')
       .then((res) => (res.ok ? res.json() : null))
@@ -541,10 +677,48 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           safeSaveToLocalStorage(sanitizedData);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        // Hydrate public catalog from Supabase for all visitors
+        if (isSupabaseConfigured && supabase) {
+          fetchPublicCatalogFromSupabase().then((catRes) => {
+            if (catRes.migrationNeeded) {
+              setSupabaseMigrationNeeded(true);
+            } else if (catRes.catalog) {
+              setData((prev) => ({
+                ...prev,
+                caseStudies: Array.isArray(catRes.catalog?.caseStudies) && catRes.catalog.caseStudies.length > 0
+                  ? ensureCanonicalStudies(catRes.catalog.caseStudies)
+                  : prev.caseStudies,
+                packages: Array.isArray(catRes.catalog?.packages) && catRes.catalog.packages.length > 0
+                  ? catRes.catalog.packages
+                  : prev.packages,
+                promoCodes: Array.isArray(catRes.catalog?.promoCodes)
+                  ? catRes.catalog.promoCodes
+                  : prev.promoCodes,
+                customRates: catRes.catalog?.customRates || prev.customRates,
+                banner: catRes.catalog?.banner || prev.banner,
+                agencyInfo: catRes.catalog?.agencyInfo || prev.agencyInfo,
+              }));
+            }
+          });
+        }
+      });
+
+    if (isSupabaseConfigured && supabase) {
+      refreshFromSupabase();
+      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) {
+          refreshFromSupabase();
+        }
+      });
+      return () => {
+        authListener?.subscription?.unsubscribe();
+      };
+    }
   }, []);
 
-  // Sync data to localStorage & server
+  // Sync data to localStorage, server, & Supabase (when catalog was edited by admin)
   useEffect(() => {
     safeSaveToLocalStorage(data);
 
@@ -557,6 +731,18 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }).catch((err) => {
         console.warn('Server sync notice:', err);
       });
+
+      if (catalogDirtyRef.current && isSupabaseConfigured && supabase) {
+        catalogDirtyRef.current = false;
+        savePublicCatalogToSupabase(data).then((res) => {
+          if (res.migrationNeeded) {
+            setSupabaseMigrationNeeded(true);
+          } else if (res.success) {
+            setLastCloudSyncAt(new Date().toISOString());
+            setCloudSyncStatus('synced');
+          }
+        });
+      }
     }, 600);
 
     return () => clearTimeout(timer);
@@ -564,6 +750,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Case Studies CRUD
   const addCaseStudy = (studyData: Omit<CaseStudy, 'id'>) => {
+    catalogDirtyRef.current = true;
     const newId = `cs-${Date.now()}`;
     const newStudy: CaseStudy = { ...studyData, id: newId };
     setData((prev) => ({
@@ -573,6 +760,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateCaseStudy = (study: CaseStudy) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       caseStudies: prev.caseStudies.map((s) => (s.id === study.id ? study : s)),
@@ -580,6 +768,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteCaseStudy = (id: string) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       caseStudies: prev.caseStudies.filter((s) => s.id !== id),
@@ -588,6 +777,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Packages CRUD
   const addPackage = (pkgData: Omit<ServicePackage, 'id'>) => {
+    catalogDirtyRef.current = true;
     const newId = `pkg-${Date.now()}`;
     const newPkg: ServicePackage = { ...pkgData, id: newId };
     setData((prev) => ({
@@ -597,6 +787,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updatePackage = (pkg: ServicePackage) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       packages: prev.packages.map((p) => (p.id === pkg.id ? pkg : p)),
@@ -604,6 +795,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deletePackage = (id: string) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       packages: prev.packages.filter((p) => p.id !== id),
@@ -611,6 +803,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateCustomRates = (rates: CustomPackagePricingRates) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       customRates: rates,
@@ -619,6 +812,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Promo Codes CRUD
   const addPromoCode = (promoData: Omit<PromoCode, 'id' | 'createdAt' | 'usageCount'>) => {
+    catalogDirtyRef.current = true;
     const cleanCode = promoData.code.trim().toUpperCase();
     const newPromo: PromoCode = {
       ...promoData,
@@ -634,6 +828,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updatePromoCode = (promo: PromoCode) => {
+    catalogDirtyRef.current = true;
     const cleanPromo: PromoCode = {
       ...promo,
       code: promo.code.trim().toUpperCase(),
@@ -645,6 +840,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deletePromoCode = (id: string) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       promoCodes: (prev.promoCodes || []).filter((p) => p.id !== id),
@@ -652,6 +848,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const togglePromoCodeStatus = (id: string) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       promoCodes: (prev.promoCodes || []).map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p)),
@@ -659,6 +856,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const recordPromoUsage = (codeStr: string) => {
+    catalogDirtyRef.current = true;
     const clean = codeStr.trim().toUpperCase();
     setData((prev) => ({
       ...prev,
@@ -772,6 +970,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateBanner = (banner: PromoBanner) => {
+    catalogDirtyRef.current = true;
     setData((prev) => ({
       ...prev,
       banner,
@@ -791,6 +990,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const parsed = JSON.parse(jsonString);
       if (parsed.caseStudies && parsed.packages && parsed.agencyInfo) {
+        catalogDirtyRef.current = true;
         setData(parsed);
         return true;
       }
@@ -798,6 +998,44 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.error('Invalid JSON import', err);
     }
     return false;
+  };
+
+  const buildMergedInquiry = (existing: Inquiry, updates: Partial<Inquiry>): Inquiry => {
+    const merged: Inquiry = { ...existing, ...updates };
+    if (updates.status === 'closed' || (merged.status === 'closed' && !merged.contractStartDate)) {
+      const today = new Date().toISOString().split('T')[0];
+      const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      merged.contractStartDate = merged.contractStartDate || today;
+      merged.renewalDate = merged.renewalDate || renewal;
+      merged.contractStatus = merged.contractStatus || 'active';
+      merged.paymentStatus = merged.paymentStatus || 'paid';
+      merged.billingCycle = merged.billingCycle || 'monthly';
+      merged.postsDelivered = merged.postsDelivered ?? 0;
+      merged.reelsDelivered = merged.reelsDelivered ?? 0;
+      merged.storiesDelivered = merged.storiesDelivered ?? 0;
+      merged.currentWorkflowDay = merged.currentWorkflowDay || 12;
+      merged.todayTaskTitle = merged.todayTaskTitle || 'تصميم النسخة النهائية للمحتوى';
+      if (!merged.workflowStages || merged.workflowStages.length === 0) {
+        merged.workflowStages = [
+          { id: 'content_creator', title: 'Content Creator', status: 'completed' },
+          { id: 'visual_design', title: 'Visual Design', status: 'completed' },
+          { id: 'final_design', title: 'Final Design', status: 'in_progress' },
+          { id: 'client_approve', title: 'Client Approve', status: 'pending' },
+          { id: 'publish', title: 'Publish', status: 'pending' },
+        ];
+      }
+      if (!merged.clientNotes || merged.clientNotes.length === 0) {
+        merged.clientNotes = [
+          {
+            id: `note-${Date.now()}`,
+            text: 'تم تحويل العميل إلى مرحلة التعاقد وتفعيل حساب المتابعة.',
+            createdAt: new Date().toISOString(),
+            type: 'update',
+          }
+        ];
+      }
+    }
+    return merged;
   };
 
   const addInquiry = (inquiryData: Omit<Inquiry, 'id' | 'createdAt' | 'status'> & { status?: Inquiry['status'] }) => {
@@ -842,52 +1080,32 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ...prev,
       inquiries: [newInquiry, ...(prev.inquiries || [])],
     }));
+
+    if (isSupabaseConfigured && supabase) {
+      upsertCrmClientToSupabase(newInquiry).then((res) => {
+        if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
+        else if (res.success) setLastCloudSyncAt(new Date().toISOString());
+      });
+    }
   };
 
   const updateInquiry = (id: string, updates: Partial<Inquiry>) => {
+    const existingItem = (dataRef.current.inquiries || []).find((item) => item.id === id);
+    const mergedForSync = existingItem ? buildMergedInquiry(existingItem, updates) : null;
+
     setData((prev) => ({
       ...prev,
-      inquiries: (prev.inquiries || []).map((item) => {
-        if (item.id === id) {
-          const merged = { ...item, ...updates };
-          if (updates.status === 'closed' || (merged.status === 'closed' && !merged.contractStartDate)) {
-            const today = new Date().toISOString().split('T')[0];
-            const renewal = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            merged.contractStartDate = merged.contractStartDate || today;
-            merged.renewalDate = merged.renewalDate || renewal;
-            merged.contractStatus = merged.contractStatus || 'active';
-            merged.paymentStatus = merged.paymentStatus || 'paid';
-            merged.billingCycle = merged.billingCycle || 'monthly';
-            merged.postsDelivered = merged.postsDelivered ?? 0;
-            merged.reelsDelivered = merged.reelsDelivered ?? 0;
-            merged.storiesDelivered = merged.storiesDelivered ?? 0;
-            merged.currentWorkflowDay = merged.currentWorkflowDay || 12;
-            merged.todayTaskTitle = merged.todayTaskTitle || 'تصميم النسخة النهائية للمحتوى';
-            if (!merged.workflowStages || merged.workflowStages.length === 0) {
-              merged.workflowStages = [
-                { id: 'content_creator', title: 'Content Creator', status: 'completed' },
-                { id: 'visual_design', title: 'Visual Design', status: 'completed' },
-                { id: 'final_design', title: 'Final Design', status: 'in_progress' },
-                { id: 'client_approve', title: 'Client Approve', status: 'pending' },
-                { id: 'publish', title: 'Publish', status: 'pending' },
-              ];
-            }
-            if (!merged.clientNotes || merged.clientNotes.length === 0) {
-              merged.clientNotes = [
-                {
-                  id: `note-${Date.now()}`,
-                  text: 'تم تحويل العميل إلى مرحلة التعاقد وتفعيل حساب المتابعة.',
-                  createdAt: new Date().toISOString(),
-                  type: 'update',
-                }
-              ];
-            }
-          }
-          return merged;
-        }
-        return item;
-      }),
+      inquiries: (prev.inquiries || []).map((item) =>
+        item.id === id ? buildMergedInquiry(item, updates) : item
+      ),
     }));
+
+    if (mergedForSync && isSupabaseConfigured && supabase) {
+      upsertCrmClientToSupabase(mergedForSync).then((res) => {
+        if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
+        else if (res.success) setLastCloudSyncAt(new Date().toISOString());
+      });
+    }
   };
 
   const updateInquiryStatus = (id: string, status: Inquiry['status']) => {
@@ -899,6 +1117,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ...prev,
       inquiries: (prev.inquiries || []).filter((item) => item.id !== id),
     }));
+    if (isSupabaseConfigured && supabase) {
+      deleteCrmClientFromSupabase(id).catch(() => {});
+    }
   };
 
   const clearAllInquiries = () => {
@@ -911,7 +1132,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Invoices Archive Actions
   const addInvoice = (invoiceData: Omit<ClientInvoiceRecord, 'id' | 'createdAt'>): ClientInvoiceRecord => {
     const id = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const invoiceNumber = invoiceData.invoiceNumber || `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String((data.invoices?.length || 0) + 101).slice(-3)}`;
+    const invoiceNumber = invoiceData.invoiceNumber || `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String((dataRef.current.invoices?.length || 0) + 101).slice(-3)}`;
     const newInvoice: ClientInvoiceRecord = {
       ...invoiceData,
       id,
@@ -924,9 +1145,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       invoices: [newInvoice, ...(prev.invoices || [])],
     }));
 
+    if (isSupabaseConfigured && supabase) {
+      upsertInvoiceToSupabase(newInvoice).then((res) => {
+        if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
+        else if (res.success) setLastCloudSyncAt(new Date().toISOString());
+      });
+    }
+
     // If client exists, append tracking note to client profile
     if (newInvoice.clientId) {
-      const client = (data.inquiries || []).find((c) => c.id === newInvoice.clientId);
+      const client = (dataRef.current.inquiries || []).find((c) => c.id === newInvoice.clientId);
       if (client) {
         const noteText = `تم إصدار فاتورة جديدة برقم ${newInvoice.invoiceNumber} بقيمة إجمالية ${newInvoice.grandTotal.toLocaleString()} ج.م (${newInvoice.packageName})${newInvoice.adCreditAmount ? ` تتضمن رصيد إعلاني ${newInvoice.adCreditAmount.toLocaleString()} ج.م` : ''}.`;
         const updatedNotes = [
@@ -949,10 +1177,20 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateInvoice = (id: string, updates: Partial<ClientInvoiceRecord>) => {
+    const existingInv = (dataRef.current.invoices || []).find((inv) => inv.id === id);
+    const updatedInv = existingInv ? { ...existingInv, ...updates } : null;
+
     setData((prev) => ({
       ...prev,
       invoices: (prev.invoices || []).map((inv) => (inv.id === id ? { ...inv, ...updates } : inv)),
     }));
+
+    if (updatedInv && isSupabaseConfigured && supabase) {
+      upsertInvoiceToSupabase(updatedInv).then((res) => {
+        if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
+        else if (res.success) setLastCloudSyncAt(new Date().toISOString());
+      });
+    }
   };
 
   const deleteInvoice = (id: string) => {
@@ -960,11 +1198,14 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ...prev,
       invoices: (prev.invoices || []).filter((inv) => inv.id !== id),
     }));
+    if (isSupabaseConfigured && supabase) {
+      deleteInvoiceFromSupabase(id).catch(() => {});
+    }
   };
 
-  const markInvoiceAsPaid = (id: string, paymentMethod = 'تحويل بنكي') => {
+  const markInvoiceAsPaid = (id: string, paymentMethod = 'إنستاباي / محفظة إلكترونية') => {
     const today = new Date().toISOString().split('T')[0];
-    const invoice = (data.invoices || []).find((inv) => inv.id === id);
+    const invoice = (dataRef.current.invoices || []).find((inv) => inv.id === id);
     if (!invoice) return;
 
     updateInvoice(id, {
@@ -975,7 +1216,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // If invoice had an ad credit amount, credit it directly to client's adCreditBalance
     if (invoice.clientId) {
-      const client = (data.inquiries || []).find((c) => c.id === invoice.clientId);
+      const client = (dataRef.current.inquiries || []).find((c) => c.id === invoice.clientId);
       if (client) {
         const adAmt = invoice.adCreditAmount || 0;
         const newBalance = (client.adCreditBalance || 0) + adAmt;
@@ -1165,6 +1406,11 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         resetToDefaults,
         exportDataJson,
         importDataJson,
+        cloudSyncStatus,
+        supabaseMigrationNeeded,
+        lastCloudSyncAt,
+        syncNowToSupabase,
+        refreshFromSupabase,
       }}
     >
       {children}

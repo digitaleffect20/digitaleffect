@@ -266,9 +266,8 @@ export async function generateAccountStatementPdf(
           ${isAr ? 'طرق وقنوات السداد المعتمدة لدى ديجيتال إفكت:' : 'Accepted Payment Methods:'}
         </div>
         <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-          <div>• <strong>البنك التجاري الدولي (CIB):</strong> حساب رقم 100049281729 (EGP)</div>
-          <div>• <strong>إنستاباي (InstaPay):</strong> digitaleffect@instapay</div>
-          <div>• <strong>فودافون كاش:</strong> 01004860386</div>
+          <div>• <strong>إنستاباي (InstaPay):</strong> <span dir="ltr" style="font-family: monospace; font-weight: 800;">01004860386</span></div>
+          <div>• <strong>رقم المحفظة الإلكترونية (فودافون كاش):</strong> <span dir="ltr" style="font-family: monospace; font-weight: 800;">01004860386</span></div>
         </div>
       </div>
 

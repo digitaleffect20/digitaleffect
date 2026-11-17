@@ -17,7 +17,42 @@ export const getClientDeliverableTargets = (
   client: Inquiry,
   packages: ServicePackage[] = []
 ): ClientDeliverableTargets => {
-  // 1. Try parsing directly from client.packageName if it contains numbers like (8 منشور • 4 ريلز)
+  // 1. If client.packageId matches a package in packages catalog
+  if (client.packageId && packages && packages.length > 0) {
+    const pkg = packages.find((p) => p.id === client.packageId);
+    if (pkg && (pkg.postsCount !== undefined || pkg.reelsCount !== undefined)) {
+      const posts = pkg.postsCount ?? 0;
+      const reels = pkg.reelsCount ?? 0;
+      const stories = pkg.storiesCount ?? 0;
+      return {
+        postsTarget: posts,
+        reelsTarget: reels,
+        storiesTarget: stories,
+        totalTarget: Math.max(1, posts + reels + stories),
+        source: 'matched_package',
+      };
+    }
+  }
+
+  // 2. If explicit targets were saved on the client (e.g., customized in Client Profile / Package Editor)
+  if (
+    (client.postsTarget !== undefined && client.postsTarget > 0) ||
+    (client.reelsTarget !== undefined && client.reelsTarget > 0) ||
+    (client.storiesTarget !== undefined && client.storiesTarget > 0)
+  ) {
+    const posts = client.postsTarget ?? 0;
+    const reels = client.reelsTarget ?? 0;
+    const stories = client.storiesTarget ?? 0;
+    return {
+      postsTarget: posts,
+      reelsTarget: reels,
+      storiesTarget: stories,
+      totalTarget: Math.max(1, posts + reels + stories),
+      source: 'explicit',
+    };
+  }
+
+  // 3. Try parsing directly from client.packageName if it contains numbers like (8 منشور • 4 ريلز)
   if (client.packageName) {
     const nameStr = client.packageName;
     const postsMatch = nameStr.match(/(\d+)\s*(?:منشور|posts?)/i);
@@ -38,24 +73,7 @@ export const getClientDeliverableTargets = (
     }
   }
 
-  // 2. If client.packageId matches a package in packages catalog
-  if (client.packageId && packages && packages.length > 0) {
-    const pkg = packages.find((p) => p.id === client.packageId);
-    if (pkg && (pkg.postsCount !== undefined || pkg.reelsCount !== undefined)) {
-      const posts = pkg.postsCount ?? 0;
-      const reels = pkg.reelsCount ?? 0;
-      const stories = pkg.storiesCount ?? 0;
-      return {
-        postsTarget: posts,
-        reelsTarget: reels,
-        storiesTarget: stories,
-        totalTarget: Math.max(1, posts + reels + stories),
-        source: 'matched_package',
-      };
-    }
-  }
-
-  // 3. Match package by name in catalog
+  // 4. Match package by name in catalog
   if (client.packageName && packages && packages.length > 0) {
     const pkg = packages.find((p) => 
       p.name.trim().toLowerCase() === client.packageName?.trim().toLowerCase() ||
@@ -75,24 +93,6 @@ export const getClientDeliverableTargets = (
         source: 'matched_package',
       };
     }
-  }
-
-  // 4. If explicit targets were saved on the client
-  if (
-    (client.postsTarget !== undefined && client.postsTarget > 0) ||
-    (client.reelsTarget !== undefined && client.reelsTarget > 0) ||
-    (client.storiesTarget !== undefined && client.storiesTarget > 0)
-  ) {
-    const posts = client.postsTarget ?? 0;
-    const reels = client.reelsTarget ?? 0;
-    const stories = client.storiesTarget ?? 0;
-    return {
-      postsTarget: posts,
-      reelsTarget: reels,
-      storiesTarget: stories,
-      totalTarget: Math.max(1, posts + reels + stories),
-      source: 'explicit',
-    };
   }
 
   // 5. Fallback based on sector official pricing sheet

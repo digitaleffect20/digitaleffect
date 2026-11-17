@@ -19,11 +19,18 @@ import {
   Loader2,
   Layers,
   CheckSquare,
-  AlertCircle
+  AlertCircle,
+  Wallet
 } from 'lucide-react';
 import html2canvas from 'html2canvas-pro';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import {
+  parseInvoiceAmount,
+  loadSavedTransferInfo,
+  saveTransferInfo,
+  InvoiceTransferInfo,
+} from '../utils/invoicePdfGenerator';
 
 interface ClientInvoiceModalProps {
   isOpen: boolean;
@@ -80,9 +87,22 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   );
 
   const [adCredit, setAdCredit] = useState<number>(adCreditAmount || client.pendingInvoiceAdCredit || 0);
+  const [transferInfo, setTransferInfo] = useState<InvoiceTransferInfo>(() => loadSavedTransferInfo());
 
-  // Financial calculations
-  const numericBudget = parseInt(budget.replace(/\D/g, ''), 10) || 15000;
+  const handleUpdateTransferField = (field: keyof InvoiceTransferInfo, value: string) => {
+    setTransferInfo((prev) => {
+      const next = { ...prev, [field]: value };
+      saveTransferInfo(next);
+      return next;
+    });
+  };
+
+  // Financial calculations (supports Arabic-Indic & English numerals)
+  const parsedBudget = parseInvoiceAmount(budget);
+  const numericBudget = parsedBudget > 0 ? parsedBudget : (client.retainerAmount || 0);
+  const formattedBudget = numericBudget > 0
+    ? `${numericBudget.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
+    : budget;
   const numericGrandTotal = numericBudget + (adCredit || 0);
   const cycleTextAr =
     billingCycle === 'annual'
@@ -114,6 +134,26 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
     try {
       const element = invoiceRef.current;
+
+      // Ensure images (e.g., Digital Effect logo) have finished loading before capture
+      const imgs = Array.from(element.querySelectorAll('img'));
+      await Promise.all(
+        imgs.map((img) => {
+          if (img.complete && img.naturalWidth > 0) {
+            return typeof img.decode === 'function' ? img.decode().catch(() => undefined) : Promise.resolve();
+          }
+          return new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 3000);
+            const done = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+            img.addEventListener('load', done, { once: true });
+            img.addEventListener('error', done, { once: true });
+          });
+        })
+      );
+
       let imgData: string;
       let imgWidth: number;
       let imgHeight: number;
@@ -234,8 +274,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const waPhone = cleanPhone.startsWith('0') ? `20${cleanPhone.slice(1)}` : cleanPhone;
   const waInvoiceText = encodeURIComponent(
     isAr
-      ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nاشتراك الباقة: ${budget} (${cycleTextAr})${adCredit > 0 ? `\nرصيد إعلاني ممول: +${adCredit.toLocaleString()} ج.م` : ''}\nإجمالي المستحق: ${numericGrandTotal.toLocaleString()} ج.م\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
-      : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}). Retainer: ${budget}${adCredit > 0 ? ` + Ad Credit: ${adCredit.toLocaleString()} EGP` : ''}. Total Due: ${numericGrandTotal.toLocaleString()} EGP. Due: ${dueDate}.\n\nDigital Effect Team.`
+      ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nاشتراك الباقة: ${formattedBudget} (${cycleTextAr})${adCredit > 0 ? `\nرصيد إعلاني ممول: +${adCredit.toLocaleString()} ج.م` : ''}\nإجمالي المستحق: ${numericGrandTotal.toLocaleString()} ج.م\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
+      : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}). Retainer: ${formattedBudget}${adCredit > 0 ? ` + Ad Credit: ${adCredit.toLocaleString()} EGP` : ''}. Total Due: ${numericGrandTotal.toLocaleString()} EGP. Due: ${dueDate}.\n\nDigital Effect Team.`
   );
 
   return (
@@ -395,6 +435,34 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
               />
               <span className="text-[10px] font-bold text-blue-600">ج.م</span>
             </div>
+            <div className="flex flex-wrap items-center gap-2.5 bg-emerald-50/70 px-2.5 py-1.5 rounded-lg border border-emerald-200 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-emerald-900 flex items-center gap-1">
+                  <Wallet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{isAr ? 'رقم المحفظة:' : 'Wallet #:'}</span>
+                </span>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={transferInfo.walletNumber}
+                  onChange={(e) => handleUpdateTransferField('walletNumber', e.target.value)}
+                  placeholder="01004860386"
+                  className="font-mono font-bold text-xs px-2 py-0.5 bg-white border border-emerald-300 rounded text-slate-900 w-32 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-700">{isAr ? 'إنستاباي:' : 'InstaPay:'}</span>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={transferInfo.instaPay}
+                  onChange={(e) => handleUpdateTransferField('instaPay', e.target.value)}
+                  placeholder="01004860386"
+                  className="font-mono font-bold text-xs px-2 py-0.5 bg-white border border-slate-300 rounded text-slate-900 w-32 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="text-[11px] text-slate-500 flex items-center gap-1">
@@ -417,21 +485,19 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
             {/* Top Brand Header */}
             <div className="flex items-start justify-between pb-6 border-b-2 border-slate-900 gap-4">
               <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-slate-900 text-white font-black flex items-center justify-center text-lg shadow-sm">
-                    DE
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                      ديجيتال إفكت | Digital Effect
-                    </h2>
-                    <p className="text-[11px] font-bold text-blue-600">
-                      {isAr ? 'للحلول الرقمية والتسويق الإلكتروني المتكامل' : 'Digital Solutions & Integrated Marketing'}
-                    </p>
-                  </div>
+                <div className="mb-2">
+                  <img
+                    src="/assets/aistudio/Digital-effect-logo_d13b47e3.png"
+                    alt="Digital Effect Logo"
+                    crossOrigin="anonymous"
+                    className="h-12 w-auto max-w-[220px] object-contain block"
+                  />
                 </div>
+                <p className="text-[11px] font-extrabold text-blue-600">
+                  {isAr ? 'ديجيتال إفكت للحلول الرقمية والتسويق الإلكتروني المتكامل' : 'Digital Effect — Digital Solutions & Integrated Marketing'}
+                </p>
 
-                <div className="text-[11px] text-slate-500 mt-3 space-y-0.5">
+                <div className="text-[11px] text-slate-500 mt-2 space-y-0.5">
                   <p>📍 {isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</p>
                   <p>📞 {isAr ? 'خدمة العملاء والمبيعات:' : 'Tel:'} <span dir="ltr">01505000349</span></p>
                   <p>✉️ Sales@digitaleffect.net | www.digitaleffect.net</p>
@@ -536,8 +602,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                 <span className="text-[10px] text-slate-300 block font-medium">
                   {isAr ? 'قيمة الاشتراك' : 'Retainer Rate'}
                 </span>
-                <span className="text-lg font-black text-emerald-300">
-                  {budget}
+                <span className="text-lg font-black text-emerald-300 tabular-nums">
+                  {formattedBudget}
                 </span>
               </div>
             </div>
@@ -726,25 +792,26 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
             {/* ============================================================= */}
             <div className="pt-2 flex flex-col sm:flex-row justify-between items-start gap-4">
               {/* Payment Methods */}
-              <div className="w-full sm:w-1/2 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+              <div className="w-full sm:w-1/2 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
                 <span className="font-black text-slate-900 block flex items-center gap-1.5">
                   <CreditCard className="w-3.5 h-3.5 text-blue-600" />
-                  <span>{isAr ? 'طرق السداد والتحويل المعتمدة:' : 'Approved Payment Methods:'}</span>
+                  <span>{isAr ? 'بيانات التحويل وحسابات الدفع المعتمدة:' : 'Approved Transfer & Payment Accounts:'}</span>
                 </span>
-                <p className="text-[11px] text-slate-600">
-                  🏦 {isAr ? 'تحويل بنكي رسمي: البنك التجاري الدولي CIB / البنك الأهلي' : 'Bank Transfer: CIB / NBE'}
+                <p className="text-[11px] text-slate-700 leading-relaxed">
+                  ⚡ <strong className="text-slate-900">{isAr ? 'إنستاباي (InstaPay):' : 'InstaPay:'}</strong>{' '}
+                  <span dir="ltr" className="font-mono font-bold text-slate-900">{transferInfo.instaPay}</span>
                 </p>
-                <p className="text-[11px] text-slate-600">
-                  📱 {isAr ? 'فودافون كاش / إنستاباي (InstaPay):' : 'InstaPay / Wallet:'}{' '}
-                  <span className="font-mono font-bold text-slate-900">01505000349</span>
+                <p className="text-[11px] text-slate-700 leading-relaxed">
+                  📱 <strong className="text-slate-900">{isAr ? 'رقم المحفظة الإلكترونية (فودافون كاش / E-Wallet):' : 'E-Wallet / Vodafone Cash:'}</strong>{' '}
+                  <span dir="ltr" className="font-mono font-bold text-slate-900">{transferInfo.walletNumber}</span>
                 </p>
               </div>
 
               {/* Total Calculation Card */}
               <div className="w-full sm:w-1/2 p-4 rounded-xl bg-slate-100 border border-slate-200 space-y-2 text-end">
                 <div className="flex justify-between text-xs text-slate-600">
-                  <span>{isAr ? 'الإجمالي الفرعي للباقة:' : 'Retainer Subtotal:'}</span>
-                  <span className="font-black text-slate-900 tabular-nums">{budget}</span>
+                  <span>{isAr ? 'قيمة باقة التسويق الرقمي:' : 'Retainer Subtotal:'}</span>
+                  <span className="font-black text-slate-900 tabular-nums">{formattedBudget}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-600">
                   <span>{isAr ? 'ضريبة القيمة المضافة / الرسوم:' : 'VAT / Handling:'}</span>

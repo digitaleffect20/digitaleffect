@@ -35,7 +35,10 @@ import {
   BarChart3,
   Receipt,
   Printer,
-  Download
+  Download,
+  Trash2,
+  User,
+  Package
 } from 'lucide-react';
 import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from './ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from './ClientPackageDeliverablesCard';
@@ -43,13 +46,20 @@ import { ClientPerformanceSummary } from './ClientPerformanceSummary';
 import { ClientInvoiceModal } from './ClientInvoiceModal';
 import { AccountStatementModal } from './AccountStatementModal';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
-import { generateClientInvoicePdf } from '../utils/invoicePdfGenerator';
+import { generateClientInvoicePdf, parseInvoiceAmount } from '../utils/invoicePdfGenerator';
+import { CountryCode } from 'libphonenumber-js';
+import { validateAndFormatPhone } from '../lib/phoneUtils';
+import { deleteInquiryFromDb, isSupabaseConfigured } from '../lib/supabase';
+
+export type ClientDrawerTab = 'overview' | 'profile' | 'performance' | 'deliverables' | 'billing' | 'statement' | 'notes';
 
 interface ClientAccountDrawerProps {
   client: Inquiry | null;
   isOpen: boolean;
   onClose: () => void;
   onClientUpdated?: (updated: Inquiry) => void;
+  onClientDeleted?: (id: string) => void;
+  initialTab?: ClientDrawerTab;
 }
 
 const DEFAULT_STAGES: ClientWorkflowStage[] = DEFAULT_WORKFLOW_STAGES;
@@ -59,12 +69,14 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   isOpen,
   onClose,
   onClientUpdated,
+  onClientDeleted,
+  initialTab = 'overview',
 }) => {
-  const { language, updateInquiry, data, addInvoice } = useAgencyData();
+  const { language, updateInquiry, deleteInquiry, data, addInvoice } = useAgencyData();
   const isAr = language === 'ar';
 
   // Local editable states initialized safely from client data
-  const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'deliverables' | 'billing' | 'statement' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<ClientDrawerTab>(initialTab);
   const [contractStatus, setContractStatus] = useState<Inquiry['contractStatus']>(client?.contractStatus || 'active');
   const [paymentStatus, setPaymentStatus] = useState<Inquiry['paymentStatus']>(client?.paymentStatus || 'paid');
   const [billingCycle, setBillingCycle] = useState<Inquiry['billingCycle']>(client?.billingCycle || 'monthly');
@@ -74,6 +86,21 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   );
   const [budget, setBudget] = useState(client?.budget || (isAr ? '15,000 ج.م شهرياً' : '15,000 EGP / month'));
   const [packageName, setPackageName] = useState(client?.packageName || (isAr ? 'باقة مخصصة' : 'Custom Package'));
+
+  // Editable Client Profile & Package Settings
+  const [clientName, setClientName] = useState(client?.name || '');
+  const [clientCompany, setClientCompany] = useState(client?.company || '');
+  const [clientPhone, setClientPhone] = useState(client?.phone || '');
+  const [clientSector, setClientSector] = useState<'all' | 'b2b' | 'b2c' | 'medical'>(client?.sector || 'b2c');
+  const [clientGeneralNotes, setClientGeneralNotes] = useState(client?.notes || '');
+  const [accountManager, setAccountManager] = useState(client?.accountManager || '');
+  const [selectedPackageId, setSelectedPackageId] = useState(client?.packageId || '');
+  const [customPostsTarget, setCustomPostsTarget] = useState<number>(client?.postsTarget ?? 0);
+  const [customReelsTarget, setCustomReelsTarget] = useState<number>(client?.reelsTarget ?? 0);
+  const [customStoriesTarget, setCustomStoriesTarget] = useState<number>(client?.storiesTarget ?? 0);
+  const [profileFormError, setProfileFormError] = useState<string | null>(null);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeletingClient, setIsDeletingClient] = useState(false);
 
   // Workflow Stages state with real-time sync
   const [workflowStages, setWorkflowStages] = useState<ClientWorkflowStage[]>(
@@ -112,6 +139,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   // Synchronize state when client or isOpen changes
   useEffect(() => {
     if (client && isOpen) {
+      const initialResolved = getClientDeliverableTargets(client, data?.packages || []);
       setContractStatus(client.contractStatus || 'active');
       setPaymentStatus(client.paymentStatus || 'paid');
       setBillingCycle(client.billingCycle || 'monthly');
@@ -119,6 +147,24 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
       setRenewalDate(client.renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
       setBudget(client.budget || (isAr ? '15,000 ج.م شهرياً' : '15,000 EGP / month'));
       setPackageName(client.packageName || (isAr ? 'باقة مخصصة' : 'Custom Package'));
+
+      setClientName(client.name || '');
+      setClientCompany(client.company || '');
+      setClientPhone(client.phone || '');
+      setClientSector(client.sector || 'b2c');
+      setClientGeneralNotes(client.notes || '');
+      setAccountManager(client.accountManager || '');
+      const matchedCatalogPkg = (data?.packages || []).find(
+        (p) => p.id === client.packageId || p.name === client.packageName || p.nameEn === client.packageName
+      );
+      setSelectedPackageId(client.packageId || matchedCatalogPkg?.id || '');
+      setCustomPostsTarget(initialResolved.postsTarget);
+      setCustomReelsTarget(initialResolved.reelsTarget);
+      setCustomStoriesTarget(initialResolved.storiesTarget);
+      setProfileFormError(null);
+      setIsConfirmingDelete(false);
+      setIsDeletingClient(false);
+
       setAdCreditBalance(client.adCreditBalance ?? 0);
       setInvoiceAdCredit(client.pendingInvoiceAdCredit ?? 0);
       setAdCreditFundedTotal(client.adCreditFundedTotal ?? (client.adCreditBalance ?? 0));
@@ -132,22 +178,19 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
       setPostsDelivered(client.postsDelivered ?? 0);
       setReelsDelivered(client.reelsDelivered ?? 0);
       setStoriesDelivered(client.storiesDelivered ?? 0);
-      setActiveTab('overview');
+      setActiveTab(initialTab || 'overview');
     }
-  }, [client, isOpen, isAr]);
+  }, [client, isOpen, isAr, initialTab]);
 
   const showNotification = (msg: string) => {
     setSaveSuccessNotice(msg);
     setTimeout(() => setSaveSuccessNotice(null), 3000);
   };
 
-  // Deliverables progress targets
-  const resolvedTargets = client 
-    ? getClientDeliverableTargets(client, data?.packages || []) 
-    : { postsTarget: 4, reelsTarget: 0, storiesTarget: 0, totalTarget: 4, source: 'sector_default' as const };
-  const targetPosts = resolvedTargets.postsTarget;
-  const targetReels = resolvedTargets.reelsTarget;
-  const targetStories = resolvedTargets.storiesTarget;
+  // Deliverables progress targets (reflect live edits in Profile & Package tab)
+  const targetPosts = customPostsTarget;
+  const targetReels = customReelsTarget;
+  const targetStories = customStoriesTarget;
 
   // Direct Invoice PDF Download using jsPDF
   const handleDirectDownloadInvoice = async () => {
@@ -172,7 +215,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
       if (res.success) {
         showNotification(isAr ? 'تم تحميل ملف الفاتورة PDF وحفظها بالأرشيف!' : 'Invoice PDF downloaded and archived!');
         try {
-          const numRetainer = parseInt(budget.replace(/\D/g, ''), 10) || 0;
+          const parsedRet = parseInvoiceAmount(budget);
+          const numRetainer = parsedRet > 0 ? parsedRet : (client.retainerAmount || 0);
           const grandTotal = numRetainer + (invoiceAdCredit || 0);
           const today = new Date().toISOString().split('T')[0];
           const invNum = `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${client.id.replace(/\D/g, '').slice(-3) || '101'}`;
@@ -335,22 +379,89 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     );
   };
 
+  // Select a catalog package from agency packages
+  const handleSelectCatalogPackage = (pkgId: string) => {
+    setSelectedPackageId(pkgId);
+    if (!pkgId) return;
+    const found = (data.packages || []).find((p) => p.id === pkgId);
+    if (found) {
+      setPackageName(isAr ? found.name : found.nameEn);
+      setCustomPostsTarget(found.postsCount ?? 0);
+      setCustomReelsTarget(found.reelsCount ?? 0);
+      setCustomStoriesTarget(found.storiesCount ?? 0);
+      setBudget(
+        isAr
+          ? `${found.price.toLocaleString('ar-EG')} ج.م ${found.period}`
+          : `${found.price.toLocaleString('en-US')} ${found.currencyEn} ${found.periodEn}`
+      );
+    }
+  };
+
+  // Delete client permanently from CRM + Supabase
+  const handleConfirmDeleteClient = async () => {
+    if (!client) return;
+    setIsDeletingClient(true);
+    try {
+      deleteInquiry(client.id);
+      if (isSupabaseConfigured) {
+        await deleteInquiryFromDb(client.id);
+      }
+      if (onClientDeleted) {
+        onClientDeleted(client.id);
+      }
+      setIsConfirmingDelete(false);
+      onClose();
+    } catch (err) {
+      console.error('Failed to delete client:', err);
+    } finally {
+      setIsDeletingClient(false);
+    }
+  };
+
   // Save changes
   const handleSaveAll = () => {
     if (!client) return;
+    const trimmedName = clientName.trim();
+    const trimmedPhone = clientPhone.trim();
+
+    if (!trimmedName || trimmedName.length < 2) {
+      setProfileFormError(isAr ? 'يرجى إدخال اسم العميل / المسؤول.' : 'Please enter client name.');
+      setActiveTab('profile');
+      return;
+    }
+    if (!trimmedPhone || trimmedPhone.length < 6) {
+      setProfileFormError(isAr ? 'يرجى إدخال رقم هاتف صالح.' : 'Please enter a valid phone number.');
+      setActiveTab('profile');
+      return;
+    }
+
+    setProfileFormError(null);
+    const phoneValidation = validateAndFormatPhone(trimmedPhone, (client.phoneCountry || 'EG') as CountryCode);
+    const cleanPhoneE164 = phoneValidation.isValid && phoneValidation.e164 ? phoneValidation.e164 : trimmedPhone;
+    const cleanPackageName = packageName.trim() || (isAr ? 'باقة مخصصة' : 'Custom Package');
+
     const updates: Partial<Inquiry> = {
+      name: trimmedName,
+      company: clientCompany.trim() || undefined,
+      phone: trimmedPhone,
+      phoneE164: cleanPhoneE164,
+      sector: clientSector,
+      notes: clientGeneralNotes.trim() || undefined,
+      accountManager: accountManager.trim() || undefined,
+      packageId: selectedPackageId || undefined,
+      packageName: cleanPackageName,
       contractStatus,
       paymentStatus,
       billingCycle,
       contractStartDate,
       renewalDate,
-      budget,
-      packageName,
-      postsTarget: targetPosts,
+      budget: budget.trim(),
+      retainerAmount: parseInvoiceAmount(budget) || client.retainerAmount,
+      postsTarget: Math.max(0, Number(targetPosts) || 0),
       postsDelivered,
-      reelsTarget: targetReels,
+      reelsTarget: Math.max(0, Number(targetReels) || 0),
       reelsDelivered,
-      storiesTarget: targetStories,
+      storiesTarget: Math.max(0, Number(targetStories) || 0),
       storiesDelivered,
       workflowStages,
       todayTaskTitle,
@@ -361,7 +472,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     };
 
     updateInquiry(client.id, updates);
-    showNotification(isAr ? 'تم حفظ وتحديث بيانات حساب العميل بنجاح!' : 'Client account updated successfully!');
+    showNotification(isAr ? 'تم حفظ وتحديث بيانات العميل والباقة بنجاح!' : 'Client profile & package updated successfully!');
     if (onClientUpdated) {
       onClientUpdated({ ...client, ...updates });
     }
@@ -434,21 +545,21 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   ? 'bg-rose-700 border border-rose-500/50 text-rose-100' 
                   : 'bg-teal-700/80 text-teal-200 border border-teal-500/40'
               }`}>
-                {(client.company || client.name).slice(0, 1).toUpperCase()}
+                {(clientCompany || clientName || client.company || client.name).slice(0, 1).toUpperCase()}
               </div>
 
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base sm:text-lg font-black text-white">{client.company || client.name}</h3>
+                  <h3 className="text-base sm:text-lg font-black text-white">{clientCompany || clientName || client.company || client.name}</h3>
 
                   <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md uppercase border ${
-                    client.sector === 'medical' 
+                    clientSector === 'medical' 
                       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
-                      : client.sector === 'b2b'
+                      : clientSector === 'b2b'
                       ? 'bg-blue-600/30 text-blue-300 border-blue-500/40'
                       : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
                   }`}>
-                    {client.sector.toUpperCase()}
+                    {clientSector.toUpperCase()}
                   </span>
 
                   <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
@@ -467,11 +578,11 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 <div className="flex items-center gap-3 text-[11px] text-slate-300 flex-wrap">
                   <span className="flex items-center gap-1 font-semibold text-slate-200">
                     <UserCheck className="w-3.5 h-3.5 text-teal-400" />
-                    <span>{client.name}</span>
+                    <span>{clientName || client.name}</span>
                   </span>
                   <span className="flex items-center gap-1 font-mono text-slate-300">
                     <Phone className="w-3.5 h-3.5 text-slate-400" />
-                    <span dir="ltr">{client.phone}</span>
+                    <span dir="ltr">{clientPhone || client.phone}</span>
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-slate-400">
                     <Calendar className="w-3 h-3" />
@@ -483,6 +594,20 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
 
             {/* Left side (in RTL): Action buttons */}
             <div className="flex items-center gap-2 self-end sm:self-center shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setActiveTab('profile')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all inline-flex items-center gap-1.5 cursor-pointer border ${
+                  activeTab === 'profile'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                    : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700'
+                }`}
+                title={isAr ? 'تعديل بيانات العميل والباقة' : 'Edit Client & Package'}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تعديل البيانات والباقة' : 'Edit Client'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsInvoiceModalOpen(true)}
@@ -505,12 +630,22 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
               </a>
 
               <a
-                href={`tel:${client.phone}`}
+                href={`tel:${clientPhone || client.phone}`}
                 className="p-2 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                 title={isAr ? 'اتصال هاتفي' : 'Call Client'}
               >
                 <Phone className="w-4 h-4" />
               </a>
+
+              <button
+                type="button"
+                onClick={() => setIsConfirmingDelete(true)}
+                className="p-2 text-rose-400 hover:text-white bg-rose-950/60 hover:bg-rose-600 border border-rose-500/30 rounded-xl transition-colors cursor-pointer"
+                title={isAr ? 'حذف العميل نهائياً' : 'Delete Client'}
+                aria-label={isAr ? 'حذف العميل' : 'Delete Client'}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
 
               <button
                 type="button"
@@ -539,10 +674,23 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
 
             <button
               type="button"
+              onClick={() => setActiveTab('profile')}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeTab === 'profile'
+                  ? 'bg-amber-400 text-slate-950 shadow-sm font-black'
+                  : 'text-amber-300 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>{isAr ? 'بيانات العميل والباقة' : 'Profile & Package'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab('performance')}
               className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === 'performance'
-                  ? 'bg-blue-600 text-white shadow-sm font-black'
+                  ? 'bg-white text-slate-900 shadow-sm font-black'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
               }`}
             >
@@ -600,6 +748,48 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Delete Client Confirmation Banner */}
+        {isConfirmingDelete && (
+          <div className="bg-rose-50 border-b border-rose-200 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+                <AlertTriangle className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-black text-rose-950">
+                  {isAr
+                    ? `هل أنت متأكد من حذف ملف العميل "${clientCompany || clientName}" نهائياً؟`
+                    : `Permanently delete client "${clientCompany || clientName}"?`}
+                </p>
+                <p className="text-[11px] text-rose-700 mt-0.5">
+                  {isAr
+                    ? 'سيتم حذف العميل من لوحة التحكم ومن قاعدة بيانات Supabase بشكل نهائي (لا يمكن التراجع عن هذا الإجراء).'
+                    : 'This removes the client permanently from CRM and Supabase. This action cannot be undone.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <button
+                type="button"
+                disabled={isDeletingClient}
+                onClick={() => setIsConfirmingDelete(false)}
+                className="px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl cursor-pointer"
+              >
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingClient}
+                onClick={handleConfirmDeleteClient}
+                className="px-4 py-1.5 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-sm inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {isDeletingClient ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>{isAr ? 'تأكيد الحذف النهائي' : 'Confirm Delete'}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Notification Toast */}
         {saveSuccessNotice && (
@@ -859,6 +1049,347 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                     <span>{isAr ? 'فتح قسم ملخص الأداء والرسوم البيانية' : 'View Full Performance Charts'}</span>
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: EDIT CLIENT PROFILE & PACKAGE SETTINGS */}
+          {activeTab === 'profile' && (
+            <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-150">
+              {profileFormError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{profileFormError}</span>
+                </div>
+              )}
+
+              {/* Section 1: Client Basic Info */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <User className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900">
+                        {isAr ? 'البيانات الأساسية للعميل' : 'Client Basic Details'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {isAr ? 'تعديل اسم المسؤول، اسم الشركة أو العيادة، رقم الهاتف، والقطاع.' : 'Edit contact name, company/brand, phone, sector, and notes.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'اسم العميل / المسؤول *' : 'Client / Contact Name *'}
+                    </label>
+                    <input
+                      type="text"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      placeholder={isAr ? 'اسم العميل...' : 'Client full name...'}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'اسم الشركة / العيادة / النشاط' : 'Company / Clinic / Brand'}
+                    </label>
+                    <input
+                      type="text"
+                      value={clientCompany}
+                      onChange={(e) => setClientCompany(e.target.value)}
+                      placeholder={isAr ? 'مثال: هانورا للتطوير العقاري...' : 'Company name...'}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'رقم الهاتف / الواتساب *' : 'Phone / WhatsApp *'}
+                    </label>
+                    <input
+                      type="tel"
+                      dir="ltr"
+                      value={clientPhone}
+                      onChange={(e) => setClientPhone(e.target.value)}
+                      placeholder="010xxxxxxxx"
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-mono font-bold text-start focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'القطاع المستهدف (Sector)' : 'Sector'}
+                    </label>
+                    <select
+                      value={clientSector}
+                      onChange={(e) => setClientSector(e.target.value as any)}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="b2b">{isAr ? 'قطاع الأعمال والمصانع (B2B)' : 'B2B & Enterprise'}</option>
+                      <option value="b2c">{isAr ? 'التجزئة والمستهلكين (B2C)' : 'B2C & Retail'}</option>
+                      <option value="medical">{isAr ? 'القطاع الطبي والعيادات (Medical)' : 'Medical & Clinics'}</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'مدير الحساب المسؤول' : 'Account Manager'}
+                    </label>
+                    <input
+                      type="text"
+                      value={accountManager}
+                      onChange={(e) => setAccountManager(e.target.value)}
+                      placeholder={isAr ? 'اسم مدير الحساب (اختياري)...' : 'Assigned manager (optional)...'}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'ملاحظات عامة' : 'General Notes'}
+                    </label>
+                    <input
+                      type="text"
+                      value={clientGeneralNotes}
+                      onChange={(e) => setClientGeneralNotes(e.target.value)}
+                      placeholder={isAr ? 'ملاحظات أو تفاصيل الاتفاق...' : 'General notes...'}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Package & Deliverables Customization */}
+              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                      <Package className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900">
+                        {isAr ? 'تغيير الباقة وتعديل المخرجات والسعر' : 'Package, Deliverables & Pricing'}
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        {isAr ? 'اختر باقة جاهزة من الوكالة أو عدّل اسم الباقة والمخرجات والسعر يدوياً.' : 'Pick a catalog package or customize title, monthly deliverables, and price.'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-black px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
+                    {targetPosts} {isAr ? 'منشور' : 'Posts'} • {targetReels} {isAr ? 'ريلز' : 'Reels'} • {targetStories} {isAr ? 'ستوري' : 'Stories'}
+                  </span>
+                </div>
+
+                {/* Quick Catalog Selector */}
+                <div className="space-y-1.5 text-xs">
+                  <label className="font-bold text-slate-700 block">
+                    {isAr ? 'تبديل سريع إلى إحدى باقات الوكالة الجاهزة:' : 'Quick Switch to Agency Catalog Package:'}
+                  </label>
+                  <select
+                    value={selectedPackageId}
+                    onChange={(e) => handleSelectCatalogPackage(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">{isAr ? '— باقة مخصصة / تعديل يدوي —' : '— Custom Package / Manual Setup —'}</option>
+                    {(data.packages || []).map((pkg) => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {`[${pkg.sector.toUpperCase()}] ${isAr ? pkg.name : pkg.nameEn} — ${pkg.price.toLocaleString()} ${isAr ? 'ج.م' : pkg.currencyEn} (${pkg.postsCount ?? 0} بوست • ${pkg.reelsCount ?? 0} ريلز • ${pkg.storiesCount ?? 0} ستوري)`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Package Name + Budget + Cycle */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="space-y-1 sm:col-span-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'اسم الباقة المعتمد للعميل:' : 'Package Title:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={packageName}
+                      onChange={(e) => {
+                        setPackageName(e.target.value);
+                        setSelectedPackageId('');
+                      }}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'قيمة الاشتراك / الميزانية:' : 'Retainer Fee / Budget:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={budget}
+                      onChange={(e) => setBudget(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-slate-700 block">
+                      {isAr ? 'دورة التعاقد:' : 'Billing Cycle:'}
+                    </label>
+                    <select
+                      value={billingCycle}
+                      onChange={(e) => setBillingCycle(e.target.value as any)}
+                      className="w-full p-2.5 bg-slate-50 focus:bg-white rounded-xl border border-slate-200 text-slate-900 font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="monthly">{isAr ? 'شهرياً (Monthly)' : 'Monthly'}</option>
+                      <option value="quarterly">{isAr ? 'ربع سنوي (Quarterly)' : 'Quarterly'}</option>
+                      <option value="annual">{isAr ? 'سنوي (Annual)' : 'Annual'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Custom Deliverable Targets */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+                  <div className="p-3 bg-sky-50/70 rounded-xl border border-sky-200/80 space-y-1.5">
+                    <label className="font-bold text-sky-900 block">
+                      {isAr ? 'عدد البوستات المطلوبة شهرياً:' : 'Monthly Posts Target:'}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPackageId('');
+                          setCustomPostsTarget((v) => Math.max(0, v - 1));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-white border border-sky-200 text-sky-800 font-black hover:bg-sky-100 cursor-pointer flex items-center justify-center"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        value={customPostsTarget}
+                        onChange={(e) => {
+                          setSelectedPackageId('');
+                          setCustomPostsTarget(Math.max(0, parseInt(e.target.value, 10) || 0));
+                        }}
+                        className="flex-1 text-center p-1.5 bg-white border border-sky-200 rounded-lg font-black text-slate-900 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPackageId('');
+                          setCustomPostsTarget((v) => v + 1);
+                        }}
+                        className="w-8 h-8 rounded-lg bg-sky-600 text-white font-black hover:bg-sky-700 cursor-pointer flex items-center justify-center"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-200/80 space-y-1.5">
+                    <label className="font-bold text-purple-900 block">
+                      {isAr ? 'عدد الريلز المطلوبة شهرياً:' : 'Monthly Reels Target:'}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPackageId('');
+                          setCustomReelsTarget((v) => Math.max(0, v - 1));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-white border border-purple-200 text-purple-800 font-black hover:bg-purple-100 cursor-pointer flex items-center justify-center"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        value={customReelsTarget}
+                        onChange={(e) => {
+                          setSelectedPackageId('');
+                          setCustomReelsTarget(Math.max(0, parseInt(e.target.value, 10) || 0));
+                        }}
+                        className="flex-1 text-center p-1.5 bg-white border border-purple-200 rounded-lg font-black text-slate-900 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPackageId('');
+                          setCustomReelsTarget((v) => v + 1);
+                        }}
+                        className="w-8 h-8 rounded-lg bg-purple-600 text-white font-black hover:bg-purple-700 cursor-pointer flex items-center justify-center"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200/80 space-y-1.5">
+                    <label className="font-bold text-amber-900 block">
+                      {isAr ? 'عدد الستوريز المطلوبة شهرياً:' : 'Monthly Stories Target:'}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPackageId('');
+                          setCustomStoriesTarget((v) => Math.max(0, v - 1));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-white border border-amber-200 text-amber-800 font-black hover:bg-amber-100 cursor-pointer flex items-center justify-center"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min={0}
+                        value={customStoriesTarget}
+                        onChange={(e) => {
+                          setSelectedPackageId('');
+                          setCustomStoriesTarget(Math.max(0, parseInt(e.target.value, 10) || 0));
+                        }}
+                        className="flex-1 text-center p-1.5 bg-white border border-amber-200 rounded-lg font-black text-slate-900 text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPackageId('');
+                          setCustomStoriesTarget((v) => v + 1);
+                        }}
+                        className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black hover:bg-amber-600 cursor-pointer flex items-center justify-center"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Danger Zone - Delete Client */}
+              <div className="bg-rose-50/80 p-4 sm:p-5 rounded-2xl border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <h4 className="text-xs sm:text-sm font-black text-rose-950 flex items-center gap-1.5">
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                    <span>{isAr ? 'منطقة الخطر: حذف العميل من النظام' : 'Danger Zone: Delete Client'}</span>
+                  </h4>
+                  <p className="text-[11px] text-rose-800">
+                    {isAr
+                      ? 'سيؤدي حذف العميل إلى إزالة ملفه بالكامل من قسم العملاء ومن قاعدة البيانات السحابية.'
+                      : 'Permanently removes this client profile from the CRM dashboard and Supabase database.'}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingDelete(true)}
+                  className="px-4 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0 self-start sm:self-center"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isAr ? 'حذف هذا العميل نهائياً' : 'Delete Client Permanently'}</span>
+                </button>
               </div>
             </div>
           )}
@@ -1433,9 +1964,14 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                       {isAr ? 'المبلغ الإجمالي المستحق بالفاتورة (اشتراك الباقة + الرصيد الإعلاني):' : 'Total Invoice Due (Retainer + Ad Credit):'}
                     </span>
                     <span className="text-base sm:text-lg font-black text-emerald-400 tabular-nums">
-                      {(parseInt(budget.replace(/\D/g, ''), 10) || 0) + (invoiceAdCredit || 0) > 0
-                        ? `${((parseInt(budget.replace(/\D/g, ''), 10) || 0) + (invoiceAdCredit || 0)).toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
-                        : budget}
+                      {(() => {
+                        const parsedRet = parseInvoiceAmount(budget);
+                        const effRetainer = parsedRet > 0 ? parsedRet : (client.retainerAmount || 0);
+                        const combined = effRetainer + (invoiceAdCredit || 0);
+                        return combined > 0
+                          ? `${combined.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
+                          : budget;
+                      })()}
                     </span>
                   </div>
 

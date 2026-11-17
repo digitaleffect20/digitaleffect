@@ -4,6 +4,103 @@ import { toPng } from 'html-to-image';
 import { Inquiry } from '../types';
 import { getClientDeliverableTargets } from './workflowUtils';
 
+export interface InvoiceTransferInfo {
+  instaPay: string;
+  walletNumber: string;
+}
+
+export const DEFAULT_INVOICE_TRANSFER_INFO: InvoiceTransferInfo = {
+  instaPay: '01004860386',
+  walletNumber: '01004860386',
+};
+
+const TRANSFER_STORAGE_KEY = 'de_invoice_transfer_info_v2';
+
+/**
+ * Normalizes Arabic-Indic (٠-٩) & Eastern Arabic (۰-۹) numerals to standard ASCII digits.
+ */
+export function normalizeNumerals(input: string): string {
+  return input
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+    .replace(/\u066C/g, ',')
+    .replace(/\u066B/g, '.');
+}
+
+/**
+ * Safely extracts numeric currency amount from strings like "٥٠٠٠", "5,000 ج.م", "5000.00", etc.
+ */
+export function parseInvoiceAmount(value: string | number | undefined | null): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? Math.max(0, value) : 0;
+  }
+  if (!value) return 0;
+
+  const normalized = normalizeNumerals(String(value).trim());
+  const match = normalized.match(/\d[\d,]*(?:\.\d+)?/);
+  if (!match) return 0;
+
+  const parsed = parseFloat(match[0].replace(/,/g, ''));
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+}
+
+export function loadSavedTransferInfo(): InvoiceTransferInfo {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return DEFAULT_INVOICE_TRANSFER_INFO;
+    }
+    const raw = window.localStorage.getItem(TRANSFER_STORAGE_KEY);
+    if (!raw) return DEFAULT_INVOICE_TRANSFER_INFO;
+    const parsed = JSON.parse(raw);
+    return {
+      instaPay: parsed.instaPay?.trim() || DEFAULT_INVOICE_TRANSFER_INFO.instaPay,
+      walletNumber: parsed.walletNumber?.trim() || DEFAULT_INVOICE_TRANSFER_INFO.walletNumber,
+    };
+  } catch {
+    return DEFAULT_INVOICE_TRANSFER_INFO;
+  }
+}
+
+export function saveTransferInfo(info: Partial<InvoiceTransferInfo>): InvoiceTransferInfo {
+  const current = loadSavedTransferInfo();
+  const next: InvoiceTransferInfo = {
+    instaPay: info.instaPay !== undefined ? info.instaPay : current.instaPay,
+    walletNumber: info.walletNumber !== undefined ? info.walletNumber : current.walletNumber,
+  };
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(TRANSFER_STORAGE_KEY, JSON.stringify(next));
+    }
+  } catch {
+    // Ignore storage quota errors
+  }
+  return next;
+}
+
+async function waitForImages(container: HTMLElement): Promise<void> {
+  const imgs = Array.from(container.querySelectorAll('img'));
+  if (imgs.length === 0) return;
+
+  await Promise.all(
+    imgs.map((img) => {
+      if (img.complete && img.naturalWidth > 0) {
+        return typeof img.decode === 'function'
+          ? img.decode().catch(() => undefined)
+          : Promise.resolve();
+      }
+      return new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 3000);
+        const done = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+      });
+    })
+  );
+}
+
 export interface GenerateInvoicePdfOptions {
   client: Inquiry;
   packageName?: string;
@@ -18,13 +115,14 @@ export interface GenerateInvoicePdfOptions {
   contractStartDate?: string;
   renewalDate?: string;
   invoiceNumber?: string;
+  transferInfo?: Partial<InvoiceTransferInfo>;
   isAr?: boolean;
 }
 
 /**
  * Generates an official A4 Client Invoice PDF using jsPDF.
  * Renders package name, deliverables breakdown, total cost, client details,
- * payment terms, official agency stamp and bank details.
+ * payment terms, official agency stamp and bank/wallet transfer details.
  */
 export async function generateClientInvoicePdf(
   options: GenerateInvoicePdfOptions
@@ -40,10 +138,23 @@ export async function generateClientInvoicePdf(
     isAr = true,
   } = options;
 
-  // Calculate numeric grand total including ad credit
-  const numericRetainer = parseInt(totalCost.replace(/\D/g, ''), 10) || 0;
-  const grandTotalNumeric = numericRetainer + (adCreditAmount || 0);
-  const finalGrandTotalStr = grandTotalNumeric > 0 
+  const savedTransfer = loadSavedTransferInfo();
+  const transferInfo: InvoiceTransferInfo = {
+    instaPay: options.transferInfo?.instaPay?.trim() || savedTransfer.instaPay,
+    walletNumber: options.transferInfo?.walletNumber?.trim() || savedTransfer.walletNumber,
+  };
+
+  // Calculate numeric grand total including ad credit (supports Arabic-Indic & English digits)
+  const parsedCost = parseInvoiceAmount(totalCost);
+  const numericRetainer = parsedCost > 0 ? parsedCost : (client.retainerAmount || 0);
+  const effectiveAdCredit = parseInvoiceAmount(adCreditAmount);
+  const grandTotalNumeric = numericRetainer + effectiveAdCredit;
+
+  const formattedRetainerStr = numericRetainer > 0
+    ? `${numericRetainer.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
+    : totalCost;
+
+  const finalGrandTotalStr = grandTotalNumeric > 0
     ? `${grandTotalNumeric.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
     : totalCost;
 
@@ -103,23 +214,23 @@ export async function generateClientInvoicePdf(
     targetElement.style.zIndex = '-100';
 
     targetElement.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 2px solid #0f172a;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-          <div style="width: 48px; height: 48px; border-radius: 12px; background-color: #0f172a; color: #ffffff; font-weight: 900; font-size: 20px; display: flex; align-items: center; justify-content: center; letter-spacing: -1px;">
-            DE
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; border-bottom: 2px solid #0f172a;">
+        <div>
+          <div style="margin-bottom: 6px;">
+            <img
+              src="/assets/aistudio/Digital-effect-logo_d13b47e3.png"
+              alt="Digital Effect Logo"
+              crossorigin="anonymous"
+              style="height: 46px; width: auto; max-width: 220px; object-fit: contain; display: block;"
+            />
           </div>
-          <div>
-            <h1 style="margin: 0; font-size: 20px; font-weight: 900; color: #0f172a; line-height: 1.2;">
-              ديجيتال إفكت | Digital Effect
-            </h1>
-            <p style="margin: 3px 0 0; font-size: 11px; font-weight: 700; color: #2563eb;">
-              ${isAr ? 'للحلول الرقمية والتسويق الإلكتروني المتكامل' : 'Digital Solutions & Integrated Marketing'}
-            </p>
-            <div style="margin-top: 6px; font-size: 10px; color: #64748b; line-height: 1.4;">
-              <span>📍 ${isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</span> • 
-              <span>📞 01505000349</span> • 
-              <span>✉️ sales@digitaleffect.net</span>
-            </div>
+          <p style="margin: 2px 0 0; font-size: 11px; font-weight: 800; color: #2563eb;">
+            ${isAr ? 'ديجيتال إفكت للحلول الرقمية والتسويق الإلكتروني المتكامل' : 'Digital Effect — Digital Solutions & Integrated Marketing'}
+          </p>
+          <div style="margin-top: 5px; font-size: 10px; color: #64748b; line-height: 1.4;">
+            <span>📍 ${isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</span> • 
+            <span>📞 01505000349</span> • 
+            <span>✉️ sales@digitaleffect.net</span>
           </div>
         </div>
 
@@ -138,7 +249,7 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Billed to grid -->
-      <div style="display: flex; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 14px 18px; border-radius: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px;">
+      <div style="display: flex; justify-content: space-between; gap: 16px; margin-top: 18px; padding: 14px 18px; border-radius: 12px; background-color: #f8fafc; border: 1px solid #e2e8f0; font-size: 11px;">
         <div>
           <span style="font-size: 9.5px; font-weight: 900; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 3px;">
             ${isAr ? 'بيانات العميل / الجهة المتعاقدة:' : 'BILLED TO:'}
@@ -166,7 +277,7 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Package Title Banner -->
-      <div style="margin-top: 18px; padding: 14px 18px; border-radius: 12px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #1e3a8a 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+      <div style="margin-top: 16px; padding: 14px 18px; border-radius: 12px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #1e3a8a 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
         <div>
           <span style="font-size: 9.5px; font-weight: 800; color: #93c5fd; text-transform: uppercase; display: block;">
             ${isAr ? 'الباقة التسويقية المعتمدة:' : 'OFFICIAL MARKETING PACKAGE:'}
@@ -180,13 +291,13 @@ export async function generateClientInvoicePdf(
             ${isAr ? 'قيمة الاشتراك' : 'Retainer Rate'}
           </span>
           <div style="font-size: 17px; font-weight: 900; color: #6ee7b7;">
-            ${totalCost}
+            ${formattedRetainerStr}
           </div>
         </div>
       </div>
 
       <!-- Deliverables Table -->
-      <div style="margin-top: 18px;">
+      <div style="margin-top: 16px;">
         <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
           <thead>
             <tr style="background-color: #f1f5f9; color: #0f172a; border-bottom: 2px solid #cbd5e1; text-align: ${isAr ? 'right' : 'left'};">
@@ -257,7 +368,7 @@ export async function generateClientInvoicePdf(
               </td>
             </tr>
 
-            <tr style="border-bottom: ${adCreditAmount > 0 ? '1px solid #e2e8f0' : '2px solid #cbd5e1'};">
+            <tr style="border-bottom: ${effectiveAdCredit > 0 ? '1px solid #e2e8f0' : '2px solid #cbd5e1'};">
               <td style="padding: 10px 12px; font-weight: 800; color: #0f172a;">
                 📊 ${isAr ? 'التقارير التحليلية وجلسات المتابعة' : 'Monthly Performance Analytics'}
               </td>
@@ -272,7 +383,7 @@ export async function generateClientInvoicePdf(
               </td>
             </tr>
 
-            ${adCreditAmount > 0 ? `
+            ${effectiveAdCredit > 0 ? `
             <tr style="border-bottom: 2px solid #2563eb; background-color: #eff6ff;">
               <td style="padding: 10px 12px; font-weight: 800; color: #1e3a8a;">
                 💳 ${isAr ? 'شحن رصيد إعلاني ممول (Ad Spend Budget)' : 'Funded Ad Campaign Spend Budget'}
@@ -281,7 +392,7 @@ export async function generateClientInvoicePdf(
                 ${isAr ? 'ميزانية إعلانية مدفوعة ومخصصة بالكامل لحملات العميل الممولة (Meta / TikTok / Google) تُودع في المحفظة فور التحصيل' : '100% dedicated paid advertising campaign budget, deposited into client ad wallet upon payment'}
               </td>
               <td style="padding: 10px 12px; text-align: center; font-weight: 900; color: #2563eb;">
-                ${adCreditAmount.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}
+                ${effectiveAdCredit.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}
               </td>
               <td style="padding: 10px 12px; text-align: center;">
                 <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; background-color: #dbeafe; color: #1e40af; font-weight: 800; font-size: 9.5px;">${isAr ? 'رصيد إعلاني' : 'Ad Credit'}</span>
@@ -293,17 +404,17 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Financial Total Box -->
-      <div style="display: flex; justify-content: flex-end; margin-top: 18px;">
-        <div style="width: 310px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; font-size: 11px;">
+      <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+        <div style="width: 320px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; font-size: 11px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #64748b;">
             <span>${isAr ? 'قيمة باقة التسويق الرقمي:' : 'Package Subtotal:'}</span>
-            <span style="font-weight: 700; color: #0f172a;">${totalCost}</span>
+            <span style="font-weight: 700; color: #0f172a;">${formattedRetainerStr}</span>
           </div>
 
-          ${adCreditAmount > 0 ? `
+          ${effectiveAdCredit > 0 ? `
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #1d4ed8; font-weight: 800;">
             <span>${isAr ? 'الرصيد الإعلاني الممول المضاف:' : 'Added Ad Spend Credit:'}</span>
-            <span>+${adCreditAmount.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}</span>
+            <span>+${effectiveAdCredit.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}</span>
           </div>
           ` : ''}
 
@@ -311,7 +422,7 @@ export async function generateClientInvoicePdf(
             <span>${isAr ? 'الضرائب ومصاريف الإشراف:' : 'Taxes & Management:'}</span>
             <span style="font-weight: 700; color: #16a34a;">${isAr ? 'مشمولة بالكامل' : '0.00 (Included)'}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 2px solid #0f172a; font-weight: 900; font-size: 13px; color: #0f172a;">
+          <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 2px solid #0f172a; font-weight: 900; font-size: 13.5px; color: #0f172a;">
             <span>${isAr ? 'المبلغ الإجمالي المستحق:' : 'Total Amount Due:'}</span>
             <span style="color: #2563eb;">${finalGrandTotalStr}</span>
           </div>
@@ -319,14 +430,14 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Bank & Payment Details -->
-      <div style="margin-top: 18px; display: flex; gap: 14px; font-size: 10.5px;">
+      <div style="margin-top: 16px; display: flex; gap: 14px; font-size: 10.5px;">
         <div style="flex: 1; background-color: #f1f5f9; padding: 12px 14px; border-radius: 10px; border: 1px solid #e2e8f0;">
-          <div style="font-weight: 900; color: #0f172a; margin-bottom: 4px;">
-            🏦 ${isAr ? 'بيانات التحويل البنكي وحسابات الدفع:' : 'Bank Transfer Information:'}
+          <div style="font-weight: 900; color: #0f172a; margin-bottom: 5px;">
+            💳 ${isAr ? 'بيانات التحويل وحسابات الدفع المعتمدة:' : 'Approved Transfer & Payment Accounts:'}
           </div>
-          <div style="color: #475569; line-height: 1.5;">
-            <div>• <strong>${isAr ? 'البنك التجاري الدولي (CIB):' : 'CIB Egypt:'}</strong> Digital Effect Marketing - ACC #100048293481</div>
-            <div>• <strong>${isAr ? 'إنستاباي / محفظة إلكترونية:' : 'InstaPay / Mobile Wallet:'}</strong> 01505000349</div>
+          <div style="color: #475569; line-height: 1.75;">
+            <div>• <strong>${isAr ? 'إنستاباي (InstaPay):' : 'InstaPay:'}</strong> <span dir="ltr" style="font-family: monospace; font-weight: 800; color: #0f172a;">${transferInfo.instaPay}</span></div>
+            <div>• <strong>${isAr ? 'رقم المحفظة الإلكترونية (فودافون كاش / E-Wallet):' : 'E-Wallet / Vodafone Cash:'}</strong> <span dir="ltr" style="font-family: monospace; font-weight: 800; color: #0f172a;">${transferInfo.walletNumber}</span></div>
           </div>
         </div>
 
@@ -346,7 +457,7 @@ export async function generateClientInvoicePdf(
       </div>
 
       <!-- Terms & Notes -->
-      <div style="margin-top: 16px; font-size: 9.5px; color: #64748b; line-height: 1.4; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+      <div style="margin-top: 14px; font-size: 9.5px; color: #64748b; line-height: 1.4; border-top: 1px solid #e2e8f0; padding-top: 10px;">
         <p style="margin: 0;">
           * ${isAr ? 'تعتبر هذه الفاتورة وثيقة تعاقدية رسمية ومطالبة مالية معتمدة صادرة من وكالة ديجيتال إفكت للحلول الرقمية والتسويق.' : 'This invoice is an official statement and financial claim issued by Digital Effect for integrated marketing services.'}
         </p>
@@ -357,6 +468,9 @@ export async function generateClientInvoicePdf(
   }
 
   try {
+    // Wait for logo/images inside container to finish loading before rasterization
+    await waitForImages(targetElement);
+
     let imgData: string;
     let imgWidth: number;
     let imgHeight: number;

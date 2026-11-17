@@ -11,6 +11,27 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// If platform Secrets hold invalid placeholder strings, recover valid values from .env
+const localEnvPath = path.resolve(__dirname, '.env');
+if (fs.existsSync(localEnvPath)) {
+  try {
+    const parsedEnv = dotenv.parse(fs.readFileSync(localEnvPath, 'utf-8'));
+    if (
+      (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_URL.startsWith('https://')) &&
+      parsedEnv.VITE_SUPABASE_URL?.startsWith('https://')
+    ) {
+      process.env.VITE_SUPABASE_URL = parsedEnv.VITE_SUPABASE_URL;
+    }
+    if (
+      (!process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY.length < 30) &&
+      parsedEnv.VITE_SUPABASE_ANON_KEY &&
+      parsedEnv.VITE_SUPABASE_ANON_KEY.length >= 30
+    ) {
+      process.env.VITE_SUPABASE_ANON_KEY = parsedEnv.VITE_SUPABASE_ANON_KEY;
+    }
+  } catch {}
+}
+
 const app = express();
 // AI Studio dev server must run strictly on port 3000
 const port = 3000;

@@ -40,6 +40,7 @@ import { ClientAccountDrawer } from './ClientAccountDrawer';
 import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from './ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from './ClientPackageDeliverablesCard';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
+import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 
 export const AdminPanelModal: React.FC = () => {
   const { 
@@ -501,8 +502,8 @@ export const AdminPanelModal: React.FC = () => {
   const totalClientsMrr = contractedClients.reduce((acc, c) => {
     if (c.retainerAmount) return acc + c.retainerAmount;
     if (c.budget) {
-      const num = parseInt(c.budget.replace(/\D/g, ''), 10);
-      if (!isNaN(num) && num > 0) return acc + num;
+      const num = parseInvoiceAmount(c.budget);
+      if (num > 0) return acc + num;
     }
     const defaultFee = c.sector === 'b2b' ? 4000 : c.sector === 'medical' ? 19500 : 15000;
     return acc + defaultFee;

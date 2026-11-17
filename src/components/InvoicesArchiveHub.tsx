@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { ClientInvoiceRecord, Inquiry } from '../types';
-import { generateClientInvoicePdf } from '../utils/invoicePdfGenerator';
+import { generateClientInvoicePdf, parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 import { ClientInvoiceModal } from './ClientInvoiceModal';
 import { AccountStatementModal } from './AccountStatementModal';
 
@@ -732,7 +732,7 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                     const selected = clientList.find((c) => c.id === e.target.value);
                     if (selected) {
                       setNewInvoicePackage(selected.packageName || '');
-                      const num = parseInt((selected.budget || '').replace(/\D/g, ''), 10);
+                      const num = parseInvoiceAmount(selected.budget) || selected.retainerAmount || 0;
                       if (num) setNewInvoiceRetainer(num);
                     }
                   }}
