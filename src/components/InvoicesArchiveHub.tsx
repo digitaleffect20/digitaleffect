@@ -104,9 +104,11 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
         if (paymentStatusFilter === 'paid' && inv.paymentStatus !== 'paid') return false;
         if (paymentStatusFilter === 'pending' && inv.paymentStatus !== 'pending') return false;
         if (paymentStatusFilter === 'overdue') {
-          if (inv.paymentStatus === 'paid') return false;
+          if (inv.paymentStatus === 'paid' || inv.paymentStatus === 'cancelled') return false;
           const today = new Date().toISOString().split('T')[0];
-          if (!inv.dueDate || inv.dueDate >= today) return false;
+          const isExplicitOverdue = inv.paymentStatus === 'overdue';
+          const isPastDue = Boolean(inv.dueDate && inv.dueDate < today);
+          if (!isExplicitOverdue && !isPastDue) return false;
         }
       }
 
@@ -173,13 +175,22 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
         createdAt: inv.issueDate,
       };
 
+      const todayStr = new Date().toISOString().split('T')[0];
+      const effectiveStatus: 'paid' | 'pending' | 'overdue' =
+        inv.paymentStatus === 'paid'
+          ? 'paid'
+          : inv.paymentStatus === 'overdue' || (inv.paymentStatus === 'pending' && Boolean(inv.dueDate && inv.dueDate < todayStr))
+          ? 'overdue'
+          : 'pending';
+
       const res = await generateClientInvoicePdf({
-        client,
+        client: { ...client, paymentStatus: effectiveStatus },
         packageName: inv.packageName,
         totalCost: `${inv.retainerAmount.toLocaleString()} ج.م`,
         adCreditAmount: inv.adCreditAmount || 0,
         billingCycle: inv.billingCycle || 'monthly',
         invoiceNumber: inv.invoiceNumber,
+        paymentStatus: effectiveStatus,
         isAr,
       });
 
@@ -202,6 +213,35 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
   // Mark as Paid & Collect Ad Credit (via in-app confirmation modal)
   const handleCollectInvoice = (inv: ClientInvoiceRecord) => {
     setPendingAction({ type: 'collect', invoice: inv });
+  };
+
+  // Update Invoice Payment Status from Archive selector
+  const handleStatusChange = (
+    inv: ClientInvoiceRecord,
+    nextStatus: ClientInvoiceRecord['paymentStatus']
+  ) => {
+    if (nextStatus === inv.paymentStatus) return;
+    if (nextStatus === 'paid') {
+      handleCollectInvoice(inv);
+      return;
+    }
+    updateInvoice(inv.id, {
+      paymentStatus: nextStatus,
+      paidAt: undefined,
+    });
+    const labelAr =
+      nextStatus === 'overdue'
+        ? 'متأخر عن السداد'
+        : nextStatus === 'cancelled'
+        ? 'ملغاة'
+        : 'قيد التحصيل';
+    const labelEn =
+      nextStatus === 'overdue' ? 'Overdue' : nextStatus === 'cancelled' ? 'Cancelled' : 'Pending';
+    showToast(
+      isAr
+        ? `تم تحديث حالة الفاتورة ${inv.invoiceNumber} إلى «${labelAr}».`
+        : `Invoice ${inv.invoiceNumber} status updated to "${labelEn}".`
+    );
   };
 
   // Delete Invoice (via in-app confirmation modal — works reliably inside iframes)
@@ -508,7 +548,19 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
           <div className="divide-y divide-slate-100">
             {filteredInvoices.map((inv) => {
               const isPaid = inv.paymentStatus === 'paid';
-              const isOverdue = !isPaid && inv.dueDate && inv.dueDate < new Date().toISOString().split('T')[0];
+              const isCancelled = inv.paymentStatus === 'cancelled';
+              const isOverdue =
+                !isPaid &&
+                !isCancelled &&
+                (inv.paymentStatus === 'overdue' ||
+                  Boolean(inv.dueDate && inv.dueDate < new Date().toISOString().split('T')[0]));
+              const displayStatus: ClientInvoiceRecord['paymentStatus'] = isPaid
+                ? 'paid'
+                : isCancelled
+                ? 'cancelled'
+                : isOverdue
+                ? 'overdue'
+                : 'pending';
 
               return (
                 <div 
@@ -530,14 +582,18 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
                         isPaid
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : isCancelled
+                          ? 'bg-slate-100 text-slate-600 border border-slate-200'
                           : isOverdue
-                          ? 'bg-rose-100 text-rose-800 border border-rose-200 font-black animate-pulse'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200 font-black'
                           : 'bg-amber-100 text-amber-800 border border-amber-200'
                       }`}>
                         {isPaid
-                          ? (isAr ? '✅ مدفوعة ومحصلة' : 'Paid')
+                          ? (isAr ? '✅ مدفوع بالكامل' : 'Paid in Full')
+                          : isCancelled
+                          ? (isAr ? '🚫 ملغاة' : 'Cancelled')
                           : isOverdue
-                          ? (isAr ? '⚠️ متأخرة عن الاستحقاق' : 'Overdue')
+                          ? (isAr ? '❌ متأخر عن السداد' : 'Overdue')
                           : (isAr ? '⏳ قيد التحصيل' : 'Pending')}
                       </span>
                     </div>
@@ -610,18 +666,48 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
 
                   {/* Right: Action Buttons */}
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                    {/* Collect Button (if pending) */}
-                    {!isPaid && (
-                      <button
-                        type="button"
-                        onClick={() => handleCollectInvoice(inv)}
-                        className="px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
-                        title={isAr ? 'تحصيل الفاتورة وإيداع الرصيد الإعلاني' : 'Collect & Deposit Ad Credit'}
+                    {/* Invoice Payment Status Selector (matches CRM statuses per invoice) */}
+                    <div className="relative">
+                      <select
+                        value={displayStatus}
+                        onChange={(e) =>
+                          handleStatusChange(
+                            inv,
+                            e.target.value as ClientInvoiceRecord['paymentStatus']
+                          )
+                        }
+                        aria-label={isAr ? 'حالة الفاتورة' : 'Invoice status'}
+                        className={`text-xs font-black py-1.5 ${
+                          isAr ? 'pr-2.5 pl-7' : 'pl-2.5 pr-7'
+                        } rounded-xl border transition-all shadow-2xs appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          isPaid
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                            : isCancelled
+                            ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                            : isOverdue
+                            ? 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
+                            : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                        }`}
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{isAr ? 'تحصيل وإيداع' : 'Collect'}</span>
-                      </button>
-                    )}
+                        <option value="pending">{isAr ? '⏳ قيد التحصيل' : '⏳ Pending'}</option>
+                        <option value="paid">{isAr ? '✅ مدفوع بالكامل' : '✅ Paid in Full'}</option>
+                        <option value="overdue">{isAr ? '❌ متأخر عن السداد' : '❌ Overdue'}</option>
+                        <option value="cancelled">{isAr ? '🚫 ملغاة' : '🚫 Cancelled'}</option>
+                      </select>
+                      <ChevronDown
+                        className={`w-3.5 h-3.5 pointer-events-none absolute top-1/2 -translate-y-1/2 ${
+                          isAr ? 'left-2' : 'right-2'
+                        } ${
+                          isPaid
+                            ? 'text-emerald-700'
+                            : isCancelled
+                            ? 'text-slate-500'
+                            : isOverdue
+                            ? 'text-rose-700'
+                            : 'text-amber-700'
+                        }`}
+                      />
+                    </div>
 
                     {/* Download PDF Button */}
                     <button
@@ -712,7 +798,14 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
           billingCycle={previewInvoice.billingCycle || 'monthly'}
           contractStartDate={previewInvoice.issueDate}
           renewalDate={previewInvoice.dueDate}
-          paymentStatus={previewInvoice.paymentStatus === 'cancelled' ? 'pending' : previewInvoice.paymentStatus}
+          paymentStatus={
+            previewInvoice.paymentStatus === 'cancelled'
+              ? 'pending'
+              : previewInvoice.paymentStatus === 'pending' &&
+                Boolean(previewInvoice.dueDate && previewInvoice.dueDate < new Date().toISOString().split('T')[0])
+              ? 'overdue'
+              : previewInvoice.paymentStatus
+          }
           targetPosts={previewInvoice.deliverables?.posts || 8}
           targetReels={previewInvoice.deliverables?.reels || 4}
           targetStories={previewInvoice.deliverables?.stories || 0}

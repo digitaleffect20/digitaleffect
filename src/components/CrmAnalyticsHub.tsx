@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { getAnalyticsSummary } from '../lib/analyticsTracker';
 import { ServicePackage } from '../types';
+import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 
 interface InquiryItem {
   id: string;
@@ -26,6 +27,7 @@ interface InquiryItem {
   sector: 'all' | 'b2b' | 'b2c' | 'medical';
   packageName?: string | null;
   budget?: string | null;
+  retainerAmount?: number;
   status: 'new' | 'contacted' | 'closed' | 'cancelled';
   createdAt: string;
 }
@@ -77,19 +79,18 @@ export const CrmAnalyticsHub: React.FC<CrmAnalyticsHubProps> = ({
 
   // Helper to extract estimated price from inquiry
   const getInquiryValue = (inq: InquiryItem): number => {
+    if (inq.retainerAmount && inq.retainerAmount > 0) {
+      return inq.retainerAmount;
+    }
+    const parsedBudget = parseInvoiceAmount(inq.budget);
+    if (parsedBudget > 0) {
+      return parsedBudget;
+    }
     if (inq.packageName) {
       const clean = inq.packageName.toLowerCase().trim();
       for (const [key, price] of packagePriceMap.entries()) {
         if (clean.includes(key)) return price;
       }
-    }
-    // Parse budget range fallback
-    if (inq.budget) {
-      if (inq.budget.includes('80,000') || inq.budget.includes('٨٠')) return 85000;
-      if (inq.budget.includes('45,000') || inq.budget.includes('٤٥')) return 50000;
-      if (inq.budget.includes('25,000') || inq.budget.includes('٢٥')) return 30000;
-      if (inq.budget.includes('20,000') || inq.budget.includes('٢٠')) return 22000;
-      if (inq.budget.includes('15,000') || inq.budget.includes('١٥')) return 18000;
     }
     return 15000; // Default median ticket
   };

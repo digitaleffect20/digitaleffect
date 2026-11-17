@@ -626,7 +626,9 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                       ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                       : paymentStatus === 'partially_paid'
                       ? 'bg-amber-50 text-amber-800 border-amber-300'
-                      : 'bg-rose-50 text-rose-800 border-rose-300'
+                      : paymentStatus === 'overdue'
+                      ? 'bg-rose-50 text-rose-800 border-rose-300'
+                      : 'bg-amber-50 text-amber-800 border-amber-300'
                   }`}>
                     <CheckSquare className="w-3 h-3" />
                     <span>
@@ -634,6 +636,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                         ? (isAr ? 'مدفوعة بالكامل (PAID)' : 'PAID IN FULL')
                         : paymentStatus === 'partially_paid'
                         ? (isAr ? 'دفعة مقدمة 50% (PARTIAL)' : 'PARTIAL DEPOSIT')
+                        : paymentStatus === 'overdue'
+                        ? (isAr ? 'متأخرة عن السداد (OVERDUE)' : 'OVERDUE')
                         : (isAr ? 'قيد التحصيل (PENDING)' : 'PENDING PAYMENT')}
                     </span>
                   </span>

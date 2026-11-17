@@ -358,6 +358,7 @@ export interface GenerateInvoicePdfOptions {
   contractStartDate?: string;
   renewalDate?: string;
   invoiceNumber?: string;
+  paymentStatus?: Inquiry['paymentStatus'];
   transferInfo?: Partial<InvoiceTransferInfo>;
   isAr?: boolean;
 }
@@ -449,13 +450,15 @@ export async function generateClientInvoicePdf(
   targetElement.style.boxSizing = 'border-box';
   targetElement.style.letterSpacing = '0px';
 
-  const paymentStatus = client.paymentStatus || 'pending';
+  const paymentStatus = options.paymentStatus || client.paymentStatus || 'pending';
   const paymentBadge =
     paymentStatus === 'paid'
       ? { bg: '#ecfdf5', color: '#065f46', border: '#a7f3d0', text: isAr ? 'مدفوعة بالكامل (PAID)' : 'PAID IN FULL' }
       : paymentStatus === 'partially_paid'
       ? { bg: '#fffbeb', color: '#92400e', border: '#fde68a', text: isAr ? 'دفعة مقدمة (PARTIAL)' : 'PARTIAL DEPOSIT' }
-      : { bg: '#fff1f2', color: '#9f1239', border: '#fecdd3', text: isAr ? 'قيد التحصيل (PENDING)' : 'PENDING PAYMENT' };
+      : paymentStatus === 'overdue'
+      ? { bg: '#fff1f2', color: '#9f1239', border: '#fecdd3', text: isAr ? 'متأخرة عن السداد (OVERDUE)' : 'OVERDUE' }
+      : { bg: '#fffbeb', color: '#92400e', border: '#fde68a', text: isAr ? 'قيد التحصيل (PENDING)' : 'PENDING PAYMENT' };
 
   targetElement.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; border-bottom: 2px solid #0f172a;">

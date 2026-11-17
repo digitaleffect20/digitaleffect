@@ -1534,6 +1534,22 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       invoices: (prev.invoices || []).map((inv) => (inv.id === id ? { ...inv, ...updates } : inv)),
     }));
 
+    if (
+      updatedInv &&
+      updates.paymentStatus &&
+      updates.paymentStatus !== existingInv?.paymentStatus &&
+      updates.paymentStatus !== 'paid' &&
+      updates.paymentStatus !== 'cancelled' &&
+      updatedInv.clientId
+    ) {
+      const client = (dataRef.current.inquiries || []).find((c) => c.id === updatedInv.clientId);
+      if (client) {
+        updateInquiry(client.id, {
+          paymentStatus: updates.paymentStatus,
+        });
+      }
+    }
+
     if (updatedInv && isSupabaseConfigured && supabase) {
       upsertInvoiceToSupabase(updatedInv).then((res) => {
         if (res.migrationNeeded) setSupabaseMigrationNeeded(true);

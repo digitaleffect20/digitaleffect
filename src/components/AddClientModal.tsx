@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { submitInquiry, updateInquiryStatusInDb, isSupabaseConfigured, supabase } from '../lib/supabase';
 import { validateAndFormatPhone } from '../lib/phoneUtils';
+import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 import { 
   calculateCustomPackageCost, 
   buildServicePackageFromCustomCalculation 
@@ -260,6 +261,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
       const finalReelsTarget = packageMode === 'builder' ? reelsCount : (currentCatalogPkg?.reelsCount ?? (sector === 'b2b' ? 0 : sector === 'medical' ? 4 : 2));
       const finalStoriesTarget = packageMode === 'builder' ? storiesCount : (currentCatalogPkg?.storiesCount ?? (sector === 'b2c' ? 2 : 0));
 
+      const parsedRetainer = parseInvoiceAmount(effectiveBudget);
+
       // 2. Persist in agency CRM state (and sync full record to crm_client_accounts)
       const createdClient = addInquiry({
         id: cloudId,
@@ -273,6 +276,8 @@ export const AddClientModal: React.FC<AddClientModalProps> = ({
         packageId: finalPkgId,
         packageName: finalPkgName,
         budget: effectiveBudget.trim() || undefined,
+        retainerAmount: parsedRetainer > 0 ? parsedRetainer : undefined,
+        billingCycle: period,
         notes: notes.trim() || undefined,
         status,
         postsTarget: finalPostsTarget,

@@ -76,7 +76,7 @@ import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from '../components/Cl
 import { ClientPackageDeliverablesCard } from '../components/ClientPackageDeliverablesCard';
 import { ActivityTimelinePanel, getActivityTypeMeta } from '../components/ActivityTimelinePanel';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
-import { generateClientInvoicePdf } from '../utils/invoicePdfGenerator';
+import { generateClientInvoicePdf, parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 import { InvoicesArchiveHub } from '../components/InvoicesArchiveHub';
 import { AccountStatementModal } from '../components/AccountStatementModal';
 import crmFullMigrationSql from '../../supabase/migrations/20261117000001_crm_full_persistence.sql?raw';
@@ -1199,19 +1199,25 @@ export const AdminPortalPage: React.FC = () => {
     });
   }, [contractedClients, clientSectorFilter, clientStatusFilter, workflowTaskFilter, workflowStageFilter, clientSearchQuery]);
 
-  // Total MRR calculation from contracted clients
+  // Total MRR calculation from contracted clients (retainer fee only, excluding ad credit)
   const totalClientsMrr = useMemo(() => {
+    const invoices = data.invoices || [];
     return contractedClients.reduce((acc, client) => {
-      if (client.budget) {
-        const digits = client.budget.replace(/,/g, '').match(/\d+/);
-        if (digits) {
-          const val = parseInt(digits[0], 10);
-          if (!isNaN(val) && val > 0) return acc + val;
-        }
+      if (client.retainerAmount && client.retainerAmount > 0) {
+        return acc + client.retainerAmount;
       }
-      return acc + 15000;
+      const parsedBudget = parseInvoiceAmount(client.budget);
+      if (parsedBudget > 0) {
+        return acc + parsedBudget;
+      }
+      const clientInvoice = invoices.find((inv) => inv.clientId === client.id && inv.retainerAmount > 0);
+      if (clientInvoice) {
+        return acc + clientInvoice.retainerAmount;
+      }
+      const defaultFee = client.sector === 'b2b' ? 4000 : client.sector === 'medical' ? 19500 : 15000;
+      return acc + defaultFee;
     }, 0);
-  }, [contractedClients]);
+  }, [contractedClients, data.invoices]);
 
   const totalDeliveredCount = useMemo(() => {
     return contractedClients.reduce((acc, c) => acc + (c.postsDelivered || 0) + (c.reelsDelivered || 0) + (c.storiesDelivered || 0), 0);
@@ -2161,7 +2167,7 @@ export const AdminPortalPage: React.FC = () => {
                   {totalClientsMrr.toLocaleString(isAr ? 'ar-EG' : 'en-US')} <span className="text-xs font-normal text-slate-500">{isAr ? 'ج.م' : 'EGP'}</span>
                 </div>
                 <div className="text-[11px] text-sky-600 font-bold">
-                  {isAr ? 'قيمة الاشتراكات الشهرية' : 'Active Monthly Scope'}
+                  {isAr ? 'أتعاب الباقات الشهرية (بدون الرصيد الإعلاني)' : 'Monthly Retainer Fees (excl. Ad Credit)'}
                 </div>
               </div>
 
