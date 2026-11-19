@@ -73,8 +73,10 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   targetStories,
   isAr = true,
 }) => {
-  const { data, addInvoice } = useAgencyData();
+  const { data, addInvoice, updateInvoice } = useAgencyData();
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const archivedInvoiceIdRef = useRef<string | null>(null);
+  const hasInitializedOpenRef = useRef<boolean>(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreparingWhatsApp, setIsPreparingWhatsApp] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
@@ -86,8 +88,6 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     filename: string;
     sharedNatively?: boolean;
   } | null>(null);
-
-  const [archivedNotice, setArchivedNotice] = useState(false);
 
   // Editable invoice fields — automatically reset when modal opens for a different client
   const [invoiceNumber, setInvoiceNumber] = useState(() =>
@@ -107,28 +107,6 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
   const [adCredit, setAdCredit] = useState<number>(adCreditAmount || client.pendingInvoiceAdCredit || 0);
   const [transferInfo, setTransferInfo] = useState<InvoiceTransferInfo>(() => loadSavedTransferInfo());
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const nextNumber =
-      initialInvoiceNumber || generateUniqueInvoiceNumber(client.id, data.invoices || []);
-    setInvoiceNumber(nextNumber);
-    setIssueDate(contractStartDate || new Date().toISOString().split('T')[0]);
-    setDueDate(renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-    setAdCredit(adCreditAmount || client.pendingInvoiceAdCredit || 0);
-    setWhatsAppReady(null);
-    setErrorMessage(null);
-    setDownloadSuccess(false);
-    setArchivedNotice(false);
-  }, [isOpen, client.id, initialInvoiceNumber, contractStartDate, renewalDate, adCreditAmount, client.pendingInvoiceAdCredit]);
-
-  const handleUpdateTransferField = (field: keyof InvoiceTransferInfo, value: string) => {
-    setTransferInfo((prev) => {
-      const next = { ...prev, [field]: value };
-      saveTransferInfo(next);
-      return next;
-    });
-  };
 
   // Financial calculations (supports Arabic-Indic & English numerals)
   const parsedBudget = parseInvoiceAmount(budget);
@@ -156,21 +134,129 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const cycleReels = targetReels * cycleMultiplier;
   const cycleStories = targetStories * cycleMultiplier;
 
+  // Auto-initialize and auto-archive invoice immediately upon opening (when not in preview-only mode)
+  useEffect(() => {
+    if (!isOpen) {
+      hasInitializedOpenRef.current = false;
+      archivedInvoiceIdRef.current = null;
+      return;
+    }
+    if (hasInitializedOpenRef.current) return;
+    hasInitializedOpenRef.current = true;
+
+    const initIssueDate = contractStartDate || new Date().toISOString().split('T')[0];
+    const initDueDate = renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const initAdCredit = adCreditAmount || client.pendingInvoiceAdCredit || 0;
+    const initGrandTotal = numericBudget + initAdCredit;
+    const currentInvoices = data.invoices || [];
+
+    setIssueDate(initIssueDate);
+    setDueDate(initDueDate);
+    setAdCredit(initAdCredit);
+    setWhatsAppReady(null);
+    setErrorMessage(null);
+    setDownloadSuccess(false);
+
+    if (isPreviewOnly) {
+      setInvoiceNumber(
+        initialInvoiceNumber || generateUniqueInvoiceNumber(client.id, currentInvoices)
+      );
+      return;
+    }
+
+    // Reuse an identical pending invoice for the same client/date/amounts so re-opening doesn't duplicate
+    const matchingExisting = currentInvoices.find(
+      (i) =>
+        i.clientId === client.id &&
+        i.paymentStatus !== 'paid' &&
+        i.paymentStatus !== 'cancelled' &&
+        i.issueDate === initIssueDate &&
+        i.retainerAmount === numericBudget &&
+        (i.adCreditAmount || 0) === initAdCredit &&
+        i.packageName === packageName
+    );
+
+    if (matchingExisting) {
+      archivedInvoiceIdRef.current = matchingExisting.id;
+      setInvoiceNumber(matchingExisting.invoiceNumber);
+      return;
+    }
+
+    const nextNumber =
+      initialInvoiceNumber || generateUniqueInvoiceNumber(client.id, currentInvoices);
+    setInvoiceNumber(nextNumber);
+
+    try {
+      const created = addInvoice({
+        invoiceNumber: nextNumber,
+        clientId: client.id,
+        clientName: client.name,
+        clientCompany: client.company,
+        clientPhone: client.phone,
+        sector: client.sector,
+        issueDate: initIssueDate,
+        dueDate: initDueDate,
+        packageName,
+        retainerAmount: numericBudget,
+        adCreditAmount: initAdCredit,
+        grandTotal: initGrandTotal,
+        billingCycle,
+        paymentStatus,
+        notes,
+        deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
+      });
+      archivedInvoiceIdRef.current = created.id;
+    } catch (archErr) {
+      console.warn('Could not auto-archive invoice on open:', archErr);
+    }
+  }, [isOpen, client.id]);
+
+  const handleUpdateTransferField = (field: keyof InvoiceTransferInfo, value: string) => {
+    setTransferInfo((prev) => {
+      const next = { ...prev, [field]: value };
+      saveTransferInfo(next);
+      return next;
+    });
+  };
+
   if (!isOpen) return null;
 
-  const isAlreadyArchived = (data.invoices || []).some(
-    (i) => i.clientId === client.id && i.invoiceNumber === invoiceNumber
-  );
+  const syncArchivedInvoiceField = (patch: {
+    invoiceNumber?: string;
+    issueDate?: string;
+    dueDate?: string;
+    adCreditAmount?: number;
+    grandTotal?: number;
+    notes?: string;
+  }) => {
+    if (isPreviewOnly || !archivedInvoiceIdRef.current) return;
+    updateInvoice(archivedInvoiceIdRef.current, patch);
+  };
 
   const archiveInvoiceIfNeeded = () => {
     try {
+      if (archivedInvoiceIdRef.current) {
+        updateInvoice(archivedInvoiceIdRef.current, {
+          invoiceNumber,
+          issueDate,
+          dueDate,
+          retainerAmount: numericBudget,
+          adCreditAmount: adCredit,
+          grandTotal: numericGrandTotal,
+          notes,
+        });
+        return invoiceNumber;
+      }
+
       const currentInvoices = data.invoices || [];
       const exactMatch = currentInvoices.find(
         (i) => i.invoiceNumber === invoiceNumber && i.clientId === client.id
       );
-      if (exactMatch) return exactMatch.invoiceNumber;
+      if (exactMatch) {
+        archivedInvoiceIdRef.current = exactMatch.id;
+        return exactMatch.invoiceNumber;
+      }
 
-      // Avoid collision if another client already uses this invoice number
       const collision = currentInvoices.some((i) => i.invoiceNumber === invoiceNumber);
       const finalNumber = collision
         ? generateUniqueInvoiceNumber(client.id, currentInvoices)
@@ -180,7 +266,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         setInvoiceNumber(finalNumber);
       }
 
-      addInvoice({
+      const created = addInvoice({
         invoiceNumber: finalNumber,
         clientId: client.id,
         clientName: client.name,
@@ -198,6 +284,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         notes,
         deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
       });
+      archivedInvoiceIdRef.current = created.id;
       return finalNumber;
     } catch (archErr) {
       console.warn('Could not archive invoice:', archErr);
@@ -377,36 +464,6 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
           {/* Action buttons */}
           <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
-            {/* Save / Archived Indicator Button */}
-            {!isPreviewOnly && (
-              <button
-                type="button"
-                onClick={() => {
-                  archiveInvoiceIfNeeded();
-                  setArchivedNotice(true);
-                  setTimeout(() => setArchivedNotice(false), 3000);
-                }}
-                disabled={isAlreadyArchived}
-                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all inline-flex items-center gap-1.5 ${
-                  isAlreadyArchived
-                    ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-500/40 cursor-default'
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer'
-                }`}
-                title={isAr ? 'إصدار وحفظ الفاتورة في أرشيف الفواتير' : 'Save invoice to Archive'}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>
-                  {isAlreadyArchived
-                    ? isAr
-                      ? 'محفوظة بالأرشيف'
-                      : 'Archived'
-                    : isAr
-                    ? 'حفظ في الأرشيف'
-                    : 'Save to Archive'}
-                </span>
-              </button>
-            )}
-
             {/* WhatsApp Share (Prepares PDF attachment + opens chat) */}
             <button
               type="button"
@@ -473,17 +530,13 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         </div>
 
         {/* Success toast */}
-        {(downloadSuccess || archivedNotice) && (
+        {downloadSuccess && (
           <div className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 text-center flex items-center justify-center gap-1.5 animate-in fade-in shrink-0">
             <CheckCircle2 className="w-4 h-4" />
             <span>
-              {downloadSuccess
-                ? isAr
-                  ? 'تم تنزيل ملف الفاتورة PDF وإدراجها في الأرشيف بنجاح!'
-                  : 'Invoice PDF downloaded & archived successfully!'
-                : isAr
-                ? 'تم إصدار وحفظ الفاتورة في أرشيف الفواتير بنجاح!'
-                : 'Invoice saved to archive successfully!'}
+              {isAr
+                ? 'تم تنزيل ملف الفاتورة PDF بنجاح على جهازك!'
+                : 'Invoice PDF downloaded successfully!'}
             </span>
           </div>
         )}
@@ -569,7 +622,13 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
               <input
                 type="text"
                 value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setInvoiceNumber(val);
+                  if (val.trim()) {
+                    syncArchivedInvoiceField({ invoiceNumber: val.trim() });
+                  }
+                }}
                 className="font-mono font-bold text-xs px-2.5 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 w-36 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -579,7 +638,11 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
               <input
                 type="date"
                 value={issueDate}
-                onChange={(e) => setIssueDate(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setIssueDate(val);
+                  syncArchivedInvoiceField({ issueDate: val });
+                }}
                 className="font-bold text-xs px-2 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -589,7 +652,11 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
               <input
                 type="date"
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDueDate(val);
+                  syncArchivedInvoiceField({ dueDate: val });
+                }}
                 className="font-bold text-xs px-2 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -605,7 +672,14 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                 step="500"
                 value={adCredit || ''}
                 placeholder="0"
-                onChange={(e) => setAdCredit(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                onChange={(e) => {
+                  const nextAd = Math.max(0, parseInt(e.target.value, 10) || 0);
+                  setAdCredit(nextAd);
+                  syncArchivedInvoiceField({
+                    adCreditAmount: nextAd,
+                    grandTotal: numericBudget + nextAd,
+                  });
+                }}
                 className="font-mono font-bold text-xs px-2 py-0.5 bg-white border border-blue-300 rounded text-blue-800 w-24 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               <span className="text-[10px] font-bold text-blue-600">ج.م</span>
