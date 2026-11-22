@@ -35,6 +35,7 @@ import {
   generateUniqueInvoiceNumber,
   InvoiceTransferInfo,
 } from '../utils/invoicePdfGenerator';
+import { formatInvoicePeriodLabel } from '../utils/billingPeriodUtils';
 
 interface ClientInvoiceModalProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ interface ClientInvoiceModalProps {
   adCreditAmount?: number;
   billingCycle?: Inquiry['billingCycle'];
   contractStartDate?: string;
+  contractPeriod?: string;
   renewalDate?: string;
   paymentStatus?: Inquiry['paymentStatus'];
   initialInvoiceNumber?: string;
@@ -64,6 +66,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   adCreditAmount = 0,
   billingCycle = 'quarterly',
   contractStartDate,
+  contractPeriod: initialContractPeriod,
   renewalDate,
   paymentStatus = 'pending',
   initialInvoiceNumber,
@@ -95,6 +98,10 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   );
   const [issueDate, setIssueDate] = useState(
     contractStartDate || new Date().toISOString().split('T')[0]
+  );
+  const [contractPeriod, setContractPeriod] = useState<string>(() =>
+    (initialContractPeriod || '').trim() ||
+    formatInvoicePeriodLabel(contractStartDate || client.contractStartDate || client.createdAt, billingCycle, isAr)
   );
   const [dueDate, setDueDate] = useState(
     renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -149,11 +156,15 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       ? contractStartDate || todayStr
       : todayStr;
     const initDueDate = renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const initPeriodLabel =
+      (initialContractPeriod || '').trim() ||
+      formatInvoicePeriodLabel(contractStartDate || client.contractStartDate || initIssueDate, billingCycle, isAr);
     const initAdCredit = adCreditAmount || client.pendingInvoiceAdCredit || 0;
     const initGrandTotal = numericBudget + initAdCredit;
     const currentInvoices = data.invoices || [];
 
     setIssueDate(initIssueDate);
+    setContractPeriod(initPeriodLabel);
     setDueDate(initDueDate);
     setAdCredit(initAdCredit);
     setWhatsAppReady(null);
@@ -184,6 +195,9 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       archivedInvoiceIdRef.current = matchingExisting.id;
       setInvoiceNumber(matchingExisting.invoiceNumber);
       setIssueDate(matchingExisting.issueDate);
+      setContractPeriod(
+        (matchingExisting.contractPeriod || '').trim() || initPeriodLabel
+      );
       return;
     }
 
@@ -206,6 +220,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         adCreditAmount: initAdCredit,
         grandTotal: initGrandTotal,
         billingCycle,
+        contractPeriod: initPeriodLabel,
         paymentStatus,
         notes,
         deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
@@ -230,6 +245,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     invoiceNumber?: string;
     issueDate?: string;
     dueDate?: string;
+    contractPeriod?: string;
     adCreditAmount?: number;
     grandTotal?: number;
     notes?: string;
@@ -245,6 +261,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
           invoiceNumber,
           issueDate,
           dueDate,
+          contractPeriod: contractPeriod.trim() || undefined,
           retainerAmount: numericBudget,
           adCreditAmount: adCredit,
           grandTotal: numericGrandTotal,
@@ -285,6 +302,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         adCreditAmount: adCredit,
         grandTotal: numericGrandTotal,
         billingCycle,
+        contractPeriod: contractPeriod.trim() || undefined,
         paymentStatus,
         notes,
         deliverables: { posts: cyclePosts, reels: cycleReels, stories: cycleStories },
@@ -339,8 +357,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const cleanPhone = (client.phoneE164 || client.phone).replace(/\D/g, '');
   const waPhone = cleanPhone.startsWith('0') ? `20${cleanPhone.slice(1)}` : cleanPhone;
   const baseWaText = isAr
-    ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber}) الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nاشتراك الباقة: ${formattedBudget} (${cycleTextAr})${adCredit > 0 ? `\nرصيد إعلاني ممول: +${adCredit.toLocaleString()} ج.م` : ''}\nإجمالي المستحق: ${numericGrandTotal.toLocaleString()} ج.م\nتاريخ الاستحقاق: ${dueDate}\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
-    : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber}) for (${packageName}). Retainer: ${formattedBudget}${adCredit > 0 ? ` + Ad Credit: ${adCredit.toLocaleString()} EGP` : ''}. Total Due: ${numericGrandTotal.toLocaleString()} EGP. Due: ${dueDate}.\n\nDigital Effect Team.`;
+    ? `مرحباً ${client.name}،\nمرفق لسيادتكم بيان فاتورة التعاقد الرسمي رقم (${invoiceNumber})${contractPeriod.trim() ? ` — ${contractPeriod.trim()}` : ''} الخاصة بشركة (${client.company || client.name}) لباقة:\n"${packageName}"\nاشتراك الباقة: ${formattedBudget} (${cycleTextAr})${adCredit > 0 ? `\nرصيد إعلاني ممول: +${adCredit.toLocaleString()} ج.م` : ''}\nإجمالي المستحق: ${numericGrandTotal.toLocaleString()} ج.م\n\nفريق ديجيتال إفكت للحلول الرقمية والتسويق.`
+    : `Hello ${client.name},\nPlease find your official invoice (${invoiceNumber})${contractPeriod.trim() ? ` — ${contractPeriod.trim()}` : ''} for (${packageName}). Retainer: ${formattedBudget}${adCredit > 0 ? ` + Ad Credit: ${adCredit.toLocaleString()} EGP` : ''}. Total Due: ${numericGrandTotal.toLocaleString()} EGP.\n\nDigital Effect Team.`;
 
   const triggerPdfBlobDownload = (blob: Blob, filename: string) => {
     const objectUrl = URL.createObjectURL(blob);
@@ -652,17 +670,21 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-slate-600">{isAr ? 'تاريخ الاستحقاق:' : 'Due Date:'}</span>
+            <div className="flex items-center gap-1.5 bg-indigo-50/80 px-2.5 py-1 rounded-lg border border-indigo-200">
+              <span className="font-bold text-indigo-900 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{isAr ? 'فترة الفاتورة:' : 'Period:'}</span>
+              </span>
               <input
-                type="date"
-                value={dueDate}
+                type="text"
+                value={contractPeriod}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setDueDate(val);
-                  syncArchivedInvoiceField({ dueDate: val });
+                  setContractPeriod(val);
+                  syncArchivedInvoiceField({ contractPeriod: val.trim() || undefined });
                 }}
-                className="font-bold text-xs px-2 py-1 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder={isAr ? 'عن شهر ديسمبر 2026' : 'For December 2026'}
+                className="font-bold text-xs px-2 py-0.5 bg-white border border-indigo-300 rounded text-indigo-950 w-52 sm:w-60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
@@ -771,10 +793,11 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                     <span className="font-bold text-slate-800">{isAr ? 'تاريخ الإصدار:' : 'Date:'}</span>{' '}
                     {issueDate}
                   </p>
-                  <p>
-                    <span className="font-bold text-slate-800">{isAr ? 'تاريخ الاستحقاق:' : 'Due Date:'}</span>{' '}
-                    {dueDate}
-                  </p>
+                  {contractPeriod.trim() && (
+                    <p className="text-blue-700 font-extrabold">
+                      {contractPeriod.trim()}
+                    </p>
+                  )}
                 </div>
 
                 {/* Payment status badge */}
@@ -853,7 +876,13 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                   {isAr ? 'الباقة التسويقية المعتمدة:' : 'OFFICIAL MARKETING PACKAGE:'}
                 </span>
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  {packageName}
+                  {isAr
+                    ? /(?:شهرياً|شهريا)\s*$/.test((packageName || '').trim())
+                      ? packageName
+                      : `${(packageName || '').trim()} شهرياً`
+                    : /monthly\s*$/i.test((packageName || '').trim())
+                    ? packageName
+                    : `${(packageName || '').trim()} Monthly`}
                 </h3>
               </div>
               <div className="text-start sm:text-end shrink-0">
@@ -1092,8 +1121,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                 </div>
                 <p className="text-[10px] text-slate-500 font-medium">
                   {isAr 
-                    ? `مستحقة عن فترة الاشتراك (${cycleTextAr}) حتى تاريخ ${dueDate}`
-                    : `Payable for (${cycleTextEn}) billing cycle through ${dueDate}`}
+                    ? `مستحقة عن فترة الاشتراك (${cycleTextAr})`
+                    : `Payable for (${cycleTextEn}) billing cycle`}
                 </p>
               </div>
             </div>

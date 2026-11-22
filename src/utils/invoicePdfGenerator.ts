@@ -3,6 +3,7 @@ import html2canvas from 'html2canvas-pro';
 import { toPng } from 'html-to-image';
 import { Inquiry, ClientInvoiceRecord, InvoicePaymentEntry } from '../types';
 import { getClientDeliverableTargets } from './workflowUtils';
+import { formatInvoicePeriodLabel } from './billingPeriodUtils';
 
 export interface InvoiceTransferInfo {
   instaPay: string;
@@ -381,6 +382,7 @@ export interface GenerateInvoicePdfOptions {
   adCreditAmount?: number;
   billingCycle?: Inquiry['billingCycle'];
   contractStartDate?: string;
+  contractPeriod?: string;
   renewalDate?: string;
   invoiceNumber?: string;
   paymentStatus?: Inquiry['paymentStatus'];
@@ -403,9 +405,13 @@ export async function generateClientInvoicePdf(
     adCreditAmount = options.adCreditAmount ?? client.pendingInvoiceAdCredit ?? 0,
     billingCycle = client.billingCycle || 'monthly',
     contractStartDate = client.contractStartDate || client.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
-    renewalDate = client.renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    contractPeriod,
     isAr = true,
   } = options;
+
+  const resolvedPeriodLabel =
+    (contractPeriod || '').trim() ||
+    formatInvoicePeriodLabel(contractStartDate, billingCycle, isAr);
 
   const savedTransfer = loadSavedTransferInfo();
   const transferInfo: InvoiceTransferInfo = {
@@ -514,7 +520,7 @@ export async function generateClientInvoicePdf(
           </div>
           <div style="font-size: 10.5px; color: #475569; margin-top: 4px; line-height: 1.5;">
             <div><strong>${isAr ? 'تاريخ الإصدار:' : 'Date:'}</strong> ${contractStartDate}</div>
-            <div><strong>${isAr ? 'تاريخ الاستحقاق:' : 'Due Date:'}</strong> ${renewalDate}</div>
+            ${resolvedPeriodLabel ? `<div style="color: #1e40af; font-weight: 800; margin-top: 2px;">${resolvedPeriodLabel}</div>` : ''}
           </div>
           <div style="margin-top: 5px;">
             <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 9.5px; font-weight: 800; background-color: ${paymentBadge.bg}; color: ${paymentBadge.color}; border: 1px solid ${paymentBadge.border};">
@@ -559,7 +565,15 @@ export async function generateClientInvoicePdf(
             ${isAr ? 'الباقة التسويقية المعتمدة:' : 'OFFICIAL MARKETING PACKAGE:'}
           </span>
           <div style="font-size: 15px; font-weight: 900; color: #ffffff; margin-top: 2px;">
-            ${packageName}
+            ${
+              isAr
+                ? /(?:شهرياً|شهريا)\s*$/.test((packageName || '').trim())
+                  ? packageName
+                  : `${(packageName || '').trim()} شهرياً`
+                : /monthly\s*$/i.test((packageName || '').trim())
+                ? packageName
+                : `${(packageName || '').trim()} Monthly`
+            }
           </div>
         </div>
         <div style="text-align: ${isAr ? 'left' : 'right'};">

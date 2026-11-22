@@ -103,6 +103,10 @@ import {
   parseInvoiceAmount,
   generateUniqueInvoiceNumber,
 } from '../utils/invoicePdfGenerator';
+import {
+  formatInvoicePeriodLabel,
+  formatOperationCycleBadge,
+} from '../utils/billingPeriodUtils';
 import { InvoicesArchiveHub } from '../components/InvoicesArchiveHub';
 import { AccountStatementModal } from '../components/AccountStatementModal';
 import { TeamTasksHub } from '../components/TeamTasksHub';
@@ -232,9 +236,16 @@ export const AdminPortalPage: React.FC = () => {
       const adAmt = existingClientInv?.adCreditAmount ?? (client.pendingInvoiceAdCredit || 0);
       const effectiveStatus = existingClientInv?.paymentStatus || client.paymentStatus || 'pending';
 
+      const activePeriodLabel = formatInvoicePeriodLabel(
+        client.contractStartDate || client.createdAt,
+        client.billingCycle || 'monthly',
+        isAr
+      );
+
       const res = await generateClientInvoicePdf({
         client,
         adCreditAmount: adAmt,
+        contractPeriod: existingClientInv?.contractPeriod || activePeriodLabel,
         invoiceNumber,
         paymentStatus: effectiveStatus === 'cancelled' ? 'pending' : effectiveStatus,
         isAr,
@@ -255,7 +266,7 @@ export const AdminPortalPage: React.FC = () => {
             clientCompany: client.company,
             clientPhone: client.phone,
             sector: client.sector,
-            issueDate: client.contractStartDate || today,
+            issueDate: today,
             dueDate:
               client.renewalDate ||
               new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -264,6 +275,7 @@ export const AdminPortalPage: React.FC = () => {
             adCreditAmount: adAmt,
             grandTotal,
             billingCycle: client.billingCycle || 'monthly',
+            contractPeriod: activePeriodLabel,
             paymentStatus: 'pending',
             deliverables: {
               posts: targets.postsTarget,
@@ -3439,6 +3451,18 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
                                   {isAr ? 'عميل مباشر' : 'Direct Client'}
                                 </p>
                               )}
+                              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-50 text-indigo-800 border border-indigo-200/80">
+                                  <Calendar className="w-3 h-3 text-indigo-600 shrink-0" />
+                                  <span>
+                                    {formatOperationCycleBadge(
+                                      client.contractStartDate || client.createdAt,
+                                      client.billingCycle || 'monthly',
+                                      isAr
+                                    )}
+                                  </span>
+                                </span>
+                              </div>
                             </div>
                           </div>
 

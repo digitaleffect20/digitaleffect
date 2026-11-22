@@ -37,6 +37,7 @@ import {
   parseInvoiceAmount,
   generateUniqueInvoiceNumber,
 } from '../utils/invoicePdfGenerator';
+import { formatInvoicePeriodLabel } from '../utils/billingPeriodUtils';
 import { ClientInvoiceModal } from './ClientInvoiceModal';
 import { AccountStatementModal } from './AccountStatementModal';
 
@@ -93,6 +94,7 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
   const [newInvoiceRetainer, setNewInvoiceRetainer] = useState(15000);
   const [newInvoiceAdCredit, setNewInvoiceAdCredit] = useState(5000);
   const [newInvoiceDueDate, setNewInvoiceDueDate] = useState('');
+  const [newInvoicePeriod, setNewInvoicePeriod] = useState('');
   const [newInvoiceNotes, setNewInvoiceNotes] = useState('');
 
   // Downloading feedback & inline validation states
@@ -238,6 +240,10 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
         totalCost: `${inv.retainerAmount.toLocaleString()} ج.م`,
         adCreditAmount: inv.adCreditAmount || 0,
         billingCycle: inv.billingCycle || 'monthly',
+        contractStartDate: inv.issueDate,
+        contractPeriod:
+          inv.contractPeriod ||
+          formatInvoicePeriodLabel(client.contractStartDate || inv.issueDate, inv.billingCycle || 'monthly', isAr),
         invoiceNumber: inv.invoiceNumber,
         paymentStatus: effectiveStatus,
         isAr,
@@ -405,11 +411,12 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     const cleanPhone = (inv.clientPhone || '').replace(/\D/g, '');
     const waPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
 
+    const periodLine = inv.contractPeriod ? `\n🗓️ *فترة الفاتورة:* ${inv.contractPeriod}` : '';
     const message = isAr
       ? `📄 *فاتورة رسمية صادرة — ديجيتال إفكت*
 🏢 *العميل:* ${inv.clientCompany || inv.clientName}
 🔢 *رقم الفاتورة:* ${inv.invoiceNumber}
-📅 *تاريخ الإصدار:* ${inv.issueDate}
+📅 *تاريخ الإصدار:* ${inv.issueDate}${periodLine}
 📦 *الباقة:* ${inv.packageName}
 
 💵 *تفاصيل التكلفة:*
@@ -420,7 +427,7 @@ ${inv.adCreditAmount ? `• رصيد إعلاني ممول: *${inv.adCreditAmoun
 _ديجيتال إفكت للحلول الرقمية والتسويق الإلكتروني._`
       : `📄 *Official Invoice — Digital Effect*
 Client: ${inv.clientCompany || inv.clientName}
-Invoice: ${inv.invoiceNumber}
+Invoice: ${inv.invoiceNumber}${inv.contractPeriod ? `\nPeriod: ${inv.contractPeriod}` : ''}
 Total: ${inv.grandTotal.toLocaleString()} EGP
 Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
 
@@ -501,6 +508,10 @@ Please share the transfer screenshot once completed so we can issue your officia
     const grand = Number(newInvoiceRetainer) + Number(newInvoiceAdCredit || 0);
     const today = new Date().toISOString().split('T')[0];
 
+    const resolvedPeriod =
+      newInvoicePeriod.trim() ||
+      formatInvoicePeriodLabel(client.contractStartDate || today, client.billingCycle || 'monthly', isAr);
+
     addInvoice({
       invoiceNumber: generateUniqueInvoiceNumber(client.id, invoices),
       clientId: client.id,
@@ -515,6 +526,7 @@ Please share the transfer screenshot once completed so we can issue your officia
       adCreditAmount: Number(newInvoiceAdCredit || 0),
       grandTotal: grand,
       billingCycle: client.billingCycle || 'monthly',
+      contractPeriod: resolvedPeriod,
       paymentStatus: 'pending',
       notes: newInvoiceNotes,
       deliverables: {
@@ -576,8 +588,12 @@ Please share the transfer screenshot once completed so we can issue your officia
               type="button"
               onClick={() => {
                 if (clientList.length > 0) {
-                  setNewInvoiceClientId(clientList[0].id);
-                  setNewInvoicePackage(clientList[0].packageName || '');
+                  const first = clientList[0];
+                  setNewInvoiceClientId(first.id);
+                  setNewInvoicePackage(first.packageName || '');
+                  setNewInvoicePeriod(
+                    formatInvoicePeriodLabel(first.contractStartDate || first.createdAt, first.billingCycle || 'monthly', isAr)
+                  );
                 }
                 setIsNewInvoiceOpen(true);
               }}
@@ -811,6 +827,12 @@ Please share the transfer screenshot once completed so we can issue your officia
                       <span className="text-[11px] text-slate-500">
                         {isAr ? 'تاريخ الإصدار:' : 'Issued:'} <strong>{inv.issueDate}</strong>
                       </span>
+                      {inv.contractPeriod && (
+                        <span className="text-[11px] font-black text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-blue-600" />
+                          <span>{inv.contractPeriod}</span>
+                        </span>
+                      )}
                       {inv.dueDate && (
                         <>
                           <span>•</span>
@@ -1071,6 +1093,10 @@ Please share the transfer screenshot once completed so we can issue your officia
           adCreditAmount={previewInvoice.adCreditAmount}
           billingCycle={previewInvoice.billingCycle || 'monthly'}
           contractStartDate={previewInvoice.issueDate}
+          contractPeriod={
+            previewInvoice.contractPeriod ||
+            formatInvoicePeriodLabel(previewInvoice.issueDate, previewInvoice.billingCycle || 'monthly', isAr)
+          }
           renewalDate={previewInvoice.dueDate}
           paymentStatus={
             previewInvoice.paymentStatus === 'cancelled' || previewInvoice.paymentStatus === 'partially_paid'
@@ -1130,6 +1156,13 @@ Please share the transfer screenshot once completed so we can issue your officia
                       setNewInvoicePackage(selected.packageName || '');
                       const num = parseInvoiceAmount(selected.budget) || selected.retainerAmount || 0;
                       if (num) setNewInvoiceRetainer(num);
+                      setNewInvoicePeriod(
+                        formatInvoicePeriodLabel(
+                          selected.contractStartDate || selected.createdAt,
+                          selected.billingCycle || 'monthly',
+                          isAr
+                        )
+                      );
                     }
                   }}
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
@@ -1188,14 +1221,15 @@ Please share the transfer screenshot once completed so we can issue your officia
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700">
-                  {isAr ? 'تاريخ الاستحقاق:' : 'Due Date:'}
+                <label className="text-xs font-bold text-indigo-800">
+                  {isAr ? 'فترة الفاتورة (تُكتب تحت تاريخ الإصدار):' : 'Invoice Period (Shown Under Date):'}
                 </label>
                 <input
-                  type="date"
-                  value={newInvoiceDueDate}
-                  onChange={(e) => setNewInvoiceDueDate(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  type="text"
+                  value={newInvoicePeriod}
+                  onChange={(e) => setNewInvoicePeriod(e.target.value)}
+                  placeholder={isAr ? 'مثال: عن شهر ديسمبر 2026 — أو عن أشهر أكتوبر ونوفمبر وديسمبر 2026' : 'e.g. For December 2026'}
+                  className="w-full bg-indigo-50/70 border border-indigo-200 rounded-xl px-3 py-2 text-xs font-black text-indigo-950 focus:outline-none focus:ring-2 focus:ring-indigo-600"
                 />
               </div>
 

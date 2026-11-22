@@ -5,6 +5,7 @@ import { TRANSLATIONS } from '../translations';
 import { DEFAULT_CUSTOM_PACKAGE_RATES } from '../utils/pricingCalculator';
 import { parseInvoiceAmount, generateUniqueInvoiceNumber } from '../utils/invoicePdfGenerator';
 import { getClientDeliverableTargets } from '../utils/workflowUtils';
+import { formatInvoicePeriodLabel, formatOperationCycleBadge } from '../utils/billingPeriodUtils';
 import {
   supabase,
   isSupabaseConfigured,
@@ -136,6 +137,8 @@ interface AgencyContextType {
       newRenewalDate: string;
       newPendingAdCredit?: number;
       issueInvoiceNow?: boolean;
+      invoiceTargetCycle?: 'closed' | 'new';
+      invoiceContractPeriod?: string;
       cycleNotes?: string;
     }
   ) => { updatedClient: Inquiry | null; createdInvoice: ClientInvoiceRecord | null };
@@ -1971,6 +1974,8 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       newRenewalDate: string;
       newPendingAdCredit?: number;
       issueInvoiceNow?: boolean;
+      invoiceTargetCycle?: 'closed' | 'new';
+      invoiceContractPeriod?: string;
       cycleNotes?: string;
     }
   ): { updatedClient: Inquiry | null; createdInvoice: ClientInvoiceRecord | null } => {
@@ -1982,15 +1987,8 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const todayStr = new Date().toISOString().split('T')[0];
     const closedStartDate = client.contractStartDate || client.createdAt?.split('T')[0] || todayStr;
     const closedEndDate = client.renewalDate || todayStr;
-
-    const arabicMonths = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-    ];
-    const startMatch = closedStartDate.match(/^(\d{4})-(\d{2})/);
-    const cycleLabel = startMatch
-      ? `${arabicMonths[Math.max(0, Math.min(11, parseInt(startMatch[2], 10) - 1))]} ${startMatch[1]}`
-      : closedStartDate;
+    const cycleLabel = formatOperationCycleBadge(closedStartDate, client.billingCycle || 'monthly', true);
+    const nextCycleLabel = formatOperationCycleBadge(options.newStartDate, client.billingCycle || 'monthly', true);
 
     const targets = getClientDeliverableTargets(client, dataRef.current.packages || []);
     const postsDelivered = client.postsDelivered ?? 0;
@@ -2047,7 +2045,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       { id: 'publish', title: 'Publish', status: 'pending' as const },
     ];
 
-    const summaryNoteText = `إغلاق دورة «${cycleLabel}» (إنجاز المخرجات: ${totalDelivered}/${targets.totalTarget} بنسبة ${deliverablesCompletionRate}% • مراحل العمل: ${workflowCompletedStages}/${workflowTotalStages} • رصيد إعلاني مرحّل: ${(client.adCreditBalance || 0).toLocaleString()} ج.م) وبدء دورة جديدة من ${options.newStartDate} حتى ${options.newRenewalDate}.${options.cycleNotes?.trim() ? ` ملاحظة: ${options.cycleNotes.trim()}` : ''}`;
+    const summaryNoteText = `إغلاق «${cycleLabel}» (إنجاز المخرجات: ${totalDelivered}/${targets.totalTarget} بنسبة ${deliverablesCompletionRate}% • مراحل العمل: ${workflowCompletedStages}/${workflowTotalStages} • رصيد إعلاني مرحّل: ${(client.adCreditBalance || 0).toLocaleString()} ج.م) وبدء «${nextCycleLabel}» من ${options.newStartDate} حتى ${options.newRenewalDate}.${options.cycleNotes?.trim() ? ` ملاحظة: ${options.cycleNotes.trim()}` : ''}`;
 
     const closingNote = makeActivityNote(summaryNoteText, 'workflow', 'إدارة التشغيل والمالية', {
       fieldChanged: 'billingCycleClose',
@@ -2088,6 +2086,14 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (options.issueInvoiceNow) {
       const invNumber = generateUniqueInvoiceNumber(client.id, dataRef.current.invoices || []);
       const grandTotal = retainerAmount + nextPendingAdCredit;
+      const targetCycle = options.invoiceTargetCycle || 'closed';
+      const resolvedInvoicePeriod =
+        (options.invoiceContractPeriod || '').trim() ||
+        formatInvoicePeriodLabel(
+          targetCycle === 'closed' ? closedStartDate : options.newStartDate,
+          client.billingCycle || 'monthly',
+          true
+        );
       createdInvoice = addInvoice({
         invoiceNumber: invNumber,
         clientId: client.id,
@@ -2095,13 +2101,14 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         clientCompany: client.company,
         clientPhone: client.phone,
         sector: client.sector,
-        issueDate: options.newStartDate,
+        issueDate: todayStr,
         dueDate: options.newRenewalDate,
         packageName: client.packageName || 'باقة تسويق رقمي',
         retainerAmount,
         adCreditAmount: nextPendingAdCredit,
         grandTotal,
         billingCycle: client.billingCycle || 'monthly',
+        contractPeriod: resolvedInvoicePeriod,
         paymentStatus: 'pending',
         notes: options.cycleNotes?.trim() || undefined,
         deliverables: {

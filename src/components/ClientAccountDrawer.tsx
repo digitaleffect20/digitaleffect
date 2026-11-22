@@ -61,6 +61,15 @@ import {
   parseInvoiceAmount,
   generateUniqueInvoiceNumber,
 } from '../utils/invoicePdfGenerator';
+import {
+  ARABIC_MONTH_NAMES,
+  ENGLISH_MONTH_NAMES,
+  buildCycleDatesFromMonth,
+  formatInvoicePeriodLabel,
+  formatOperationCycleBadge,
+  getNextOperationCycle,
+  parseYearMonth,
+} from '../utils/billingPeriodUtils';
 import { CountryCode } from 'libphonenumber-js';
 import { validateAndFormatPhone } from '../lib/phoneUtils';
 import { deleteInquiryFromDb, isSupabaseConfigured } from '../lib/supabase';
@@ -184,10 +193,13 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
 
   // Close Month / Start New Billing Cycle Modal states
   const [isCloseCycleModalOpen, setIsCloseCycleModalOpen] = useState<boolean>(false);
+  const [nextCycleMonth, setNextCycleMonth] = useState<number>(() => new Date().getMonth());
+  const [nextCycleYear, setNextCycleYear] = useState<number>(() => new Date().getFullYear());
   const [nextCycleStartDate, setNextCycleStartDate] = useState<string>('');
   const [nextCycleRenewalDate, setNextCycleRenewalDate] = useState<string>('');
   const [nextCycleAdCredit, setNextCycleAdCredit] = useState<number>(0);
   const [issueNextInvoiceNow, setIssueNextInvoiceNow] = useState<boolean>(false);
+  const [closeInvoiceTargetCycle, setCloseInvoiceTargetCycle] = useState<'closed' | 'new'>('closed');
   const [closeCycleNotes, setCloseCycleNotes] = useState<string>('');
 
   // Ad Credit & Campaign Wallet States (الرصيد الإعلاني ومحفظة الحملات)
@@ -291,6 +303,12 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
         generateUniqueInvoiceNumber(client.id, existingInvoices);
       const effectiveStatus = existingClientInv?.paymentStatus || paymentStatus || 'pending';
 
+      const activePeriodLabel = formatInvoicePeriodLabel(
+        contractStartDate || client.contractStartDate || client.createdAt,
+        billingCycle,
+        isAr
+      );
+
       const res = await generateClientInvoicePdf({
         client,
         packageName: packageName || client.packageName,
@@ -303,6 +321,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
         adCreditAmount: invoiceAdCredit,
         billingCycle,
         contractStartDate,
+        contractPeriod: existingClientInv?.contractPeriod || activePeriodLabel,
         renewalDate,
         invoiceNumber: invNum,
         paymentStatus: effectiveStatus === 'cancelled' ? 'pending' : effectiveStatus,
@@ -326,13 +345,14 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
               clientCompany: client.company,
               clientPhone: client.phone,
               sector: client.sector,
-              issueDate: contractStartDate || today,
+              issueDate: today,
               dueDate: renewalDate,
               packageName: packageName || client.packageName || 'باقة تسويق رقمي',
               retainerAmount: numRetainer,
               adCreditAmount: invoiceAdCredit,
               grandTotal,
               billingCycle,
+              contractPeriod: activePeriodLabel,
               paymentStatus: 'pending',
               deliverables: { posts: targetPosts, reels: targetReels, stories: targetStories },
             });
@@ -800,28 +820,38 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     }
   };
 
-  // Open Close Month / Start New Billing Cycle modal with smart default dates
+  // Open Close Month / Start New Billing Cycle modal with smart calendar month defaults
   const handleOpenCloseCycleModal = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const startBase = renewalDate && renewalDate >= (contractStartDate || '') ? renewalDate : todayStr;
-    const baseTime = new Date(`${startBase}T00:00:00`).getTime();
-    const cycleDays = billingCycle === 'annual' ? 365 : billingCycle === 'quarterly' ? 90 : 30;
-    const computedRenewal = Number.isFinite(baseTime)
-      ? new Date(baseTime + cycleDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      : new Date(Date.now() + cycleDays * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-    setNextCycleStartDate(startBase);
-    setNextCycleRenewalDate(computedRenewal);
+    const next = getNextOperationCycle(contractStartDate || client?.createdAt, billingCycle);
+    setNextCycleYear(next.year);
+    setNextCycleMonth(next.monthIndex);
+    setNextCycleStartDate(next.startDate);
+    setNextCycleRenewalDate(next.endDate);
     setNextCycleAdCredit(0);
     setIssueNextInvoiceNow(false);
+    setCloseInvoiceTargetCycle('closed');
     setCloseCycleNotes('');
     setIsCloseCycleModalOpen(true);
+  };
+
+  const handleSelectNextCycleMonthYear = (year: number, monthIndex: number) => {
+    setNextCycleYear(year);
+    setNextCycleMonth(monthIndex);
+    const { startDate, endDate } = buildCycleDatesFromMonth(year, monthIndex, billingCycle);
+    setNextCycleStartDate(startDate);
+    setNextCycleRenewalDate(endDate);
   };
 
   // Confirm closing current monthly cycle & starting a fresh month
   const handleConfirmCloseCycle = (e: React.FormEvent) => {
     e.preventDefault();
     if (!client) return;
+
+    const targetPeriodDate =
+      closeInvoiceTargetCycle === 'closed'
+        ? contractStartDate || client.contractStartDate || client.createdAt
+        : nextCycleStartDate;
+    const invoicePeriodLabel = formatInvoicePeriodLabel(targetPeriodDate, billingCycle, true);
 
     const { updatedClient, createdInvoice } = closeClientBillingCycle(client.id, {
       newStartDate: nextCycleStartDate || new Date().toISOString().split('T')[0],
@@ -830,6 +860,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
         new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       newPendingAdCredit: nextCycleAdCredit,
       issueInvoiceNow: issueNextInvoiceNow,
+      invoiceTargetCycle: closeInvoiceTargetCycle,
+      invoiceContractPeriod: invoicePeriodLabel,
       cycleNotes: closeCycleNotes,
     });
 
@@ -850,14 +882,20 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
         onClientUpdated(updatedClient);
       }
 
+      const nextCycleName = formatOperationCycleBadge(
+        updatedClient.contractStartDate || nextCycleStartDate,
+        billingCycle,
+        isAr
+      );
+
       showNotification(
         createdInvoice
           ? isAr
-            ? `تم إغلاق الشهر وأرشفته وبدء الدورة الجديدة وإصدار الفاتورة (${createdInvoice.invoiceNumber})!`
-            : `Cycle closed & archived, new cycle started, and invoice ${createdInvoice.invoiceNumber} issued!`
+            ? `تم إغلاق الدورة وبدء «${nextCycleName}» وإصدار الفاتورة (${createdInvoice.invoiceNumber} — ${invoicePeriodLabel})!`
+            : `Cycle closed, started "${nextCycleName}", and issued invoice ${createdInvoice.invoiceNumber}!`
           : isAr
-          ? 'تم إغلاق الشهر وأرشفته وتصفير المهام لبدء الدورة الجديدة بنجاح — يمكنك إصدار الفاتورة في أي وقت خلال الشهر.'
-          : 'Monthly cycle closed & archived! Operational tasks reset for the new cycle — you can issue the invoice anytime.'
+          ? `تم إغلاق الدورة وأرشفتها وتصفير المهام لبدء «${nextCycleName}» بنجاح.`
+          : `Cycle closed & archived! Operational tasks reset for "${nextCycleName}".`
       );
     }
 
@@ -901,6 +939,29 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   );
 
   const overdueInfo = getClientOverdueStatus(client, isAr);
+  const currentCycleBadge = formatOperationCycleBadge(
+    contractStartDate || client.createdAt,
+    billingCycle,
+    isAr
+  );
+  const currentInvoicePeriodLabel = formatInvoicePeriodLabel(
+    contractStartDate || client.createdAt,
+    billingCycle,
+    isAr
+  );
+  const nextCyclePreviewBadge = formatOperationCycleBadge(
+    nextCycleStartDate || buildCycleDatesFromMonth(nextCycleYear, nextCycleMonth, billingCycle).startDate,
+    billingCycle,
+    isAr
+  );
+  const nextCycleInvoicePeriodPreview = formatInvoicePeriodLabel(
+    nextCycleStartDate || buildCycleDatesFromMonth(nextCycleYear, nextCycleMonth, billingCycle).startDate,
+    billingCycle,
+    isAr
+  );
+  const monthNamesList = isAr ? ARABIC_MONTH_NAMES : ENGLISH_MONTH_NAMES;
+  const baseYear = new Date().getFullYear();
+  const selectableYears = [baseYear - 1, baseYear, baseYear + 1, baseYear + 2];
 
   return (
     <div 
@@ -944,6 +1005,11 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                     <UserCheck className="w-3 h-3 text-amber-400" />
                     <span>{isAr ? 'عميل متعاقد رسمي' : 'Contracted Client'}</span>
+                  </span>
+
+                  <span className="text-[10px] font-black bg-sky-500/20 text-sky-200 border border-sky-400/40 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-sky-300" />
+                    <span>{currentCycleBadge}</span>
                   </span>
 
                   {overdueInfo.isOverdue && (
@@ -2100,7 +2166,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">{isAr ? 'تاريخ بداية التعاقد:' : 'Contract Start Date:'}</label>
+                    <label className="text-xs font-bold text-slate-700">{isAr ? 'تاريخ بداية دورة التشغيل الحالية:' : 'Current Cycle Start Date:'}</label>
                     <input
                       type="date"
                       value={contractStartDate}
@@ -2110,13 +2176,30 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">{isAr ? 'تاريخ التجديد أو استحقاق الدفعة القادمة:' : 'Next Renewal / Due Date:'}</label>
+                    <label className="text-xs font-bold text-slate-700">{isAr ? 'تاريخ نهاية / تجديد الدورة:' : 'Cycle End / Renewal Date:'}</label>
                     <input
                       type="date"
                       value={renewalDate}
                       onChange={(e) => setRenewalDate(e.target.value)}
                       className="w-full text-xs font-bold p-2.5 bg-white rounded-xl border border-slate-200 text-slate-900"
                     />
+                  </div>
+                </div>
+
+                {/* Active Cycle & Invoice Period Live Preview Banner */}
+                <div className="p-3 rounded-xl bg-indigo-50/80 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <div>
+                      <span className="text-[10px] font-bold text-indigo-600 block">
+                        {isAr ? 'دورة التشغيل النشطة حالياً:' : 'Active Operating Cycle:'}
+                      </span>
+                      <span className="font-black text-indigo-950">{currentCycleBadge}</span>
+                    </div>
+                  </div>
+                  <div className="bg-white px-2.5 py-1.5 rounded-lg border border-indigo-200/90 text-[11px]">
+                    <span className="text-slate-500 font-bold">{isAr ? 'يظهر في الفاتورة: ' : 'On Invoice: '}</span>
+                    <span className="font-black text-blue-700">{currentInvoicePeriodLabel}</span>
                   </div>
                 </div>
 
@@ -2857,6 +2940,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           budget={budget}
           billingCycle={billingCycle}
           contractStartDate={contractStartDate}
+          contractPeriod={currentInvoicePeriodLabel}
           renewalDate={renewalDate}
           paymentStatus="pending"
           targetPosts={targetPosts}
@@ -2911,12 +2995,18 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleConfirmCloseCycle} className="p-5 space-y-4">
+            <form onSubmit={handleConfirmCloseCycle} className="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
               {/* Closing Cycle Snapshot Preview */}
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-                <span className="text-[11px] font-black text-slate-700 block">
-                  {isAr ? 'ملخص الشهر الذي سيتم إغلاقه وأرشفته:' : 'Summary of cycle being archived:'}
-                </span>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-[11px] font-black text-slate-700">
+                    {isAr ? 'الدورة التي سيتم إغلاقها وأرشفتها:' : 'Cycle being archived:'}
+                  </span>
+                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-slate-900 text-white inline-flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-emerald-400" />
+                    <span>{currentCycleBadge}</span>
+                  </span>
+                </div>
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
                   <div className="p-2 rounded-xl bg-white border border-slate-200/80">
                     <span className="text-[10px] text-slate-500 block font-bold">
@@ -2945,29 +3035,105 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
                   {isAr
-                    ? '• سيتم حفظ هذا التقرير في «سجل الدورات الشهرية»، وتصفير عدادات البوستات والريلز ومراحل التايم لاين للشهر الجديد، مع الإبقاء على الرصيد الإعلاني المتبقي كما هو.'
+                    ? '• سيتم حفظ هذا التقرير في «سجل الدورات الشهرية»، وتصفير عدادات البوستات والريلز ومراحل التايم لاين للدورة الجديدة، مع الإبقاء على الرصيد الإعلاني المتبقي كما هو.'
                     : '• This snapshot is saved permanently, operational deliverables & workflow stages reset to 0/pending, and remaining ad credit carries over untouched.'}
                 </p>
               </div>
 
-              {/* New Cycle Dates */}
+              {/* Next Operating Cycle Month & Year Picker */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-indigo-600" />
+                    <span>
+                      {billingCycle === 'quarterly'
+                        ? isAr
+                          ? 'بداية أشهر الدورة الربع سنوية القادمة:'
+                          : 'Next Quarterly Cycle Starting Month:'
+                        : isAr
+                        ? 'اختر شهر دورة التشغيل القادمة:'
+                        : 'Select Next Operating Cycle Month:'}
+                    </span>
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-white text-indigo-700 border border-indigo-200">
+                    {billingCycle === 'quarterly'
+                      ? isAr ? 'ربع سنوي (3 شهور)' : 'Quarterly (3 mo)'
+                      : billingCycle === 'annual'
+                      ? isAr ? 'سنوي (12 شهر)' : 'Annual (12 mo)'
+                      : isAr ? 'شهري' : 'Monthly'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <select
+                    value={nextCycleMonth}
+                    onChange={(e) =>
+                      handleSelectNextCycleMonthYear(nextCycleYear, parseInt(e.target.value, 10))
+                    }
+                    className="w-full text-xs font-black p-2.5 bg-white border border-indigo-300 rounded-xl text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {monthNamesList.map((mName, idx) => (
+                      <option key={mName} value={idx}>
+                        {mName}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={nextCycleYear}
+                    onChange={(e) =>
+                      handleSelectNextCycleMonthYear(parseInt(e.target.value, 10), nextCycleMonth)
+                    }
+                    className="w-full text-xs font-black p-2.5 bg-white border border-indigo-300 rounded-xl text-slate-900 font-mono cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {selectableYears.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white border border-indigo-200/90 text-[11px] flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-slate-500 font-bold">
+                      {isAr ? 'مسمى الدورة الجديدة:' : 'New Cycle Name:'}
+                    </span>
+                    <span className="font-black text-indigo-900">{nextCyclePreviewBadge}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-slate-500 font-bold">
+                      {isAr ? 'سيُكتب في فاتورة هذه الدورة:' : 'Invoice Period Label:'}
+                    </span>
+                    <span className="font-black text-blue-700">{nextCycleInvoicePeriodPreview}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Exact Cycle Start & End Dates (Auto-filled from Month picker, still editable) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 block">
-                    {isAr ? 'تاريخ بداية الشهر الجديد:' : 'New Cycle Start Date:'}
+                    {isAr ? 'تاريخ بداية الدورة الجديدة:' : 'New Cycle Start Date:'}
                   </label>
                   <input
                     type="date"
                     required
                     value={nextCycleStartDate}
-                    onChange={(e) => setNextCycleStartDate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNextCycleStartDate(val);
+                      const parsed = parseYearMonth(val);
+                      setNextCycleYear(parsed.year);
+                      setNextCycleMonth(parsed.monthIndex);
+                    }}
                     className="w-full text-xs font-bold p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700 block">
-                    {isAr ? 'تاريخ التجديد القادم:' : 'Next Renewal Date:'}
+                    {isAr ? 'تاريخ نهاية / تجديد الدورة:' : 'Cycle End / Renewal Date:'}
                   </label>
                   <input
                     type="date"
@@ -2982,7 +3148,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
               {/* Optional Ad Credit for Upcoming Month */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 block">
-                  {isAr ? 'رصيد إعلاني إضافي مخطط للشهر الجديد (اختياري):' : 'Planned Ad Credit for New Cycle (Optional):'}
+                  {isAr ? 'رصيد إعلاني إضافي مخطط للدورة الجديدة (اختياري):' : 'Planned Ad Credit for New Cycle (Optional):'}
                 </label>
                 <input
                   type="number"
@@ -2998,7 +3164,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
               {/* Optional Closing Note */}
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700 block">
-                  {isAr ? 'ملاحظة إغلاق الشهر (اختياري):' : 'Cycle Closing Note (Optional):'}
+                  {isAr ? 'ملاحظة إغلاق الدورة (اختياري):' : 'Cycle Closing Note (Optional):'}
                 </label>
                 <input
                   type="text"
@@ -3009,25 +3175,66 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 />
               </div>
 
-              {/* Flexible Invoicing Option (Unchecked by default so admin can issue anytime during the month) */}
-              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/70 border border-blue-200 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={issueNextInvoiceNow}
-                  onChange={(e) => setIssueNextInvoiceNow(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded accent-blue-600 cursor-pointer"
-                />
-                <div className="space-y-0.5 text-xs">
-                  <span className="font-black text-blue-950 block">
-                    {isAr ? 'إصدار فاتورة الشهر الجديد الآن وإدراجها في الأرشيف' : 'Issue new cycle invoice right now'}
-                  </span>
-                  <span className="text-[11px] text-blue-700 block leading-relaxed">
-                    {isAr
-                      ? 'اترك هذا الخيار غير محدد إذا كنت تفضل إصدار فاتورة الشهر في أي وقت يناسبك لاحقاً خلال الشهر.'
-                      : 'Leave unchecked to issue the invoice at any time during the month whenever you are ready.'}
-                  </span>
-                </div>
-              </label>
+              {/* Flexible Invoicing Option */}
+              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 space-y-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={issueNextInvoiceNow}
+                    onChange={(e) => setIssueNextInvoiceNow(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                  />
+                  <div className="space-y-0.5 text-xs">
+                    <span className="font-black text-blue-950 block">
+                      {isAr ? 'إصدار فاتورة وإدراجها في الأرشيف الآن' : 'Issue and archive invoice right now'}
+                    </span>
+                    <span className="text-[11px] text-blue-700 block leading-relaxed">
+                      {isAr
+                        ? 'اترك هذا الخيار غير محدد إذا كنت تفضل إصدار الفاتورة لاحقاً في أي وقت.'
+                        : 'Leave unchecked to issue the invoice whenever you are ready.'}
+                    </span>
+                  </div>
+                </label>
+
+                {issueNextInvoiceNow && (
+                  <div className="pt-2 border-t border-blue-200/80 space-y-1.5">
+                    <span className="text-[11px] font-bold text-blue-900 block">
+                      {isAr ? 'الفاتورة الصادرة الآن عن أي دورة؟ (ستُكتب تحت تاريخ الإصدار):' : 'Invoice billing period:'}
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCloseInvoiceTargetCycle('closed')}
+                        className={`p-2 rounded-xl border text-start text-[11px] transition-all cursor-pointer ${
+                          closeInvoiceTargetCycle === 'closed'
+                            ? 'bg-blue-600 text-white border-blue-600 font-black shadow-xs'
+                            : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-50 font-bold'
+                        }`}
+                      >
+                        <span className="block text-[10px] opacity-80">
+                          {isAr ? 'الدورة المنتهية للتو:' : 'Just Finished Cycle:'}
+                        </span>
+                        <span>{currentInvoicePeriodLabel}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCloseInvoiceTargetCycle('new')}
+                        className={`p-2 rounded-xl border text-start text-[11px] transition-all cursor-pointer ${
+                          closeInvoiceTargetCycle === 'new'
+                            ? 'bg-blue-600 text-white border-blue-600 font-black shadow-xs'
+                            : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-50 font-bold'
+                        }`}
+                      >
+                        <span className="block text-[10px] opacity-80">
+                          {isAr ? 'الدورة الجديدة (مقدماً):' : 'Upcoming Cycle:'}
+                        </span>
+                        <span>{nextCycleInvoicePeriodPreview}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Footer Actions */}
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
