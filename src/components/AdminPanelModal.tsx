@@ -37,7 +37,7 @@ import {
 import { generateCaseStudySeo } from '../lib/seoGenerator';
 import { AddClientModal } from './AddClientModal';
 import { ClientAccountDrawer } from './ClientAccountDrawer';
-import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from './ClientWorkflowStepper';
+import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES, buildReelWorkflowStages } from './ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from './ClientPackageDeliverablesCard';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
 import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
@@ -539,6 +539,36 @@ export const AdminPanelModal: React.FC = () => {
 
     updateInquiry(client.id, { workflowStages: updatedStages });
     showNotice(isAr ? 'تم تحديث حالة المرحلة وتسجيل تاريخ ووقت الإنجاز بنجاح!' : 'Stage updated with timestamp!');
+  };
+
+  const handleToggleClientReelStage = (client: Inquiry, reelStageId: string) => {
+    const resolvedTargets = getClientDeliverableTargets(client, data.packages);
+    const currentReelStages = buildReelWorkflowStages(
+      resolvedTargets.reelsTarget,
+      client.reelStages,
+      client.reelsDelivered ?? 0
+    );
+
+    const updatedReelStages = currentReelStages.map((stage) => {
+      if (stage.id === reelStageId) {
+        const nextStatus: 'completed' | 'in_progress' | 'pending' =
+          stage.status === 'pending'
+            ? 'in_progress'
+            : stage.status === 'in_progress'
+            ? 'completed'
+            : 'pending';
+        const completedAt = nextStatus === 'pending' ? undefined : new Date().toISOString();
+        return { ...stage, status: nextStatus, completedAt };
+      }
+      return stage;
+    });
+
+    const syncedReelsDelivered = updatedReelStages.filter((s) => s.status === 'completed').length;
+    updateInquiry(client.id, {
+      reelStages: updatedReelStages,
+      reelsDelivered: syncedReelsDelivered,
+    });
+    showNotice(isAr ? 'تم تحديث حالة الريلز وتسجيل وقت الإنجاز بنجاح!' : 'Reel status updated with timestamp!');
   };
 
   const exportInquiriesCsv = () => {
@@ -1443,6 +1473,10 @@ export const AdminPanelModal: React.FC = () => {
                             <ClientWorkflowStepper
                               stages={client.workflowStages}
                               onToggleStage={(stageId) => handleToggleClientStage(client, stageId)}
+                              reelsTarget={targetR}
+                              reelStages={client.reelStages}
+                              reelsDelivered={deliveredR}
+                              onToggleReelStage={(reelId) => handleToggleClientReelStage(client, reelId)}
                               interactive={true}
                               size="sm"
                               isAr={isAr}

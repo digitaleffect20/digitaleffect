@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAgencyData } from '../context/AgencyDataContext';
+import { useAgencyData, DEFAULT_AGENCY_TEAM_MEMBERS } from '../context/AgencyDataContext';
 import { 
   supabase, 
   isSupabaseConfigured, 
@@ -9,7 +9,18 @@ import {
   submitInquiry,
   DbInquiry 
 } from '../lib/supabase';
-import { ServicePackage, PromoCode, SectorType, Inquiry, ClientAccountNote, ActivityLogType } from '../types';
+import {
+  ServicePackage,
+  PromoCode,
+  SectorType,
+  Inquiry,
+  ClientAccountNote,
+  ActivityLogType,
+  PortalRole,
+  PortalTabKey,
+  TeamMemberPermissions,
+  AgencyTeamMember,
+} from '../types';
 import { 
   Lock, 
   Mail, 
@@ -64,7 +75,12 @@ import {
   BellRing,
   CreditCard,
   Wallet,
-  Activity
+  Activity,
+  ClipboardList,
+  Users,
+  Receipt,
+  Settings,
+  Shield
 } from 'lucide-react';
 import { CrmAnalyticsHub } from '../components/CrmAnalyticsHub';
 import { SeoGeneratorWidget } from '../components/SeoGeneratorWidget';
@@ -72,7 +88,13 @@ import { CaseStudyMediaManager } from '../components/CaseStudyMediaManager';
 import { CustomPackageCalculator } from '../components/CustomPackageCalculator';
 import { AddClientModal } from '../components/AddClientModal';
 import { ClientAccountDrawer, ClientDrawerTab } from '../components/ClientAccountDrawer';
-import { ClientWorkflowStepper, DEFAULT_WORKFLOW_STAGES } from '../components/ClientWorkflowStepper';
+import {
+  ClientWorkflowStepper,
+  DEFAULT_WORKFLOW_STAGES,
+  buildReelWorkflowStages,
+  checkSequentialStageToggle,
+  formatSequentialBlockMessage,
+} from '../components/ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from '../components/ClientPackageDeliverablesCard';
 import { ActivityTimelinePanel, getActivityTypeMeta } from '../components/ActivityTimelinePanel';
 import { getClientOverdueStatus, getClientDeliverableTargets } from '../utils/workflowUtils';
@@ -83,6 +105,17 @@ import {
 } from '../utils/invoicePdfGenerator';
 import { InvoicesArchiveHub } from '../components/InvoicesArchiveHub';
 import { AccountStatementModal } from '../components/AccountStatementModal';
+import { TeamTasksHub } from '../components/TeamTasksHub';
+import { ExpensesProfitHub } from '../components/ExpensesProfitHub';
+import { TeamAccountsModal } from '../components/TeamAccountsModal';
+import { AdWalletApprovalsBanner } from '../components/ClientAdWalletPanel';
+import {
+  FULL_ADMIN_PERMISSIONS,
+  getPresetPermissions,
+  normalizeUsername,
+  resolveMemberPermissions,
+  verifyTeamPassword,
+} from '../utils/teamAuth';
 import crmFullMigrationSql from '../../supabase/migrations/20261117000001_crm_full_persistence.sql?raw';
 
 export const AdminPortalPage: React.FC = () => {
@@ -132,6 +165,16 @@ export const AdminPortalPage: React.FC = () => {
   const [loginLoading, setLoginLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // Per-Member Team Authentication & Granular Permissions (kept strictly in React memory)
+  const [loginMode, setLoginMode] = useState<'admin' | 'team'>('admin');
+  const [teamUsernameInput, setTeamUsernameInput] = useState('');
+  const [teamPasswordInput, setTeamPasswordInput] = useState('');
+  const [teamLoginLoading, setTeamLoginLoading] = useState(false);
+  const [loggedInTeamMemberId, setLoggedInTeamMemberId] = useState<string | null>(null);
+  const [, setTeamSessionToken] = useState<string | null>(null);
+  const [previewTeamMemberId, setPreviewTeamMemberId] = useState<string | null>(null);
+  const [isTeamAccountsModalOpen, setIsTeamAccountsModalOpen] = useState(false);
+
   // Local testing bypass state (only allowed when Supabase is not configured)
   const [localBypassAuth, setLocalBypassAuth] = useState(() => {
     if (isSupabaseConfigured) return false;
@@ -143,7 +186,7 @@ export const AdminPortalPage: React.FC = () => {
   });
 
   // Dashboard Active Tab
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'clients' | 'invoices' | 'activity' | 'analytics' | 'packages' | 'projects' | 'banner' | 'backup'>('inquiries');
+  const [activeTab, setActiveTab] = useState<PortalTabKey>('inquiries');
   const [showAnalyticsInInquiriesTab, setShowAnalyticsInInquiriesTab] = useState(true);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [selectedClientForAccount, setSelectedClientForAccount] = useState<Inquiry | null>(null);
@@ -674,6 +717,91 @@ export const AdminPortalPage: React.FC = () => {
     }
   };
 
+  // Handle Per-Member Team Login (Username & Salted Password Verification)
+  const handleTeamMemberLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    const normalizedUser = normalizeUsername(teamUsernameInput);
+    const rawPass = teamPasswordInput;
+
+    if (!normalizedUser || !rawPass) {
+      setAuthError(
+        isAr
+          ? 'يرجى إدخال اسم المستخدم وكلمة المرور.'
+          : 'Please enter both username and password.'
+      );
+      return;
+    }
+
+    setTeamLoginLoading(true);
+    try {
+      const membersList =
+        Array.isArray(data.teamMembers) && data.teamMembers.length > 0
+          ? data.teamMembers
+          : DEFAULT_AGENCY_TEAM_MEMBERS;
+
+      const matched = membersList.find(
+        (m) => m.username && normalizeUsername(m.username) === normalizedUser
+      );
+
+      if (!matched || !matched.passwordHash) {
+        setAuthError(
+          isAr
+            ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى مراجعة مدير الوكالة.'
+            : 'Invalid username or password.'
+        );
+        return;
+      }
+
+      if (matched.active === false) {
+        setAuthError(
+          isAr
+            ? 'هذا الحساب موقوف مؤقتاً من قبل الإدارة. يرجى التواصل مع مدير النظام.'
+            : 'This team account is currently suspended by the administrator.'
+        );
+        return;
+      }
+
+      const verifyRes = await verifyTeamPassword(rawPass, matched.passwordHash);
+
+      if (!verifyRes.valid) {
+        setAuthError(
+          isAr
+            ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.'
+            : 'Invalid username or password.'
+        );
+        return;
+      }
+
+      const resolvedPerms =
+        matched.permissions || getPresetPermissions(matched.rolePreset || 'custom');
+      const firstAllowedTab: PortalTabKey =
+        resolvedPerms.allowedTabs && resolvedPerms.allowedTabs.length > 0
+          ? resolvedPerms.allowedTabs[0]
+          : 'tasks';
+
+      setLoggedInTeamMemberId(matched.id);
+      setTeamSessionToken(verifyRes.sessionToken || null);
+      setTeamPasswordInput('');
+      setPreviewTeamMemberId(null);
+      setActiveTab(firstAllowedTab);
+      showNotice(
+        isAr
+          ? `مرحباً ${matched.name} (${matched.roleTitle}) — تم فتح الشاشات المصرح بها لحسابك.`
+          : `Welcome ${matched.name} (${matched.roleTitle}) — Your workspace is ready.`
+      );
+    } catch {
+      setAuthError(
+        isAr
+          ? 'تعذر التحقق من بيانات الدخول حالياً. يرجى المحاولة مرة أخرى.'
+          : 'Could not verify credentials right now. Please try again.'
+      );
+    } finally {
+      setTeamLoginLoading(false);
+    }
+  };
+
   // Handle Sign Out
   const handleSignOut = async () => {
     if (isSupabaseConfigured && supabase) {
@@ -681,9 +809,17 @@ export const AdminPortalPage: React.FC = () => {
     }
     try {
       sessionStorage.removeItem('digital_effect_admin_session');
+      sessionStorage.removeItem('de_ops_session');
+      sessionStorage.removeItem('de_portal_role');
+      sessionStorage.removeItem('de_ops_name');
     } catch {}
     setSessionUser(null);
     setLocalBypassAuth(false);
+    setLoggedInTeamMemberId(null);
+    setTeamSessionToken(null);
+    setPreviewTeamMemberId(null);
+    setIsTeamAccountsModalOpen(false);
+    setTeamPasswordInput('');
     showNotice(isAr ? 'تم تسجيل الخروج بنجاح.' : 'Signed out successfully.');
   };
 
@@ -1280,13 +1416,158 @@ export const AdminPortalPage: React.FC = () => {
     }, 0);
   }, [contractedClients, data.packages]);
 
+  // Active & Pending Team Tasks count across all clients (for Tasks tab badge & Ops KPI)
+  const activeTeamTasksCount = useMemo(() => {
+    let count = 0;
+    contractedClients.forEach((client) => {
+      const stages =
+        client.workflowStages && client.workflowStages.length > 0
+          ? client.workflowStages
+          : DEFAULT_WORKFLOW_STAGES;
+      stages.forEach((s) => {
+        if (s.status !== 'completed') count++;
+      });
+      const { reelsTarget } = getClientDeliverableTargets(client, data.packages);
+      if (reelsTarget > 0) {
+        const reels = buildReelWorkflowStages(reelsTarget, client.reelStages, client.reelsDelivered ?? 0);
+        reels.forEach((r) => {
+          if (r.status !== 'completed') count++;
+        });
+      }
+    });
+    return count;
+  }, [contractedClients, data.packages]);
+
+  // Renewal Radar: active clients whose renewalDate is overdue or within the next 5 days
+  const renewalRadarClients = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const items: Array<{ client: Inquiry; daysUntil: number; renewalDate: string }> = [];
+
+    contractedClients.forEach((client) => {
+      if (client.contractStatus === 'paused' || client.contractStatus === 'completed') return;
+      if (!client.renewalDate) return;
+      const target = new Date(`${client.renewalDate}T00:00:00`);
+      if (Number.isNaN(target.getTime())) return;
+      const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 5) {
+        items.push({ client, daysUntil: diffDays, renewalDate: client.renewalDate });
+      }
+    });
+
+    return items.sort((a, b) => a.daysUntil - b.daysUntil);
+  }, [contractedClients]);
+
+  const getRenewalReminderWhatsAppHref = (client: Inquiry, renewalDate: string) => {
+    const cleanPhone = (client.phone || '').replace(/\D/g, '');
+    const waPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
+    const msg = isAr
+      ? `السلام عليكم أستاذ/ ${client.name || client.company} 👋
+تحية طيبة من فريق *ديجيتال إفكت*،
+
+نود تذكير حضراتكم بقرب موعد تجديد باقة *${client.packageName || 'التسويق الرقمي'}* الخاصة بـ *${client.company || client.name}* بتاريخ *${renewalDate}*.
+يسعدنا تأكيد التجديد للاستمرار في تنفيذ خطة المحتوى والحملات للشهر القادم دون أي توقف 🚀
+
+شكراً لثقتكم الدائمة بنا!`
+      : `Hello ${client.name || client.company},
+Warm greetings from *Digital Effect*!
+
+This is a friendly reminder that your *${client.packageName || 'Digital Marketing'}* subscription for *${client.company || client.name}* is due for renewal on *${renewalDate}*.
+Please confirm renewal so we can smoothly kick off next month's content & campaign cycle without interruption. Thank you!`;
+
+    return `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`;
+  };
+
+  const agencyTeamMembers = useMemo(
+    () =>
+      data.teamMembers && data.teamMembers.length > 0
+        ? data.teamMembers
+        : DEFAULT_AGENCY_TEAM_MEMBERS,
+    [data.teamMembers]
+  );
+
+  // Effective Role & Granular Permissions Resolution
+  const isEmailForcedOps = useMemo(() => {
+    const userEmail = (sessionUser?.email || '').trim().toLowerCase();
+    if (!userEmail) return false;
+    return (data.opsAccountEmails || []).some((e) => e.trim().toLowerCase() === userEmail);
+  }, [sessionUser, data.opsAccountEmails]);
+
+  const realRole: PortalRole =
+    isEmailForcedOps || Boolean(loggedInTeamMemberId) ? 'operations' : 'admin';
+
+  const activeTeamMember: AgencyTeamMember | null = useMemo(() => {
+    if (realRole === 'admin' && previewTeamMemberId) {
+      return agencyTeamMembers.find((m) => m.id === previewTeamMemberId) || null;
+    }
+    if (loggedInTeamMemberId) {
+      return agencyTeamMembers.find((m) => m.id === loggedInTeamMemberId) || null;
+    }
+    return null;
+  }, [realRole, previewTeamMemberId, loggedInTeamMemberId, agencyTeamMembers]);
+
+  // If a signed-in team member was deleted or suspended by Admin, end their session immediately
+  useEffect(() => {
+    if (loggedInTeamMemberId && (!activeTeamMember || activeTeamMember.active === false)) {
+      setLoggedInTeamMemberId(null);
+      setTeamSessionToken(null);
+    }
+  }, [loggedInTeamMemberId, activeTeamMember]);
+
+  const effectivePermissions: TeamMemberPermissions = useMemo(() => {
+    if (realRole === 'admin' && !previewTeamMemberId) {
+      return FULL_ADMIN_PERMISSIONS;
+    }
+    if (activeTeamMember) {
+      return resolveMemberPermissions(activeTeamMember);
+    }
+    return getPresetPermissions('account_manager');
+  }, [realRole, previewTeamMemberId, activeTeamMember]);
+
+  const canAccessTab = (tab: PortalTabKey) => effectivePermissions.allowedTabs.includes(tab);
+  const canViewFinancials = effectivePermissions.canViewFinancials;
+  const canEditClients = effectivePermissions.canEditClients;
+  const canDeleteRecords = effectivePermissions.canDeleteRecords;
+  const canManageTeam = effectivePermissions.canManageTeam;
+  const canApproveAdWallet = Boolean(effectivePermissions.canApproveAdWallet);
+  const canManageAdWallet =
+    Boolean(effectivePermissions.canManageAdWallet) || canApproveAdWallet || canViewFinancials;
+  const canAccessAdWallet = canManageAdWallet || canApproveAdWallet || canViewFinancials;
+
+  const effectiveRole: PortalRole =
+    canViewFinancials && canManageTeam ? 'admin' : 'operations';
+
+  useEffect(() => {
+    if (!effectivePermissions.allowedTabs.includes(activeTab)) {
+      const fallbackTab = effectivePermissions.allowedTabs[0] || 'tasks';
+      if (fallbackTab !== activeTab) {
+        setActiveTab(fallbackTab);
+      }
+    }
+  }, [effectivePermissions, activeTab]);
+
   const handleToggleClientStage = (client: Inquiry, stageId: string) => {
+    const allowedStages = effectivePermissions.allowedWorkflowStages;
+    if (allowedStages && !allowedStages.includes(stageId as any)) {
+      return;
+    }
+
     const currentStages = client.workflowStages && client.workflowStages.length === 5 
       ? client.workflowStages 
       : DEFAULT_WORKFLOW_STAGES;
 
+    const seqCheck = checkSequentialStageToggle(currentStages, stageId);
+    if (!seqCheck.allowed) {
+      const targetStage = currentStages.find((s) => s.id === stageId);
+      showNotice(formatSequentialBlockMessage(seqCheck, targetStage?.title || stageId, isAr));
+      return;
+    }
+
     let toggledStageTitle = stageId;
     let nextStageStatusLabel = '';
+    const memberStamp = activeTeamMember?.name?.trim();
+    const canAssign = effectivePermissions.canAssignTasks !== false;
+    const actorName = memberStamp || (isAr ? 'فريق التشغيل' : 'Operations Team');
 
     const updatedStages = currentStages.map((stage) => {
       if (stage.id === stageId) {
@@ -1304,7 +1585,17 @@ export const AdminPortalPage: React.FC = () => {
             : nextStatus === 'in_progress'
             ? (isAr ? 'جاري التنفيذ' : 'In Progress')
             : (isAr ? 'قيد الانتظار' : 'Pending');
-        return { ...stage, status: nextStatus, completedAt };
+
+        let resolvedAssignee = stage.assignee;
+        if (memberStamp) {
+          if (nextStatus === 'pending') {
+            resolvedAssignee = !canAssign ? undefined : stage.assignee;
+          } else if (!canAssign || !stage.assignee) {
+            resolvedAssignee = memberStamp;
+          }
+        }
+
+        return { ...stage, status: nextStatus, completedAt, assignee: resolvedAssignee };
       }
       return stage;
     });
@@ -1315,7 +1606,7 @@ export const AdminPortalPage: React.FC = () => {
         ? `تحديث مرحلة التنفيذ "${toggledStageTitle}" إلى (${nextStageStatusLabel}).`
         : `Updated workflow stage "${toggledStageTitle}" to ${nextStageStatusLabel}.`,
       createdAt: new Date().toISOString(),
-      author: isAr ? 'فريق التشغيل' : 'Operations Team',
+      author: actorName,
       type: 'workflow',
       meta: { stageTitle: toggledStageTitle, toStatus: nextStageStatusLabel },
     };
@@ -1325,6 +1616,89 @@ export const AdminPortalPage: React.FC = () => {
       clientNotes: [workflowLog, ...(client.clientNotes || [])],
     });
     showNotice(isAr ? 'تم تحديث حالة المرحلة وتسجيل تاريخ ووقت الإنجاز بنجاح!' : 'Stage updated with timestamp!');
+  };
+
+  const handleToggleClientReelStage = (client: Inquiry, reelStageId: string) => {
+    if (effectivePermissions.canUpdateReelsTrack === false) {
+      return;
+    }
+
+    const resolvedTargets = getClientDeliverableTargets(client, data.packages);
+    const currentReelStages = buildReelWorkflowStages(
+      resolvedTargets.reelsTarget,
+      client.reelStages,
+      client.reelsDelivered ?? 0
+    );
+
+    const reelSeqCheck = checkSequentialStageToggle(currentReelStages, reelStageId);
+    if (!reelSeqCheck.allowed) {
+      const targetIdx = currentReelStages.findIndex((s) => s.id === reelStageId);
+      const targetLabel = isAr ? `ريلز ${targetIdx + 1}` : `Reel ${targetIdx + 1}`;
+      showNotice(formatSequentialBlockMessage(reelSeqCheck, targetLabel, isAr));
+      return;
+    }
+
+    let toggledReelIndex = 0;
+    let nextReelStatusLabel = '';
+    const memberStamp = activeTeamMember?.name?.trim();
+    const canAssign = effectivePermissions.canAssignTasks !== false;
+    const actorName = memberStamp || (isAr ? 'فريق التشغيل' : 'Operations Team');
+
+    const updatedReelStages = currentReelStages.map((stage, idx) => {
+      if (stage.id === reelStageId) {
+        const nextStatus: 'completed' | 'in_progress' | 'pending' =
+          stage.status === 'pending'
+            ? 'in_progress'
+            : stage.status === 'in_progress'
+            ? 'completed'
+            : 'pending';
+        const completedAt = nextStatus === 'pending' ? undefined : new Date().toISOString();
+        toggledReelIndex = idx + 1;
+        nextReelStatusLabel =
+          nextStatus === 'completed'
+            ? (isAr ? 'مكتمل' : 'Completed')
+            : nextStatus === 'in_progress'
+            ? (isAr ? 'قيد التنفيذ' : 'In Progress')
+            : (isAr ? 'في الانتظار' : 'Pending');
+
+        let resolvedAssignee = stage.assignee;
+        if (memberStamp) {
+          if (nextStatus === 'pending') {
+            resolvedAssignee = !canAssign ? undefined : stage.assignee;
+          } else if (!canAssign || !stage.assignee) {
+            resolvedAssignee = memberStamp;
+          }
+        }
+
+        return { ...stage, status: nextStatus, completedAt, assignee: resolvedAssignee };
+      }
+      return stage;
+    });
+
+    const syncedReelsDelivered = updatedReelStages.filter((s) => s.status === 'completed').length;
+    const reelLabel = isAr ? `ريلز ${toggledReelIndex}` : `Reel ${toggledReelIndex}`;
+
+    const reelLog: ClientAccountNote = {
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      text: isAr
+        ? `تحديث تايم لاين الريلز (${reelLabel}) إلى «${nextReelStatusLabel}» (المكتمل: ${syncedReelsDelivered}/${updatedReelStages.length}).`
+        : `Updated Reels timeline (${reelLabel}) to ${nextReelStatusLabel} (${syncedReelsDelivered}/${updatedReelStages.length} done).`,
+      createdAt: new Date().toISOString(),
+      author: actorName,
+      type: 'workflow',
+      meta: { stageTitle: reelLabel, toStatus: nextReelStatusLabel },
+    };
+
+    updateInquiry(client.id, {
+      reelStages: updatedReelStages,
+      reelsDelivered: syncedReelsDelivered,
+      clientNotes: [reelLog, ...(client.clientNotes || [])],
+    });
+    showNotice(
+      isAr
+        ? `تم تحديث حالة ${reelLabel} وتسجيل الوقت بنجاح!`
+        : `${reelLabel} updated with timestamp!`
+    );
   };
 
   // Export to Excel / CSV with UTF-8 BOM
@@ -1357,7 +1731,11 @@ export const AdminPortalPage: React.FC = () => {
     showNotice(isAr ? 'تم تصدير ملف الطلبات (Excel/CSV) بنجاح!' : 'Inquiries exported as CSV successfully!');
   };
 
-  const isAuthenticated = Boolean(sessionUser || localBypassAuth);
+  const isAuthenticated = Boolean(
+    sessionUser ||
+      localBypassAuth ||
+      (loggedInTeamMemberId && activeTeamMember && activeTeamMember.active !== false)
+  );
 
   // --------------------------------------------------------------------------
   // Loading State
@@ -1451,58 +1829,154 @@ export const AdminPortalPage: React.FC = () => {
               </div>
             )}
 
-            {/* Login Form */}
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-sky-400" />
-                  <span>{isAr ? 'البريد الإلكتروني للمسؤول' : 'Admin Email'}</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  autoComplete="username"
-                  placeholder="admin@digitaleffect.net"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-sky-400" />
-                  <span>{isAr ? 'كلمة المرور المشفرة' : 'Encrypted Password'}</span>
-                </label>
-                <input
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
-                />
-              </div>
-
+            {/* Role Mode Selector: Admin vs Team Member Account */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-800/80 border border-slate-700/80 rounded-2xl text-xs font-bold">
               <button
-                type="submit"
-                disabled={loginLoading}
-                className="w-full py-3.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 active:bg-sky-700 rounded-xl transition-all shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                type="button"
+                onClick={() => {
+                  setLoginMode('admin');
+                  setAuthError(null);
+                }}
+                className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  loginMode === 'admin'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
               >
-                {loginLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>{isAr ? 'التحقق وتأكيد الصلاحية...' : 'Authenticating...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>{isAr ? 'تسجيل الدخول الآمن' : 'Secure Admin Sign In'}</span>
-                  </>
-                )}
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>{isAr ? 'الإدارة (Admin)' : 'Admin Owner'}</span>
               </button>
-            </form>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMode('team');
+                  setAuthError(null);
+                }}
+                className={`py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  loginMode === 'team'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>{isAr ? 'دخول أعضاء الفريق' : 'Team Member Login'}</span>
+              </button>
+            </div>
+
+            {loginMode === 'admin' ? (
+              /* Admin Login Form */
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-sky-400" />
+                    <span>{isAr ? 'البريد الإلكتروني للمسؤول' : 'Admin Email'}</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    autoComplete="username"
+                    placeholder="admin@digitaleffect.net"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full text-xs p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-sky-400" />
+                    <span>{isAr ? 'كلمة المرور المشفرة' : 'Encrypted Password'}</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full text-xs p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loginLoading}
+                  className="w-full py-3.5 text-xs font-bold text-white bg-sky-600 hover:bg-sky-500 active:bg-sky-700 rounded-xl transition-all shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                >
+                  {loginLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{isAr ? 'التحقق وتأكيد الصلاحية...' : 'Authenticating...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>{isAr ? 'تسجيل الدخول الآمن' : 'Secure Admin Sign In'}</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            ) : (
+              /* Per-Member Team Username & Password Login Form */
+              <form onSubmit={handleTeamMemberLogin} className="space-y-4">
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-200 leading-relaxed">
+                  {isAr
+                    ? 'سجّل الدخول باسم المستخدم وكلمة المرور الخاصة بحسابك لفتح الشاشات والمهام المحددة لك فقط من قبل الإدارة.'
+                    : 'Sign in with your personal Username & Password to access only the screens and tasks assigned to your account.'}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isAr ? 'اسم المستخدم (Username):' : 'Username:'}</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    dir="ltr"
+                    autoComplete="username"
+                    placeholder="sara.content"
+                    value={teamUsernameInput}
+                    onChange={(e) => setTeamUsernameInput(e.target.value)}
+                    className="w-full text-xs p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{isAr ? 'كلمة المرور (Password):' : 'Password:'}</span>
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    autoComplete="current-password"
+                    placeholder="••••••••••••"
+                    value={teamPasswordInput}
+                    onChange={(e) => setTeamPasswordInput(e.target.value)}
+                    className="w-full text-xs p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors font-mono"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={teamLoginLoading}
+                  className="w-full py-3.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+                >
+                  {teamLoginLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{isAr ? 'جاري التحقق من الحساب...' : 'Verifying account...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-4 h-4" />
+                      <span>{isAr ? 'تسجيل دخول عضو الفريق' : 'Sign In to Team Workspace'}</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
 
             {/* Security Notice */}
             <div className="pt-2 border-t border-slate-800/80 text-center">
@@ -1536,8 +2010,24 @@ export const AdminPortalPage: React.FC = () => {
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-sm font-black text-white">Digital Effect CRM</h1>
+                <span
+                  className={`px-2 py-0.5 text-[10px] font-black rounded-full border flex items-center gap-1 ${
+                    activeTeamMember
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                      : 'bg-sky-500/20 text-sky-300 border-sky-400/40'
+                  }`}
+                >
+                  {activeTeamMember ? <Users className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                  <span>
+                    {activeTeamMember
+                      ? `${activeTeamMember.name} • ${activeTeamMember.roleTitle}`
+                      : isAr
+                      ? 'الإدارة (Admin)'
+                      : 'Admin Role'}
+                  </span>
+                </span>
                 {isSupabaseConfigured && sessionUser ? (
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                     <Database className="w-3 h-3" />
@@ -1550,12 +2040,59 @@ export const AdminPortalPage: React.FC = () => {
                 )}
               </div>
               <p className="text-[11px] text-slate-400">
-                {sessionUser?.email ? `المسؤول: ${sessionUser.email}` : 'مدير النظام (جلسة نشطة)'}
+                {previewTeamMemberId && activeTeamMember
+                  ? isAr
+                    ? `معاينة حساب: ${activeTeamMember.name} (${effectivePermissions.allowedTabs.length} شاشات متاحة)`
+                    : `Previewing: ${activeTeamMember.name} (${effectivePermissions.allowedTabs.length} screens)`
+                  : loggedInTeamMemberId && activeTeamMember
+                  ? `${isAr ? 'حساب الفريق:' : 'Team Account:'} ${activeTeamMember.username ? `@${activeTeamMember.username}` : activeTeamMember.name}`
+                  : sessionUser?.email
+                  ? `${isAr ? 'المسؤول:' : 'User:'} ${sessionUser.email}`
+                  : isAr
+                  ? 'مدير النظام (جلسة نشطة)'
+                  : 'Admin (Active Session)'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Admin Team Accounts & Permissions Management + Live Preview Exit */}
+            {realRole === 'admin' && (
+              <>
+                {previewTeamMemberId && activeTeamMember && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewTeamMemberId(null)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black rounded-xl transition-all border bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 shadow-md cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>
+                      {isAr
+                        ? `إنهاء معاينة ${activeTeamMember.name} والعودة للإدارة`
+                        : `Exit ${activeTeamMember.name} Preview`}
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsTeamAccountsModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-black text-emerald-200 hover:text-white bg-slate-800 hover:bg-emerald-700 border border-emerald-500/40 rounded-xl transition-all cursor-pointer"
+                  title={
+                    isAr
+                      ? 'إنشاء حسابات أعضاء الفريق (Username & Password) وتحديد الشاشات والصلاحيات لكل عضو'
+                      : 'Manage team member accounts, credentials & screen permissions'
+                  }
+                >
+                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{isAr ? 'إدارة الفريق والصلاحيات' : 'Team & Access'}</span>
+                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 font-black tabular-nums">
+                    {agencyTeamMembers.filter((m) => Boolean(m.username && m.passwordHash)).length}
+                  </span>
+                </button>
+              </>
+            )}
+
             <button
               onClick={() => setCurrentPage('home')}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 rounded-xl transition-all shadow-md cursor-pointer"
@@ -1575,6 +2112,27 @@ export const AdminPortalPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Admin Previewing Specific Team Member Banner */}
+        {realRole === 'admin' && previewTeamMemberId && activeTeamMember && (
+          <div className="bg-emerald-700 text-white text-xs font-bold py-2 px-4 flex items-center justify-center gap-3 flex-wrap border-t border-emerald-500/40">
+            <span className="flex items-center gap-1.5">
+              <Eye className="w-4 h-4 text-emerald-200" />
+              <span>
+                {isAr
+                  ? `أنت تعاين الآن لوحة التحكم كما يراها «${activeTeamMember.name}» (${activeTeamMember.roleTitle}) — الحسابات المالية ${effectivePermissions.canViewFinancials ? 'مرئية' : 'مخفية'}`
+                  : `Previewing dashboard as "${activeTeamMember.name}" (${activeTeamMember.roleTitle}) — Financials ${effectivePermissions.canViewFinancials ? 'visible' : 'hidden'}`}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setPreviewTeamMemberId(null)}
+              className="px-3 py-1 rounded-lg bg-white text-emerald-900 font-black text-[11px] hover:bg-emerald-50 cursor-pointer"
+            >
+              {isAr ? 'العودة لوضع الإدارة' : 'Return to Admin'}
+            </button>
+          </div>
+        )}
+
         {/* Global Toast Notification */}
         {notice && (
           <div className="bg-emerald-600 text-white text-xs font-bold py-2 px-4 text-center flex items-center justify-center gap-2 animate-in fade-in">
@@ -1583,136 +2141,187 @@ export const AdminPortalPage: React.FC = () => {
           </div>
         )}
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation (Dynamically filtered by effectivePermissions.allowedTabs) */}
         <div className="bg-slate-800/80 px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto border-t border-slate-800">
           <div className="max-w-7xl mx-auto w-full flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('inquiries')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'inquiries'
-                  ? 'border-sky-400 text-sky-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Inbox className="w-3.5 h-3.5" />
-              <span>{isAr ? `الطلبات والاستشارات (${openInquiriesList.length})` : `Inquiries & Orders (${openInquiriesList.length})`}</span>
-              {newInquiriesCount > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-slate-900 rounded-full font-bold animate-pulse">
-                  {newInquiriesCount} {isAr ? 'جديد' : 'new'}
-                </span>
-              )}
-            </button>
+            {canAccessTab('inquiries') && (
+              <button
+                onClick={() => setActiveTab('inquiries')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'inquiries'
+                    ? 'border-sky-400 text-sky-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Inbox className="w-3.5 h-3.5" />
+                <span>{isAr ? `الطلبات والاستشارات (${openInquiriesList.length})` : `Inquiries & Orders (${openInquiriesList.length})`}</span>
+                {newInquiriesCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-slate-900 rounded-full font-bold animate-pulse">
+                    {newInquiriesCount} {isAr ? 'جديد' : 'new'}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('clients')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'clients'
-                  ? 'border-emerald-400 text-emerald-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{isAr ? `العملاء والتعاقدات (${contractedClients.length})` : `Clients & Retainers (${contractedClients.length})`}</span>
-              {contractedClients.length > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full font-bold">
-                  {contractedClients.length}
-                </span>
-              )}
-            </button>
+            {canAccessTab('clients') && (
+              <button
+                onClick={() => setActiveTab('clients')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'clients'
+                    ? 'border-emerald-400 text-emerald-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isAr ? `العملاء والتعاقدات (${contractedClients.length})` : `Clients & Retainers (${contractedClients.length})`}</span>
+                {contractedClients.length > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full font-bold">
+                    {contractedClients.length}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('invoices')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'invoices'
-                  ? 'border-blue-400 text-blue-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5 text-blue-400" />
-              <span>{isAr ? `أرشيف الفواتير وكشوف الحساب (${data.invoices?.length || 0})` : `Invoices & Statements (${data.invoices?.length || 0})`}</span>
-              {(data.invoices?.length || 0) > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full font-bold">
-                  {data.invoices?.length || 0}
-                </span>
-              )}
-            </button>
+            {canAccessTab('tasks') && (
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'tasks'
+                    ? 'border-indigo-400 text-indigo-300'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <ClipboardList className="w-3.5 h-3.5 text-indigo-400" />
+                <span>{isAr ? 'مهام اليوم والفريق' : 'Team Tasks'}</span>
+                {activeTeamTasksCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-indigo-500/25 text-indigo-200 border border-indigo-400/40 rounded-full font-bold">
+                    {activeTeamTasksCount}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('activity')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'activity'
-                  ? 'border-amber-400 text-amber-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isAr ? `سجل النشاط والتفاعلات (${globalActivityFeed.length})` : `Activity Log (${globalActivityFeed.length})`}</span>
-              {globalActivityFeed.length > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold">
-                  {globalActivityFeed.length}
-                </span>
-              )}
-            </button>
+            {canAccessTab('invoices') && (
+              <button
+                onClick={() => setActiveTab('invoices')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'invoices'
+                    ? 'border-blue-400 text-blue-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-400" />
+                <span>{isAr ? `أرشيف الفواتير وكشوف الحساب (${data.invoices?.length || 0})` : `Invoices & Statements (${data.invoices?.length || 0})`}</span>
+                {(data.invoices?.length || 0) > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full font-bold">
+                    {data.invoices?.length || 0}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'analytics'
-                  ? 'border-emerald-400 text-emerald-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{isAr ? 'المبيعات والترافيك والجرافات' : 'Sales & Traffic Graphs'}</span>
-            </button>
+            {canAccessTab('expenses') && (
+              <button
+                onClick={() => setActiveTab('expenses')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'expenses'
+                    ? 'border-rose-400 text-rose-300'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5 text-rose-400" />
+                <span>{isAr ? `المصروفات وصافي الربح (${data.expenses?.length || 0})` : `Expenses & Profit (${data.expenses?.length || 0})`}</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('packages')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'packages'
-                  ? 'border-sky-400 text-sky-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Tag className="w-3.5 h-3.5" />
-              <span>{isAr ? `الباقات والعروض (${data.packages.length})` : `Packages & Offers (${data.packages.length})`}</span>
-            </button>
+            {canAccessTab('activity') && (
+              <button
+                onClick={() => setActiveTab('activity')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'activity'
+                    ? 'border-amber-400 text-amber-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5 text-amber-400" />
+                <span>{isAr ? `سجل النشاط والتفاعلات (${globalActivityFeed.length})` : `Activity Log (${globalActivityFeed.length})`}</span>
+                {globalActivityFeed.length > 0 && (
+                  <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold">
+                    {globalActivityFeed.length}
+                  </span>
+                )}
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('projects')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'projects'
-                  ? 'border-sky-400 text-sky-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>{isAr ? `دراسات الحالة والمشاريع (${data.caseStudies.length})` : `Case Studies (${data.caseStudies.length})`}</span>
-            </button>
+            {canAccessTab('analytics') && (
+              <button
+                onClick={() => setActiveTab('analytics')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'analytics'
+                    ? 'border-emerald-400 text-emerald-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isAr ? 'المبيعات والترافيك والجرافات' : 'Sales & Traffic Graphs'}</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('banner')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'banner'
-                  ? 'border-sky-400 text-sky-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{isAr ? 'شريط العروض والخصومات' : 'Global Promo Banner'}</span>
-            </button>
+            {canAccessTab('packages') && (
+              <button
+                onClick={() => setActiveTab('packages')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'packages'
+                    ? 'border-sky-400 text-sky-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>{isAr ? `الباقات والعروض (${data.packages.length})` : `Packages & Offers (${data.packages.length})`}</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setActiveTab('backup')}
-              className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === 'backup'
-                  ? 'border-sky-400 text-sky-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>{isAr ? 'النسخ الاحتياطي والضبط' : 'Backup & Reset'}</span>
-            </button>
+            {canAccessTab('projects') && (
+              <button
+                onClick={() => setActiveTab('projects')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'projects'
+                    ? 'border-sky-400 text-sky-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                <span>{isAr ? `دراسات الحالة والمشاريع (${data.caseStudies.length})` : `Case Studies (${data.caseStudies.length})`}</span>
+              </button>
+            )}
+
+            {canAccessTab('banner') && (
+              <button
+                onClick={() => setActiveTab('banner')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'banner'
+                    ? 'border-sky-400 text-sky-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isAr ? 'شريط العروض والخصومات' : 'Global Promo Banner'}</span>
+              </button>
+            )}
+
+            {canAccessTab('backup') && (
+              <button
+                onClick={() => setActiveTab('backup')}
+                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'backup'
+                    ? 'border-sky-400 text-sky-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{isAr ? 'النسخ الاحتياطي والضبط' : 'Backup & Reset'}</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -1722,7 +2331,7 @@ export const AdminPortalPage: React.FC = () => {
         {/* ================================================================== */}
         {/* TAB 1: INQUIRIES & ORDERS HUB                                      */}
         {/* ================================================================== */}
-        {activeTab === 'inquiries' && (
+        {canAccessTab('inquiries') && activeTab === 'inquiries' && (
           <div className="space-y-6">
             {/* Safe Migration Banner if unsynced local open inquiries exist */}
             {isSupabaseConfigured && sessionUser && unsyncedLocalInquiries.length > 0 && (
@@ -1759,41 +2368,46 @@ export const AdminPortalPage: React.FC = () => {
               </div>
             )}
 
-            {/* Executive Analytics, Traffic & Sales Graphs */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowAnalyticsInInquiriesTab(prev => !prev)}
-                  className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-sky-600 cursor-pointer bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-colors"
-                >
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  <span>
-                    {showAnalyticsInInquiriesTab 
-                      ? (isAr ? 'إخفاء الرسوم البيانية ومؤشرات المبيعات' : 'Hide Graphs & Sales Analytics')
-                      : (isAr ? 'عرض الرسوم البيانية، الترافيك، والمبيعات' : 'Show Graphs, Traffic & Sales Analytics')}
-                  </span>
-                </button>
+            {/* Executive Analytics, Traffic & Sales Graphs (Financial Access Only) */}
+            {canViewFinancials && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setShowAnalyticsInInquiriesTab(prev => !prev)}
+                    className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-sky-600 cursor-pointer bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs hover:bg-slate-50 transition-colors"
+                  >
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    <span>
+                      {showAnalyticsInInquiriesTab 
+                        ? (isAr ? 'إخفاء الرسوم البيانية ومؤشرات المبيعات' : 'Hide Graphs & Sales Analytics')
+                        : (isAr ? 'عرض الرسوم البيانية، الترافيك، والمبيعات' : 'Show Graphs, Traffic & Sales Analytics')}
+                    </span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('analytics')}
-                  className="text-xs font-bold text-sky-600 hover:text-sky-700 cursor-pointer flex items-center gap-1 hover:underline"
-                >
-                  <span>{isAr ? 'فتح لوحة التحليلات الموسعة' : 'Open Full Analytics View'}</span>
-                  <ArrowRight className={`w-3.5 h-3.5 ${isAr ? 'rotate-180' : ''}`} />
-                </button>
+                  {canAccessTab('analytics') && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('analytics')}
+                      className="text-xs font-bold text-sky-600 hover:text-sky-700 cursor-pointer flex items-center gap-1 hover:underline"
+                    >
+                      <span>{isAr ? 'فتح لوحة التحليلات الموسعة' : 'Open Full Analytics View'}</span>
+                      <ArrowRight className={`w-3.5 h-3.5 ${isAr ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+
+                {showAnalyticsInInquiriesTab && (
+                  <CrmAnalyticsHub
+                    inquiries={activeInquiriesList}
+                    invoices={data.invoices || []}
+                    expenses={data.expenses || []}
+                    packages={data.packages}
+                    isAr={isAr}
+                  />
+                )}
               </div>
-
-              {showAnalyticsInInquiriesTab && (
-                <CrmAnalyticsHub
-                  inquiries={activeInquiriesList}
-                  invoices={data.invoices || []}
-                  packages={data.packages}
-                  isAr={isAr}
-                />
-              )}
-            </div>
+            )}
 
             {/* Metrics Overview */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -2030,14 +2644,16 @@ export const AdminPortalPage: React.FC = () => {
                             </button>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteInquiry(inq.id, inq.name)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                            title={isAr ? 'حذف الطلب' : 'Delete'}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {canDeleteRecords && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteInquiry(inq.id, inq.name)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                              title={isAr ? 'حذف الطلب' : 'Delete'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -2050,7 +2666,7 @@ export const AdminPortalPage: React.FC = () => {
                               {inq.packageName || (isAr ? 'استشارة استراتيجية عامة' : 'General Strategy Call')}
                             </span>
                           </div>
-                          {inq.budget && (
+                          {canViewFinancials && inq.budget && (
                             <div className="flex items-center gap-1.5">
                               <span className="text-slate-400">{isAr ? 'الميزانية المقترحة:' : 'Budget:'}</span>
                               <span className="font-semibold text-slate-800">{inq.budget}</span>
@@ -2185,7 +2801,7 @@ export const AdminPortalPage: React.FC = () => {
         {/* ================================================================== */}
         {/* TAB: CONTRACTED CLIENTS & RETAINER ACCOUNTS                       */}
         {/* ================================================================== */}
-        {activeTab === 'clients' && (
+        {canAccessTab('clients') && activeTab === 'clients' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Header & Retainers KPI Strip */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -2206,21 +2822,42 @@ export const AdminPortalPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Card 2: Total Estimated MRR */}
-              <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-400">{isAr ? 'الإيراد الشهري المتكرر (MRR)' : 'Monthly Retainer (MRR)'}</span>
-                  <span className="p-2 rounded-xl bg-sky-50 text-sky-600">
-                    <DollarSign className="w-4 h-4" />
-                  </span>
+              {/* Card 2: Total Estimated MRR (Financial Access) OR Active Team Tasks */}
+              {canViewFinancials ? (
+                <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-400">{isAr ? 'الإيراد الشهري المتكرر (MRR)' : 'Monthly Retainer (MRR)'}</span>
+                    <span className="p-2 rounded-xl bg-sky-50 text-sky-600">
+                      <DollarSign className="w-4 h-4" />
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-slate-900 tabular-nums">
+                    {totalClientsMrr.toLocaleString(isAr ? 'ar-EG' : 'en-US')} <span className="text-xs font-normal text-slate-500">{isAr ? 'ج.م' : 'EGP'}</span>
+                  </div>
+                  <div className="text-[11px] text-sky-600 font-bold">
+                    {isAr ? 'أتعاب الباقات الشهرية (بدون الرصيد الإعلاني)' : 'Monthly Retainer Fees (excl. Ad Credit)'}
+                  </div>
                 </div>
-                <div className="text-2xl font-black text-slate-900 tabular-nums">
-                  {totalClientsMrr.toLocaleString(isAr ? 'ar-EG' : 'en-US')} <span className="text-xs font-normal text-slate-500">{isAr ? 'ج.م' : 'EGP'}</span>
-                </div>
-                <div className="text-[11px] text-sky-600 font-bold">
-                  {isAr ? 'أتعاب الباقات الشهرية (بدون الرصيد الإعلاني)' : 'Monthly Retainer Fees (excl. Ad Credit)'}
-                </div>
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => canAccessTab('tasks') && setActiveTab('tasks')}
+                  className="bg-white p-4 sm:p-5 rounded-2xl border border-indigo-200 hover:border-indigo-400 shadow-2xs space-y-1 text-start cursor-pointer transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-400">{isAr ? 'مهام الفريق المفتوحة' : 'Open Team Tasks'}</span>
+                    <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                      <ClipboardList className="w-4 h-4" />
+                    </span>
+                  </div>
+                  <div className="text-2xl font-black text-indigo-950 tabular-nums">
+                    {activeTeamTasksCount}
+                  </div>
+                  <div className="text-[11px] text-indigo-600 font-bold">
+                    {isAr ? 'اضغط لفتح لوحة مهام اليوم ←' : 'Open Team Tasks Hub →'}
+                  </div>
+                </button>
+              )}
 
               {/* Card 3: Renewals Due this month */}
               <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
@@ -2254,6 +2891,125 @@ export const AdminPortalPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* =============================================================== */}
+            {/* RENEWAL RADAR BANNER (OVERDUE OR DUE WITHIN 5 DAYS)             */}
+            {/* =============================================================== */}
+            {renewalRadarClients.length > 0 && (
+              <div className="bg-gradient-to-r from-amber-50 via-orange-50/90 to-rose-50/80 border border-amber-300/90 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                      <BellRing className="w-4 h-4 animate-pulse" />
+                    </span>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-black text-amber-950">
+                        {isAr
+                          ? `رادار استحقاق التجديد خلال 5 أيام (${renewalRadarClients.length} عملاء)`
+                          : `Renewal Radar — Due Within 5 Days (${renewalRadarClients.length} clients)`}
+                      </h3>
+                      <p className="text-[11px] text-amber-800">
+                        {isAr
+                          ? 'عملاء اقترب أو حان موعد تجديد اشتراكهم الشهري — أرسل تذكير واتساب أو أغلق الدورة بضغطة واحدة.'
+                          : 'Clients approaching or past their monthly renewal date — send a 1-click WhatsApp reminder or renew cycle.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {renewalRadarClients.map(({ client, daysUntil, renewalDate }) => {
+                    const isLate = daysUntil < 0;
+                    const isToday = daysUntil === 0;
+                    return (
+                      <div
+                        key={client.id}
+                        className="bg-white/95 rounded-xl p-3 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-slate-900 truncate">
+                              {client.company || client.name}
+                            </span>
+                            <span
+                              className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                isLate
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : isToday
+                                  ? 'bg-amber-200 text-amber-950 border border-amber-300'
+                                  : 'bg-amber-50 text-amber-800 border border-amber-200'
+                              }`}
+                            >
+                              {isLate
+                                ? isAr
+                                  ? `متأخر ${Math.abs(daysUntil)} يوم`
+                                  : `${Math.abs(daysUntil)}d overdue`
+                                : isToday
+                                ? isAr
+                                  ? 'يستحق اليوم'
+                                  : 'Due Today'
+                                : isAr
+                                ? `متبقي ${daysUntil} أيام`
+                                : `In ${daysUntil} days`}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-slate-700">{client.packageName}</span>
+                            <span>•</span>
+                            <span className="font-mono">{renewalDate}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <a
+                            href={getRenewalReminderWhatsAppHref(client, renewalDate)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => {
+                              logInquiryActivity(
+                                client.id,
+                                {
+                                  type: 'whatsapp',
+                                  text: isAr
+                                    ? `تم إرسال تذكير تجديد الباقة عبر واتساب (موعد التجديد: ${renewalDate}).`
+                                    : `Sent WhatsApp subscription renewal reminder (due: ${renewalDate}).`,
+                                  meta: { channel: 'whatsapp' },
+                                },
+                                client
+                              );
+                              showNotice(
+                                isAr
+                                  ? `تم فتح تذكير التجديد لـ ${client.company || client.name} وتسجيل المتابعة.`
+                                  : `Renewal reminder opened and logged for ${client.company || client.name}.`
+                              );
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black inline-flex items-center gap-1 shadow-xs cursor-pointer"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            <span>{isAr ? 'تذكير تجديد واتساب' : 'WA Renewal'}</span>
+                          </a>
+
+                          {canViewFinancials && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setClientDrawerInitialTab('billing');
+                                setSelectedClientForAccount(client);
+                                setIsClientAccountOpen(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-black inline-flex items-center gap-1 shadow-xs cursor-pointer"
+                            >
+                              <RotateCcw className="w-3 h-3 text-emerald-400" />
+                              <span>{isAr ? 'إغلاق / تجديد' : 'Renew'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* =============================================================== */}
             {/* OVERDUE TASKS URGENT NOTIFICATION BANNER                        */}
@@ -2523,25 +3279,29 @@ export const AdminPortalPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('invoices')}
-                  className="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-                >
-                  <FileText className="w-4 h-4 text-blue-600" />
-                  <span>{isAr ? 'أرشيف الفواتير وكشوف الحساب' : 'Invoices & Statements'}</span>
-                </button>
+                {canAccessTab('invoices') && canViewFinancials && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('invoices')}
+                    className="px-3.5 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    <span>{isAr ? 'أرشيف الفواتير وكشوف الحساب' : 'Invoices & Statements'}</span>
+                  </button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => setIsAddClientOpen(true)}
-                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>{isAr ? 'إضافة عميل وتحديد باقة' : 'Add Client & Scope'}</span>
-                </button>
+                {canEditClients && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddClientOpen(true)}
+                    className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl transition-all shadow-xs inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>{isAr ? 'إضافة عميل وتحديد باقة' : 'Add Client & Scope'}</span>
+                  </button>
+                )}
 
-                {(contractedClients.length > 0 || (data.invoices?.length || 0) > 0) && (
+                {canDeleteRecords && (contractedClients.length > 0 || (data.invoices?.length || 0) > 0) && (
                   <button
                     type="button"
                     onClick={handleRequestClearAllCrm}
@@ -2554,6 +3314,21 @@ export const AdminPortalPage: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {/* Centralized Accountant Approval Queue for Ad Wallet Requests */}
+            {canApproveAdWallet && (
+              <AdWalletApprovalsBanner
+                clients={contractedClients}
+                reviewerName={activeTeamMember?.name || (isAr ? 'المحاسب / الإدارة المالية' : 'Accountant')}
+                isAr={isAr}
+                onNotify={(msg) => showNotice(msg)}
+                onOpenClientWallet={(targetClient) => {
+                  setClientDrawerInitialTab('ad_wallet');
+                  setSelectedClientForAccount(targetClient);
+                  setIsClientAccountOpen(true);
+                }}
+              />
+            )}
 
             {/* Clients Cards Grid */}
             {filteredContractedClients.length === 0 ? (
@@ -2573,7 +3348,7 @@ export const AdminPortalPage: React.FC = () => {
                       : (isAr ? 'جرّب تعديل كلمات البحث أو تصفية القطاعات.' : 'Try adjusting your search query or filters.')}
                   </p>
                 </div>
-                {contractedClients.length === 0 && (
+                {contractedClients.length === 0 && canEditClients && (
                   <button
                     type="button"
                     onClick={() => setIsAddClientOpen(true)}
@@ -2729,35 +3504,64 @@ export const AdminPortalPage: React.FC = () => {
                           className="mb-3"
                         />
 
-                        {/* Client Ad Spend Wallet Strip */}
-                        {((client.adCreditBalance !== undefined && client.adCreditBalance > 0) || (client.pendingInvoiceAdCredit !== undefined && client.pendingInvoiceAdCredit > 0)) && (
-                          <div className="mb-3 p-2.5 rounded-xl bg-purple-50/90 border border-purple-200/90 flex items-center justify-between text-xs gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                                <CreditCard className="w-3.5 h-3.5" />
-                              </div>
-                              <div className="min-w-0 flex items-center gap-2 flex-wrap">
-                                {client.adCreditBalance !== undefined && client.adCreditBalance > 0 && (
-                                  <span className="font-bold text-purple-950">
-                                    {isAr ? 'رصيد إعلاني متاح:' : 'Available Ad Credit:'}{' '}
-                                    <span className="font-black text-purple-700">
-                                      {client.adCreditBalance.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                        {/* Client Ad Spend Wallet Strip (Media Buyer + Accountant + Admin) */}
+                        {canAccessAdWallet &&
+                          (canManageAdWallet ||
+                            (client.adCreditBalance !== undefined && client.adCreditBalance > 0) ||
+                            (client.pendingInvoiceAdCredit !== undefined && client.pendingInvoiceAdCredit > 0) ||
+                            (client.adWalletRequests || []).some((r) => r.status === 'pending')) && (() => {
+                            const pendingAdReqsCount = (client.adWalletRequests || []).filter(
+                              (r) => r.status === 'pending'
+                            ).length;
+                            const availableAd = client.adCreditBalance ?? 0;
+                            const pendingInvAd = client.pendingInvoiceAdCredit ?? 0;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setClientDrawerInitialTab('ad_wallet');
+                                  setSelectedClientForAccount(client);
+                                  setIsClientAccountOpen(true);
+                                }}
+                                className="w-full text-start mb-3 p-2.5 rounded-xl bg-purple-50/90 hover:bg-purple-100/80 border border-purple-200/90 hover:border-purple-300 flex items-center justify-between text-xs gap-2 transition-colors cursor-pointer"
+                                title={
+                                  isAr
+                                    ? 'افتح محفظة الإعلانات الممولة (إضافة رصيد / تسجيل مصروف / موافقات)'
+                                    : 'Open Client Ad Spend Wallet'
+                                }
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                                    <CreditCard className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-purple-950">
+                                      {isAr ? 'رصيد إعلاني متاح:' : 'Available Ad Credit:'}{' '}
+                                      <span className="font-black text-purple-700 tabular-nums">
+                                        {availableAd.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                                      </span>
                                     </span>
-                                  </span>
-                                )}
-                                {client.pendingInvoiceAdCredit !== undefined && client.pendingInvoiceAdCredit > 0 && (
-                                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80">
-                                    {isAr ? 'قيد التحصيل بالفاتورة:' : 'Pending Invoice:'}{' '}
-                                    {client.pendingInvoiceAdCredit.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <span className="text-[10px] text-purple-700 font-bold bg-white px-2 py-0.5 rounded-md border border-purple-200 shadow-2xs shrink-0">
-                              {isAr ? 'محفظة الإعلانات الممولة' : 'Ad Wallet'}
-                            </span>
-                          </div>
-                        )}
+                                    {pendingInvAd > 0 && (
+                                      <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/80 tabular-nums">
+                                        {isAr ? 'قيد التحصيل بالفاتورة:' : 'Pending Invoice:'}{' '}
+                                        {pendingInvAd.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                                      </span>
+                                    )}
+                                    {pendingAdReqsCount > 0 && (
+                                      <span className="text-[10px] font-black text-orange-900 bg-amber-200/90 px-2 py-0.5 rounded-full border border-amber-300 animate-pulse">
+                                        {isAr
+                                          ? `⏳ ${pendingAdReqsCount} بانتظار موافقة المحاسب`
+                                          : `⏳ ${pendingAdReqsCount} Pending Approval`}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-[10px] text-purple-700 font-bold bg-white px-2 py-0.5 rounded-md border border-purple-200 shadow-2xs shrink-0">
+                                  {isAr ? 'محفظة الإعلانات الممولة' : 'Ad Wallet'}
+                                </span>
+                              </button>
+                            );
+                          })()}
 
                         {/* Interactive Workflow Tasks Stepper with Timestamps */}
                         <div className={`mt-3.5 rounded-2xl p-3.5 space-y-2 border ${
@@ -2778,6 +3582,14 @@ export const AdminPortalPage: React.FC = () => {
                           <ClientWorkflowStepper
                             stages={client.workflowStages}
                             onToggleStage={(stageId) => handleToggleClientStage(client, stageId)}
+                            reelsTarget={targetR}
+                            reelStages={client.reelStages}
+                            reelsDelivered={deliveredR}
+                            onToggleReelStage={(reelId) => handleToggleClientReelStage(client, reelId)}
+                            teamMembers={agencyTeamMembers}
+                            allowedStageIds={effectivePermissions.allowedWorkflowStages}
+                            canToggleReels={effectivePermissions.canUpdateReelsTrack !== false}
+                            canAssignTasks={effectivePermissions.canAssignTasks !== false}
                             interactive={true}
                             size="sm"
                             isAr={isAr}
@@ -2849,46 +3661,69 @@ export const AdminPortalPage: React.FC = () => {
                             </span>
                           </button>
 
-                          {/* Dedicated Download Invoice Button */}
-                          <button
-                            type="button"
-                            disabled={downloadingInvoiceClientId === client.id}
-                            onClick={() => handleDownloadClientInvoice(client)}
-                            className="px-2.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                            title={isAr ? 'تحميل الفاتورة وبيان الحساب بصيغة PDF' : 'Download Invoice PDF'}
-                          >
-                            {downloadingInvoiceClientId === client.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                            ) : (
-                              <Download className="w-3.5 h-3.5 text-blue-600" />
-                            )}
-                            <span>{isAr ? 'تحميل الفاتورة' : 'Download Invoice'}</span>
-                          </button>
+                          {/* Dedicated Download Invoice Button (Financial Access Only) */}
+                          {canViewFinancials && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={downloadingInvoiceClientId === client.id}
+                                onClick={() => handleDownloadClientInvoice(client)}
+                                className="px-2.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                title={isAr ? 'تحميل الفاتورة وبيان الحساب بصيغة PDF' : 'Download Invoice PDF'}
+                              >
+                                {downloadingInvoiceClientId === client.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                                ) : (
+                                  <Download className="w-3.5 h-3.5 text-blue-600" />
+                                )}
+                                <span>{isAr ? 'تحميل الفاتورة' : 'Download Invoice'}</span>
+                              </button>
+
+                              {/* Close Month / Start New Cycle Shortcut Button */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setClientDrawerInitialTab('billing');
+                                  setSelectedClientForAccount(client);
+                                  setIsClientAccountOpen(true);
+                                }}
+                                className="px-2.5 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                                title={isAr ? 'إغلاق الشهر الحالي وبدء دورة جديدة أو إدارة المالية' : 'Close Month / Billing Cycle'}
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>{isAr ? 'دورة جديدة' : 'New Cycle'}</span>
+                              </button>
+                            </>
+                          )}
 
                           {/* Edit Client & Package Button */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setClientDrawerInitialTab('profile');
-                              setSelectedClientForAccount(client);
-                              setIsClientAccountOpen(true);
-                            }}
-                            className="px-2.5 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
-                            title={isAr ? 'تعديل بيانات العميل والباقة' : 'Edit Client & Package'}
-                          >
-                            <Edit3 className="w-3.5 h-3.5 text-amber-700" />
-                            <span>{isAr ? 'تعديل' : 'Edit'}</span>
-                          </button>
+                          {canEditClients && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setClientDrawerInitialTab('profile');
+                                setSelectedClientForAccount(client);
+                                setIsClientAccountOpen(true);
+                              }}
+                              className="px-2.5 py-1.5 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                              title={isAr ? 'تعديل بيانات العميل والباقة' : 'Edit Client & Package'}
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                              <span>{isAr ? 'تعديل' : 'Edit'}</span>
+                            </button>
+                          )}
 
                           {/* Delete Client Button */}
-                          <button
-                            type="button"
-                            onClick={() => setClientPendingDelete(client)}
-                            className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/90 rounded-xl transition-colors cursor-pointer"
-                            title={isAr ? 'حذف العميل نهائياً' : 'Delete Client'}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {canDeleteRecords && (
+                            <button
+                              type="button"
+                              onClick={() => setClientPendingDelete(client)}
+                              className="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200/90 rounded-xl transition-colors cursor-pointer"
+                              title={isAr ? 'حذف العميل نهائياً' : 'Delete Client'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
 
                         <button
@@ -2915,17 +3750,59 @@ export const AdminPortalPage: React.FC = () => {
         )}
 
         {/* ================================================================== */}
+        {/* TAB: TODAY'S TASKS & TEAM WORKLOAD HUB                             */}
+        {/* ================================================================== */}
+        {canAccessTab('tasks') && activeTab === 'tasks' && (
+          <TeamTasksHub
+            clients={contractedClients}
+            isAr={isAr}
+            userRole={effectiveRole}
+            permissions={effectivePermissions}
+            currentMemberName={activeTeamMember?.name}
+            onOpenTeamAccounts={
+              canManageTeam ? () => setIsTeamAccountsModalOpen(true) : undefined
+            }
+            onOpenClient={(client) => {
+              setClientDrawerInitialTab('overview');
+              setSelectedClientForAccount(client);
+              setIsClientAccountOpen(true);
+            }}
+          />
+        )}
+
         {/* ================================================================== */}
         {/* TAB: INVOICES ARCHIVE & ACCOUNT STATEMENTS                         */}
         {/* ================================================================== */}
-        {activeTab === 'invoices' && (
-          <InvoicesArchiveHub isAr={isAr} />
+        {canAccessTab('invoices') && activeTab === 'invoices' && (
+          <div className="space-y-4">
+            {canApproveAdWallet && (
+              <AdWalletApprovalsBanner
+                clients={contractedClients}
+                reviewerName={activeTeamMember?.name || (isAr ? 'المحاسب / الإدارة المالية' : 'Accountant')}
+                isAr={isAr}
+                onNotify={(msg) => showNotice(msg)}
+                onOpenClientWallet={(targetClient) => {
+                  setClientDrawerInitialTab('ad_wallet');
+                  setSelectedClientForAccount(targetClient);
+                  setIsClientAccountOpen(true);
+                }}
+              />
+            )}
+            <InvoicesArchiveHub isAr={isAr} />
+          </div>
+        )}
+
+        {/* ================================================================== */}
+        {/* TAB: AGENCY EXPENSES & NET PROFIT HUB                              */}
+        {/* ================================================================== */}
+        {canAccessTab('expenses') && activeTab === 'expenses' && (
+          <ExpensesProfitHub isAr={isAr} />
         )}
 
         {/* ================================================================== */}
         {/* TAB: GLOBAL CRM ACTIVITY LOG & INTERACTIONS TIMELINE               */}
         {/* ================================================================== */}
-        {activeTab === 'activity' && (
+        {canAccessTab('activity') && activeTab === 'activity' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* KPI Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -3188,11 +4065,12 @@ export const AdminPortalPage: React.FC = () => {
         {/* TAB: DEDICATED ANALYTICS, TRAFFIC & SALES HUB                      */}
         {/* ================================================================== */}
         {/* ================================================================== */}
-        {activeTab === 'analytics' && (
+        {canAccessTab('analytics') && activeTab === 'analytics' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <CrmAnalyticsHub
               inquiries={activeInquiriesList}
               invoices={data.invoices || []}
+              expenses={data.expenses || []}
               packages={data.packages}
               isAr={isAr}
             />
@@ -3200,12 +4078,9 @@ export const AdminPortalPage: React.FC = () => {
         )}
 
         {/* ================================================================== */}
-        {/* TAB 2: PACKAGES & OFFERS (Protected Admin View)                    */}
-        {/* ================================================================== */}
-        {/* ================================================================== */}
         {/* TAB 2: PACKAGES, PRICING & PROMO CODES HUB                         */}
         {/* ================================================================== */}
-        {activeTab === 'packages' && (
+        {canAccessTab('packages') && activeTab === 'packages' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {/* Top Sub-Navigation Tabs */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
@@ -3659,7 +4534,7 @@ export const AdminPortalPage: React.FC = () => {
         {/* ================================================================== */}
         {/* TAB 3: CASE STUDIES & PORTFOLIO                                    */}
         {/* ================================================================== */}
-        {activeTab === 'projects' && (
+        {canAccessTab('projects') && activeTab === 'projects' && (
           <div className="space-y-6">
             {/* Top Level Sub-Nav Switcher between Media Manager and SEO Suite */}
             <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-200 shadow-xs gap-3 flex-wrap">
@@ -3861,7 +4736,7 @@ export const AdminPortalPage: React.FC = () => {
         {/* ================================================================== */}
         {/* TAB 4: GLOBAL PROMO BANNER                                         */}
         {/* ================================================================== */}
-        {activeTab === 'banner' && (
+        {canAccessTab('banner') && activeTab === 'banner' && (
           <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
             <h3 className="text-sm font-bold text-slate-900">{isAr ? 'شريط العروض والخصومات' : 'Global Promo Banner'}</h3>
             <div className="p-4 rounded-xl bg-sky-50 border border-sky-100 space-y-2">
@@ -3874,7 +4749,7 @@ export const AdminPortalPage: React.FC = () => {
         {/* ================================================================== */}
         {/* TAB 5: BACKUP, SUPABASE CLOUD SYNC & SQL MIGRATION                 */}
         {/* ================================================================== */}
-        {activeTab === 'backup' && (
+        {canAccessTab('backup') && activeTab === 'backup' && (
           <div className="space-y-6">
             {/* Supabase Cloud Persistence Card */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-5 shadow-xs">
@@ -4890,6 +5765,9 @@ export const AdminPortalPage: React.FC = () => {
         }
         isOpen={isClientAccountOpen}
         initialTab={clientDrawerInitialTab}
+        userRole={effectiveRole}
+        permissions={effectivePermissions}
+        currentMemberName={activeTeamMember?.name}
         onClose={() => {
           setIsClientAccountOpen(false);
           setSelectedClientForAccount(null);
@@ -4922,6 +5800,26 @@ export const AdminPortalPage: React.FC = () => {
           showNotice(isAr ? 'تم حذف العميل من النظام نهائياً.' : 'Client deleted permanently.');
         }}
       />
+
+      {/* Admin Modal: Team Accounts (Username & Password) & Open Screen Permissions */}
+      {realRole === 'admin' && (
+        <TeamAccountsModal
+          isOpen={isTeamAccountsModalOpen}
+          onClose={() => setIsTeamAccountsModalOpen(false)}
+          isAr={isAr}
+          onPreviewMember={(member) => {
+            setPreviewTeamMemberId(member.id);
+            const firstTab =
+              resolveMemberPermissions(member).allowedTabs[0] || 'tasks';
+            setActiveTab(firstTab);
+            showNotice(
+              isAr
+                ? `تم تفعيل معاينة حساب «${member.name}» (${member.roleTitle}).`
+                : `Now previewing dashboard as "${member.name}" (${member.roleTitle}).`
+            );
+          }}
+        />
+      )}
 
       {/* Delete Client Confirmation Modal (from Clients Cards) */}
       {clientPendingDelete && (

@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import {defineConfig} from 'vite';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig(() => {
   const envFilePath = path.resolve(__dirname, '.env');

@@ -144,7 +144,10 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     if (hasInitializedOpenRef.current) return;
     hasInitializedOpenRef.current = true;
 
-    const initIssueDate = contractStartDate || new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+    const initIssueDate = isPreviewOnly
+      ? contractStartDate || todayStr
+      : todayStr;
     const initDueDate = renewalDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const initAdCredit = adCreditAmount || client.pendingInvoiceAdCredit || 0;
     const initGrandTotal = numericBudget + initAdCredit;
@@ -164,13 +167,14 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       return;
     }
 
-    // Reuse an identical pending invoice for the same client/date/amounts so re-opening doesn't duplicate
+    // Reuse an identical pending invoice already issued during the current billing cycle so re-opening doesn't duplicate
+    const cycleBoundary = contractStartDate || initIssueDate;
     const matchingExisting = currentInvoices.find(
       (i) =>
         i.clientId === client.id &&
         i.paymentStatus !== 'paid' &&
         i.paymentStatus !== 'cancelled' &&
-        i.issueDate === initIssueDate &&
+        i.issueDate >= cycleBoundary &&
         i.retainerAmount === numericBudget &&
         (i.adCreditAmount || 0) === initAdCredit &&
         i.packageName === packageName
@@ -179,6 +183,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     if (matchingExisting) {
       archivedInvoiceIdRef.current = matchingExisting.id;
       setInvoiceNumber(matchingExisting.invoiceNumber);
+      setIssueDate(matchingExisting.issueDate);
       return;
     }
 

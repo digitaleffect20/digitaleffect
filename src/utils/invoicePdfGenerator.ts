@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas-pro';
 import { toPng } from 'html-to-image';
-import { Inquiry } from '../types';
+import { Inquiry, ClientInvoiceRecord, InvoicePaymentEntry } from '../types';
 import { getClientDeliverableTargets } from './workflowUtils';
 
 export interface InvoiceTransferInfo {
@@ -740,6 +740,160 @@ export async function generateClientInvoicePdf(
         </p>
       </div>
     `;
+
+  const result = await captureElementToPdf(targetElement, { filename, action: 'download' });
+  return { success: result.success, filename: result.filename, error: result.error };
+}
+
+/**
+ * Generates an official A4 Arabic/English Payment Receipt PDF (إيصال استلام نقدية / سداد دفعة)
+ * for any partial or full payment recorded on an invoice.
+ */
+export async function generatePaymentReceiptPdf(options: {
+  invoice: ClientInvoiceRecord;
+  payment: InvoicePaymentEntry;
+  isAr?: boolean;
+}): Promise<{ success: boolean; filename: string; error?: string }> {
+  const { invoice, payment, isAr = true } = options;
+  const filename = `${payment.receiptNumber}_${(invoice.clientCompany || invoice.clientName).replace(/[^\w\u0600-\u06FF]+/g, '_')}.pdf`;
+
+  const allPayments = invoice.payments || [];
+  const totalPaid =
+    invoice.paidAmount !== undefined
+      ? invoice.paidAmount
+      : allPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const remaining = Math.max(0, (Number(invoice.grandTotal) || 0) - totalPaid);
+  const isSettled = remaining <= 0;
+
+  const targetElement = document.createElement('div');
+  targetElement.dir = isAr ? 'rtl' : 'ltr';
+  targetElement.style.cssText = `
+    width: 794px;
+    padding: 36px 40px;
+    background-color: #ffffff;
+    font-family: 'Cairo', 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
+    color: #0f172a;
+    box-sizing: border-box;
+    line-height: 1.55;
+  `;
+
+  targetElement.innerHTML = `
+    <div style="border: 2px solid #0f172a; border-radius: 18px; overflow: hidden;">
+      <!-- Top Executive Banner -->
+      <div style="background: linear-gradient(135deg, #0f172a 0%, #064e3b 100%); color: #ffffff; padding: 24px 28px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 20px; font-weight: 900; letter-spacing: 0;">DIGITAL EFFECT</div>
+          <div style="font-size: 11px; color: #a7f3d0; font-weight: 700; margin-top: 2px;">
+            ${isAr ? 'وكالة ديجيتال إفكت للحلول الرقمية والتسويق المتكامل' : 'Digital Effect Integrated Marketing Agency'}
+          </div>
+        </div>
+        <div style="text-align: ${isAr ? 'left' : 'right'};">
+          <div style="display: inline-block; background-color: #10b981; color: #022c22; font-weight: 900; font-size: 12px; padding: 5px 14px; border-radius: 999px;">
+            ${isAr ? 'إيصال استلام دفعة رسمي' : 'OFFICIAL PAYMENT RECEIPT'}
+          </div>
+          <div style="font-family: monospace; font-size: 13px; font-weight: 800; color: #ffffff; margin-top: 6px;" dir="ltr">
+            ${payment.receiptNumber}
+          </div>
+        </div>
+      </div>
+
+      <!-- Receipt Body -->
+      <div style="padding: 26px 28px;">
+        <!-- Client & Invoice Metadata -->
+        <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+          <div style="flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px;">
+            <div style="font-size: 10px; font-weight: 800; color: #64748b; margin-bottom: 4px;">
+              ${isAr ? 'استلمنا من السادة / العميل:' : 'RECEIVED FROM:'}
+            </div>
+            <div style="font-size: 15px; font-weight: 900; color: #0f172a;">
+              ${invoice.clientCompany || invoice.clientName}
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-top: 2px;">
+              ${invoice.clientName}${invoice.clientPhone ? ` • <span dir="ltr">${invoice.clientPhone}</span>` : ''}
+            </div>
+          </div>
+
+          <div style="flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; font-size: 11px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+              <span style="color: #64748b; font-weight: 700;">${isAr ? 'تاريخ السداد:' : 'Payment Date:'}</span>
+              <strong style="color: #0f172a;" dir="ltr">${payment.date}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+              <span style="color: #64748b; font-weight: 700;">${isAr ? 'رقم الفاتورة المرتبطة:' : 'Invoice #:'}</span>
+              <strong style="color: #1d4ed8; font-family: monospace;" dir="ltr">${invoice.invoiceNumber}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="color: #64748b; font-weight: 700;">${isAr ? 'طريقة الدفع:' : 'Method:'}</span>
+              <strong style="color: #047857;">${payment.methodLabel}</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Highlighted Amount Received Box -->
+        <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #10b981; border-radius: 14px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div>
+            <div style="font-size: 11px; font-weight: 800; color: #065f46;">
+              ${isAr ? 'المبلغ المستلم في هذا الإيصال' : 'AMOUNT RECEIVED IN THIS RECEIPT'}
+            </div>
+            <div style="font-size: 11px; color: #047857; margin-top: 2px;">
+              ${isAr ? `عن باقة: ${invoice.packageName}` : `For Package: ${invoice.packageName}`}
+            </div>
+          </div>
+          <div style="font-size: 26px; font-weight: 900; color: #064e3b; font-family: monospace;">
+            ${Number(payment.amount).toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}
+          </div>
+        </div>
+
+        <!-- Invoice Financial Standing Table -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; margin-bottom: 18px;">
+          <thead>
+            <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+              <th style="padding: 10px 12px; text-align: ${isAr ? 'right' : 'left'}; font-weight: 800; color: #334155;">${isAr ? 'البيان المالي' : 'Financial Summary'}</th>
+              <th style="padding: 10px 12px; text-align: ${isAr ? 'left' : 'right'}; font-weight: 800; color: #334155;">${isAr ? 'القيمة' : 'Amount'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 9px 12px; color: #475569;">${isAr ? 'إجمالي قيمة الفاتورة الكلية' : 'Original Invoice Grand Total'}</td>
+              <td style="padding: 9px 12px; text-align: ${isAr ? 'left' : 'right'}; font-weight: 800; font-family: monospace;">${Number(invoice.grandTotal).toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 9px 12px; color: #047857; font-weight: 700;">${isAr ? 'إجمالي المبالغ المسددة حتى تاريخه' : 'Cumulative Paid to Date'}</td>
+              <td style="padding: 9px 12px; text-align: ${isAr ? 'left' : 'right'}; font-weight: 900; color: #047857; font-family: monospace;">${totalPaid.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}</td>
+            </tr>
+            <tr style="background-color: ${isSettled ? '#ecfdf5' : '#fffbeb'};">
+              <td style="padding: 10px 12px; font-weight: 900; color: ${isSettled ? '#065f46' : '#92400e'};">
+                ${isAr ? 'الرصيد المتبقي على الفاتورة' : 'Remaining Balance on Invoice'}
+              </td>
+              <td style="padding: 10px 12px; text-align: ${isAr ? 'left' : 'right'}; font-weight: 900; font-size: 13px; color: ${isSettled ? '#065f46' : '#b45309'}; font-family: monospace;">
+                ${isSettled ? (isAr ? '0 ج.م (مسددة بالكامل ✅)' : '0 EGP (Paid in Full ✅)') : `${remaining.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        ${payment.reference || payment.notes ? `
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 11px; color: #475569; margin-bottom: 18px;">
+          ${payment.reference ? `<div><strong>${isAr ? 'رقم المرجع / التحويل:' : 'Reference #:'}</strong> <span dir="ltr" style="font-family: monospace;">${payment.reference}</span></div>` : ''}
+          ${payment.notes ? `<div style="margin-top: 3px;"><strong>${isAr ? 'ملاحظات:' : 'Notes:'}</strong> ${payment.notes}</div>` : ''}
+        </div>
+        ` : ''}
+
+        <!-- Footer & Stamp -->
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px dashed #cbd5e1;">
+          <div style="font-size: 10px; color: #64748b; max-width: 440px;">
+            ${isAr
+              ? 'يُعد هذا الإيصال مستنداً مالياً معتمداً بإثبات استلام الدفعة الموضحة أعلاه لحساب وكالة ديجيتال إفكت. للاستفسارات المالية: 01505000349.'
+              : 'This receipt serves as official confirmation of payment received by Digital Effect Agency. Finance desk: +20 150 500 0349.'}
+          </div>
+          <div style="text-align: center; border: 2px dashed #10b981; border-radius: 12px; padding: 8px 16px;">
+            <div style="font-size: 10px; font-weight: 900; color: #047857;">DIGITAL EFFECT</div>
+            <div style="font-size: 8.5px; font-weight: 800; color: #0f172a;">${isAr ? 'اعتماد الحسابات' : 'FINANCE APPROVED'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 
   const result = await captureElementToPdf(targetElement, { filename, action: 'download' });
   return { success: result.success, filename: result.filename, error: result.error };

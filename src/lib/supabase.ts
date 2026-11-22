@@ -9,6 +9,9 @@ import type {
   CustomPackagePricingRates,
   PromoBanner,
   SectorType,
+  AgencyExpense,
+  AgencyTeamMember,
+  InvoicePaymentEntry,
 } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -446,7 +449,11 @@ function mapInquiryToCrmRow(inq: Inquiry) {
     account_manager: inq.accountManager || null,
     current_workflow_day: inq.currentWorkflowDay ?? 1,
     today_task_title: inq.todayTaskTitle || null,
-    workflow_stages: inq.workflowStages || [],
+    workflow_stages: [
+      ...(inq.workflowStages || []),
+      ...(inq.reelStages || []).map((r) => ({ ...r, track: 'reel' as const })),
+      ...(inq.adWalletRequests || []).map((req) => ({ ...req, _kind: 'ad_wallet_request' as const })),
+    ],
     client_notes: inq.clientNotes || [],
     ad_credit_balance: inq.adCreditBalance ?? 0,
     pending_invoice_ad_credit: inq.pendingInvoiceAdCredit ?? 0,
@@ -490,8 +497,40 @@ function mapCrmRowToInquiry(row: any): Inquiry {
     accountManager: row.account_manager || undefined,
     currentWorkflowDay: row.current_workflow_day !== null && row.current_workflow_day !== undefined ? Number(row.current_workflow_day) : undefined,
     todayTaskTitle: row.today_task_title || undefined,
-    workflowStages: Array.isArray(row.workflow_stages) && row.workflow_stages.length > 0 ? row.workflow_stages : undefined,
+    workflowStages: (() => {
+      if (!Array.isArray(row.workflow_stages)) return undefined;
+      const mainStages = row.workflow_stages.filter(
+        (s: any) =>
+          s &&
+          s._kind !== 'ad_wallet_request' &&
+          s.track !== 'reel' &&
+          !String(s.id || '').startsWith('reel_')
+      );
+      return mainStages.length > 0 ? mainStages : undefined;
+    })(),
+    reelStages: (() => {
+      if (!Array.isArray(row.workflow_stages)) return undefined;
+      const reels = row.workflow_stages.filter(
+        (s: any) =>
+          s &&
+          s._kind !== 'ad_wallet_request' &&
+          (s.track === 'reel' || String(s.id || '').startsWith('reel_'))
+      );
+      return reels.length > 0 ? reels : undefined;
+    })(),
+    adWalletRequests: (() => {
+      if (!Array.isArray(row.workflow_stages)) return undefined;
+      const reqs = row.workflow_stages
+        .filter((s: any) => s && s._kind === 'ad_wallet_request' && s.id && s.type)
+        .map(({ _kind, ...rest }: any) => rest);
+      return reqs.length > 0 ? reqs : undefined;
+    })(),
     clientNotes: Array.isArray(row.client_notes) && row.client_notes.length > 0 ? row.client_notes : undefined,
+    cycleHistory: Array.isArray(row.client_notes)
+      ? row.client_notes
+          .map((n: any) => n?.meta?.cycleRecord)
+          .filter((r: any) => Boolean(r && r.id && r.startDate))
+      : undefined,
     adCreditBalance: Number(row.ad_credit_balance ?? 0),
     pendingInvoiceAdCredit: Number(row.pending_invoice_ad_credit ?? 0),
     adCreditFundedTotal: Number(row.ad_credit_funded_total ?? 0),
@@ -500,6 +539,16 @@ function mapCrmRowToInquiry(row: any): Inquiry {
 }
 
 function mapInvoiceToRow(inv: ClientInvoiceRecord) {
+  const packedDeliverables: Record<string, any> = {
+    ...(inv.deliverables || {}),
+  };
+  if (Array.isArray(inv.payments) && inv.payments.length > 0) {
+    packedDeliverables._payments = inv.payments;
+  }
+  if (inv.paidAmount !== undefined) {
+    packedDeliverables._paidAmount = inv.paidAmount;
+  }
+
   return {
     id: inv.id,
     invoice_number: inv.invoiceNumber,
@@ -520,13 +569,27 @@ function mapInvoiceToRow(inv: ClientInvoiceRecord) {
     payment_status: inv.paymentStatus || 'pending',
     paid_at: inv.paidAt || null,
     payment_method: inv.paymentMethod || null,
-    deliverables: inv.deliverables || {},
+    deliverables: packedDeliverables,
     notes: inv.notes || null,
     invoice_created_at: inv.createdAt || new Date().toISOString(),
   };
 }
 
 function mapRowToInvoice(row: any): ClientInvoiceRecord {
+  const rawDel = row.deliverables && typeof row.deliverables === 'object' ? row.deliverables : undefined;
+  const extractedPayments: InvoicePaymentEntry[] | undefined =
+    rawDel && Array.isArray(rawDel._payments) ? rawDel._payments : undefined;
+  const extractedPaidAmount: number | undefined =
+    rawDel && rawDel._paidAmount !== undefined ? Number(rawDel._paidAmount) : undefined;
+
+  let cleanDeliverables: ClientInvoiceRecord['deliverables'] = undefined;
+  if (rawDel) {
+    const { _payments: _p, _paidAmount: _pa, ...rest } = rawDel;
+    if (Object.keys(rest).length > 0) {
+      cleanDeliverables = rest;
+    }
+  }
+
   return {
     id: String(row.id),
     invoiceNumber: row.invoice_number,
@@ -547,10 +610,77 @@ function mapRowToInvoice(row: any): ClientInvoiceRecord {
     paymentStatus: row.payment_status || 'pending',
     paidAt: row.paid_at || undefined,
     paymentMethod: row.payment_method || undefined,
-    deliverables: row.deliverables && typeof row.deliverables === 'object' ? row.deliverables : undefined,
+    paidAmount: extractedPaidAmount,
+    payments: extractedPayments,
+    deliverables: cleanDeliverables,
     notes: row.notes || undefined,
     createdAt: row.invoice_created_at || row.created_at || new Date().toISOString(),
   };
+}
+
+export interface AdminFinanceOpsSnapshot {
+  expenses?: AgencyExpense[];
+  teamMembers?: AgencyTeamMember[];
+  opsAccessCode?: string;
+  opsAccountEmails?: string[];
+}
+
+export async function saveAdminFinanceOpsToSupabase(
+  payload: AdminFinanceOpsSnapshot
+): Promise<{ success: boolean; migrationNeeded?: boolean; error?: string }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { success: false, error: 'Supabase is not configured' };
+  }
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) {
+      return { success: false, error: 'Not authenticated' };
+    }
+    const { error } = await supabase
+      .from('agency_crm_store')
+      .upsert(
+        {
+          id: 'admin_finance_ops',
+          state_json: payload,
+        },
+        { onConflict: 'id' }
+      );
+    if (error) {
+      if (isSchemaMissingError(error)) {
+        return { success: false, migrationNeeded: true, error: error.message };
+      }
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message };
+  }
+}
+
+export async function fetchAdminFinanceOpsFromSupabase(): Promise<{
+  snapshot: AdminFinanceOpsSnapshot | null;
+  error?: string;
+}> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { snapshot: null };
+  }
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) {
+      return { snapshot: null };
+    }
+    const { data, error } = await supabase
+      .from('agency_crm_store')
+      .select('state_json')
+      .eq('id', 'admin_finance_ops')
+      .maybeSingle();
+    if (error) {
+      return { snapshot: null, error: error.message };
+    }
+    return { snapshot: (data?.state_json as AdminFinanceOpsSnapshot) || null };
+  } catch (err: any) {
+    return { snapshot: null, error: err?.message };
+  }
 }
 
 /**

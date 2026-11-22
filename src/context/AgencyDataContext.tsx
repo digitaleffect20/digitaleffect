@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry, ClientAccountNote, ActivityLogType } from '../types';
+import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry, ClientAccountNote, ActivityLogType, ClientMonthlyCycleRecord, AgencyExpense, AgencyTeamMember, InvoicePaymentEntry, PaymentChannel, AdWalletRequest } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
 import { DEFAULT_CUSTOM_PACKAGE_RATES } from '../utils/pricingCalculator';
+import { parseInvoiceAmount, generateUniqueInvoiceNumber } from '../utils/invoicePdfGenerator';
+import { getClientDeliverableTargets } from '../utils/workflowUtils';
 import {
   supabase,
   isSupabaseConfigured,
   fetchPublicCatalogFromSupabase,
   savePublicCatalogToSupabase,
   fetchAdminCrmBundleFromSupabase,
+  fetchAdminFinanceOpsFromSupabase,
+  saveAdminFinanceOpsToSupabase,
   upsertCrmClientToSupabase,
   deleteCrmClientFromSupabase,
   upsertInvoiceToSupabase,
@@ -16,6 +20,16 @@ import {
   clearAllCrmRecordsInSupabase,
   migrateFullLocalDataToSupabase,
 } from '../lib/supabase';
+
+export const DEFAULT_AGENCY_TEAM_MEMBERS: AgencyTeamMember[] = [
+  { id: 'tm-content', name: 'فريق المحتوى (Content)', roleTitle: 'Content Creator', active: true },
+  { id: 'tm-design', name: 'فريق التصميم (Design)', roleTitle: 'Visual Designer', active: true },
+  { id: 'tm-video', name: 'فريق المونتاج (Reels)', roleTitle: 'Video Editor', active: true },
+  { id: 'tm-media', name: 'الميديا باير (Media Buyer)', roleTitle: 'Media Buyer', active: true },
+  { id: 'tm-am', name: 'مدير الحسابات (AM)', roleTitle: 'Account Manager', active: true },
+];
+
+export const DEFAULT_OPS_ACCESS_CODE = 'DE-OPS-2026';
 
 export type CloudSyncStatus = 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
 
@@ -94,6 +108,37 @@ interface AgencyContextType {
   updateInvoice: (id: string, updates: Partial<ClientInvoiceRecord>) => void;
   deleteInvoice: (id: string) => void;
   markInvoiceAsPaid: (id: string, paymentMethod?: string) => void;
+  recordInvoicePayment: (
+    invoiceId: string,
+    payment: {
+      amount: number;
+      date: string;
+      method: PaymentChannel;
+      methodLabel: string;
+      reference?: string;
+      notes?: string;
+    }
+  ) => InvoicePaymentEntry | null;
+  deleteInvoicePayment: (invoiceId: string, paymentId: string) => void;
+  // Agency Expenses & Net Profit
+  addExpense: (expense: Omit<AgencyExpense, 'id' | 'createdAt'>) => AgencyExpense;
+  updateExpense: (id: string, updates: Partial<AgencyExpense>) => void;
+  deleteExpense: (id: string) => void;
+  // Team Members & Portal Role Settings
+  addTeamMember: (member: Omit<AgencyTeamMember, 'id'>) => AgencyTeamMember;
+  updateTeamMember: (id: string, updates: Partial<AgencyTeamMember>) => void;
+  deleteTeamMember: (id: string) => void;
+  updatePortalSettings: (settings: { opsAccessCode?: string; opsAccountEmails?: string[] }) => void;
+  closeClientBillingCycle: (
+    clientId: string,
+    options: {
+      newStartDate: string;
+      newRenewalDate: string;
+      newPendingAdCredit?: number;
+      issueInvoiceNow?: boolean;
+      cycleNotes?: string;
+    }
+  ) => { updatedClient: Inquiry | null; createdInvoice: ClientInvoiceRecord | null };
   getClientLedger: (clientId: string, fromDate?: string, toDate?: string) => {
     entries: AccountLedgerEntry[];
     openingBalance: number;
@@ -103,6 +148,36 @@ interface AgencyContextType {
     totalAdSpent: number;
     closingBalance: number;
     currentAdCreditBalance: number;
+  };
+  submitAdWalletRequest: (
+    clientId: string,
+    payload: {
+      type: 'topup' | 'spend';
+      amount: number;
+      platform?: string;
+      notes?: string;
+      requestedBy: string;
+      autoApprove?: boolean;
+    }
+  ) => {
+    ok: boolean;
+    request?: AdWalletRequest;
+    linkedInvoiceNumber?: string;
+    errorAr?: string;
+    errorEn?: string;
+  };
+  reviewAdWalletRequest: (
+    clientId: string,
+    requestId: string,
+    decision: 'approved' | 'rejected',
+    reviewerName: string,
+    rejectionReason?: string
+  ) => {
+    ok: boolean;
+    request?: AdWalletRequest;
+    linkedInvoiceNumber?: string;
+    errorAr?: string;
+    errorEn?: string;
   };
 
   updateBanner: (banner: PromoBanner) => void;
@@ -613,9 +688,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (!sessionData?.session || isClearingCrmRef.current) return;
 
       setCloudSyncStatus('syncing');
-      const [catRes, crmRes] = await Promise.all([
+      const [catRes, crmRes, finOpsRes] = await Promise.all([
         fetchPublicCatalogFromSupabase(),
         fetchAdminCrmBundleFromSupabase(),
+        fetchAdminFinanceOpsFromSupabase(),
       ]);
 
       if (catRes.migrationNeeded || crmRes.migrationNeeded) {
@@ -631,6 +707,22 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       setData((prev) => {
         const next: AgencyDataState = { ...prev };
+
+        // Hydrate private admin finance & ops settings if present in Supabase
+        if (finOpsRes.snapshot) {
+          if (Array.isArray(finOpsRes.snapshot.expenses)) {
+            next.expenses = finOpsRes.snapshot.expenses;
+          }
+          if (Array.isArray(finOpsRes.snapshot.teamMembers) && finOpsRes.snapshot.teamMembers.length > 0) {
+            next.teamMembers = finOpsRes.snapshot.teamMembers;
+          }
+          if (finOpsRes.snapshot.opsAccessCode) {
+            next.opsAccessCode = finOpsRes.snapshot.opsAccessCode;
+          }
+          if (Array.isArray(finOpsRes.snapshot.opsAccountEmails)) {
+            next.opsAccountEmails = finOpsRes.snapshot.opsAccountEmails;
+          }
+        }
 
         // Hydrate public catalog if present in Supabase
         if (catRes.catalog) {
@@ -1573,14 +1665,44 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const invoice = (dataRef.current.invoices || []).find((inv) => inv.id === id);
     if (!invoice) return;
 
+    const existingPayments = invoice.payments || [];
+    const paidSoFar =
+      invoice.paidAmount !== undefined
+        ? invoice.paidAmount
+        : existingPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const remainingToSettle = Math.max(0, (Number(invoice.grandTotal) || 0) - paidSoFar);
+
+    let nextPayments = existingPayments;
+    if (remainingToSettle > 0) {
+      const now = new Date();
+      const rcpNum = `DE-RCP-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+        Math.floor(100 + Math.random() * 899)
+      )}`;
+      nextPayments = [
+        ...existingPayments,
+        {
+          id: `pay-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          receiptNumber: rcpNum,
+          amount: remainingToSettle,
+          date: today,
+          method: 'bank_transfer',
+          methodLabel: paymentMethod,
+          notes: paidSoFar > 0 ? 'سداد المتبقي بالكامل' : 'سداد كامل الفاتورة',
+          createdAt: now.toISOString(),
+        },
+      ];
+    }
+
     updateInvoice(id, {
       paymentStatus: 'paid',
       paidAt: today,
       paymentMethod,
+      paidAmount: invoice.grandTotal,
+      payments: nextPayments,
     });
 
-    // If invoice had an ad credit amount, credit it directly to client's adCreditBalance
-    if (invoice.clientId) {
+    // If invoice had an ad credit amount and wasn't already paid, credit it to client's adCreditBalance
+    if (invoice.clientId && invoice.paymentStatus !== 'paid') {
       const client = (dataRef.current.inquiries || []).find((c) => c.id === invoice.clientId);
       if (client) {
         const adAmt = invoice.adCreditAmount || 0;
@@ -1609,6 +1731,395 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  // Record a partial or final settlement payment against an invoice & generate official Receipt #
+  const recordInvoicePayment = (
+    invoiceId: string,
+    paymentInput: {
+      amount: number;
+      date: string;
+      method: PaymentChannel;
+      methodLabel: string;
+      reference?: string;
+      notes?: string;
+    }
+  ): InvoicePaymentEntry | null => {
+    const invoice = (dataRef.current.invoices || []).find((inv) => inv.id === invoiceId);
+    const cleanAmount = Math.max(0, Number(paymentInput.amount) || 0);
+    if (!invoice || cleanAmount <= 0) return null;
+
+    const now = new Date();
+    const existingPayments = invoice.payments || [];
+    const totalPaymentsCount = (dataRef.current.invoices || []).reduce(
+      (sum, inv) => sum + (inv.payments?.length || 0),
+      0
+    );
+    const receiptNumber = `DE-RCP-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      totalPaymentsCount + 101
+    ).padStart(3, '0')}`;
+
+    const newEntry: InvoicePaymentEntry = {
+      id: `pay-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      receiptNumber,
+      amount: cleanAmount,
+      date: paymentInput.date || now.toISOString().split('T')[0],
+      method: paymentInput.method,
+      methodLabel: paymentInput.methodLabel,
+      reference: paymentInput.reference?.trim() || undefined,
+      notes: paymentInput.notes?.trim() || undefined,
+      createdAt: now.toISOString(),
+    };
+
+    const nextPayments = [...existingPayments, newEntry];
+    const nextPaidAmount = nextPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const isNowFullyPaid = nextPaidAmount >= invoice.grandTotal;
+    const wasAlreadyPaid = invoice.paymentStatus === 'paid';
+    const nextStatus: ClientInvoiceRecord['paymentStatus'] = isNowFullyPaid
+      ? 'paid'
+      : nextPaidAmount > 0
+      ? 'partially_paid'
+      : 'pending';
+
+    updateInvoice(invoice.id, {
+      payments: nextPayments,
+      paidAmount: Math.min(invoice.grandTotal, nextPaidAmount),
+      paymentStatus: nextStatus,
+      paymentMethod: newEntry.methodLabel,
+      paidAt: isNowFullyPaid ? newEntry.date : invoice.paidAt,
+    });
+
+    if (invoice.clientId) {
+      const client = (dataRef.current.inquiries || []).find((c) => c.id === invoice.clientId);
+      if (client) {
+        const remainingAfter = Math.max(0, invoice.grandTotal - nextPaidAmount);
+        const adAmt = isNowFullyPaid && !wasAlreadyPaid ? (invoice.adCreditAmount || 0) : 0;
+        const newBalance = (client.adCreditBalance || 0) + adAmt;
+        const newFundedTotal = (client.adCreditFundedTotal || 0) + adAmt;
+        const pendingRemainder =
+          adAmt > 0
+            ? Math.max(0, (client.pendingInvoiceAdCredit || 0) - adAmt)
+            : client.pendingInvoiceAdCredit;
+
+        const noteText = isNowFullyPaid
+          ? `تم استلام دفعة بمبلغ ${cleanAmount.toLocaleString()} ج.م (${newEntry.methodLabel}) بإيصال رقم ${receiptNumber} — تم سداد الفاتورة ${invoice.invoiceNumber} بالكامل${adAmt > 0 ? ` وإيداع ${adAmt.toLocaleString()} ج.م بالمحفظة الإعلانية` : ''}.`
+          : `تم استلام دفعة جزئية بمبلغ ${cleanAmount.toLocaleString()} ج.م (${newEntry.methodLabel}) بإيصال رقم ${receiptNumber} على الفاتورة ${invoice.invoiceNumber} — المتبقي: ${remainingAfter.toLocaleString()} ج.م.`;
+
+        updateInquiry(client.id, {
+          paymentStatus: isNowFullyPaid ? 'paid' : 'partially_paid',
+          ...(adAmt > 0
+            ? {
+                adCreditBalance: newBalance,
+                adCreditFundedTotal: newFundedTotal,
+                pendingInvoiceAdCredit: pendingRemainder,
+              }
+            : {}),
+          clientNotes: [
+            makeActivityNote(noteText, 'payment', 'الإدارة المالية', {
+              invoiceNumber: invoice.invoiceNumber,
+            }),
+            ...(client.clientNotes || []),
+          ],
+        });
+      }
+    }
+
+    return newEntry;
+  };
+
+  const deleteInvoicePayment = (invoiceId: string, paymentId: string) => {
+    const invoice = (dataRef.current.invoices || []).find((inv) => inv.id === invoiceId);
+    if (!invoice) return;
+    const nextPayments = (invoice.payments || []).filter((p) => p.id !== paymentId);
+    const nextPaidAmount = nextPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const nextStatus: ClientInvoiceRecord['paymentStatus'] =
+      nextPaidAmount >= invoice.grandTotal
+        ? 'paid'
+        : nextPaidAmount > 0
+        ? 'partially_paid'
+        : 'pending';
+
+    updateInvoice(invoice.id, {
+      payments: nextPayments,
+      paidAmount: nextPaidAmount,
+      paymentStatus: nextStatus,
+      paidAt: nextStatus === 'paid' ? invoice.paidAt : undefined,
+    });
+  };
+
+  // Sync helper for private admin finance & ops settings
+  const syncAdminFinanceOpsSnapshot = (nextState: AgencyDataState) => {
+    if (isSupabaseConfigured && supabase) {
+      saveAdminFinanceOpsToSupabase({
+        expenses: nextState.expenses || [],
+        teamMembers: nextState.teamMembers || DEFAULT_AGENCY_TEAM_MEMBERS,
+        opsAccessCode: nextState.opsAccessCode || DEFAULT_OPS_ACCESS_CODE,
+        opsAccountEmails: nextState.opsAccountEmails || [],
+      }).then((res) => {
+        if (res.success) setLastCloudSyncAt(new Date().toISOString());
+      });
+    }
+  };
+
+  // Agency Expenses CRUD
+  const addExpense = (expenseData: Omit<AgencyExpense, 'id' | 'createdAt'>): AgencyExpense => {
+    const newExpense: AgencyExpense = {
+      ...expenseData,
+      id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      amount: Math.max(0, Number(expenseData.amount) || 0),
+      createdAt: new Date().toISOString(),
+    };
+    setData((prev) => {
+      const next: AgencyDataState = {
+        ...prev,
+        expenses: [newExpense, ...(prev.expenses || [])],
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+    return newExpense;
+  };
+
+  const updateExpense = (id: string, updates: Partial<AgencyExpense>) => {
+    setData((prev) => {
+      const next: AgencyDataState = {
+        ...prev,
+        expenses: (prev.expenses || []).map((e) => (e.id === id ? { ...e, ...updates } : e)),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  const deleteExpense = (id: string) => {
+    setData((prev) => {
+      const next: AgencyDataState = {
+        ...prev,
+        expenses: (prev.expenses || []).filter((e) => e.id !== id),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  // Team Members CRUD
+  const addTeamMember = (memberData: Omit<AgencyTeamMember, 'id'>): AgencyTeamMember => {
+    const newMember: AgencyTeamMember = {
+      ...memberData,
+      id: `tm-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    };
+    setData((prev) => {
+      const base =
+        Array.isArray(prev.teamMembers) && prev.teamMembers.length > 0
+          ? prev.teamMembers
+          : DEFAULT_AGENCY_TEAM_MEMBERS;
+      const next: AgencyDataState = {
+        ...prev,
+        teamMembers: [...base, newMember],
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+    return newMember;
+  };
+
+  const updateTeamMember = (id: string, updates: Partial<AgencyTeamMember>) => {
+    setData((prev) => {
+      const base =
+        Array.isArray(prev.teamMembers) && prev.teamMembers.length > 0
+          ? prev.teamMembers
+          : DEFAULT_AGENCY_TEAM_MEMBERS;
+      const next: AgencyDataState = {
+        ...prev,
+        teamMembers: base.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  const deleteTeamMember = (id: string) => {
+    setData((prev) => {
+      const base =
+        Array.isArray(prev.teamMembers) && prev.teamMembers.length > 0
+          ? prev.teamMembers
+          : DEFAULT_AGENCY_TEAM_MEMBERS;
+      const next: AgencyDataState = {
+        ...prev,
+        teamMembers: base.filter((m) => m.id !== id),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  // Portal Role Settings (Operations Access Code & Emails)
+  const updatePortalSettings = (settings: { opsAccessCode?: string; opsAccountEmails?: string[] }) => {
+    setData((prev) => {
+      const next: AgencyDataState = {
+        ...prev,
+        ...(settings.opsAccessCode !== undefined ? { opsAccessCode: settings.opsAccessCode.trim() || DEFAULT_OPS_ACCESS_CODE } : {}),
+        ...(settings.opsAccountEmails !== undefined ? { opsAccountEmails: settings.opsAccountEmails } : {}),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  const closeClientBillingCycle = (
+    clientId: string,
+    options: {
+      newStartDate: string;
+      newRenewalDate: string;
+      newPendingAdCredit?: number;
+      issueInvoiceNow?: boolean;
+      cycleNotes?: string;
+    }
+  ): { updatedClient: Inquiry | null; createdInvoice: ClientInvoiceRecord | null } => {
+    const client = (dataRef.current.inquiries || []).find((c) => c.id === clientId);
+    if (!client) {
+      return { updatedClient: null, createdInvoice: null };
+    }
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const closedStartDate = client.contractStartDate || client.createdAt?.split('T')[0] || todayStr;
+    const closedEndDate = client.renewalDate || todayStr;
+
+    const arabicMonths = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+    ];
+    const startMatch = closedStartDate.match(/^(\d{4})-(\d{2})/);
+    const cycleLabel = startMatch
+      ? `${arabicMonths[Math.max(0, Math.min(11, parseInt(startMatch[2], 10) - 1))]} ${startMatch[1]}`
+      : closedStartDate;
+
+    const targets = getClientDeliverableTargets(client, dataRef.current.packages || []);
+    const postsDelivered = client.postsDelivered ?? 0;
+    const reelsDelivered = client.reelsDelivered ?? 0;
+    const storiesDelivered = client.storiesDelivered ?? 0;
+    const totalDelivered = postsDelivered + reelsDelivered + storiesDelivered;
+    const deliverablesCompletionRate =
+      targets.totalTarget > 0
+        ? Math.min(100, Math.round((totalDelivered / targets.totalTarget) * 100))
+        : 0;
+
+    const stages = client.workflowStages || [];
+    const workflowTotalStages = stages.length > 0 ? stages.length : 5;
+    const workflowCompletedStages = stages.filter((s) => s.status === 'completed').length;
+
+    const parsedRetainer = parseInvoiceAmount(client.budget);
+    const retainerAmount =
+      client.retainerAmount && client.retainerAmount > 0
+        ? client.retainerAmount
+        : parsedRetainer;
+
+    const latestClientInvoice = (dataRef.current.invoices || []).find(
+      (inv) => inv.clientId === client.id && inv.paymentStatus !== 'cancelled'
+    );
+
+    const cycleRecord: ClientMonthlyCycleRecord = {
+      id: `cycle-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      cycleLabel,
+      startDate: closedStartDate,
+      endDate: closedEndDate,
+      closedAt: new Date().toISOString(),
+      packageName: client.packageName || 'باقة مخصصة',
+      retainerAmount,
+      postsDelivered,
+      postsTarget: targets.postsTarget,
+      reelsDelivered,
+      reelsTarget: targets.reelsTarget,
+      storiesDelivered,
+      storiesTarget: targets.storiesTarget,
+      deliverablesCompletionRate,
+      workflowCompletedStages,
+      workflowTotalStages,
+      paymentStatus: client.paymentStatus || 'pending',
+      adCreditBalanceCarriedOver: client.adCreditBalance || 0,
+      invoiceNumber: latestClientInvoice?.invoiceNumber,
+      notes: options.cycleNotes?.trim() || undefined,
+    };
+
+    const resetStages = [
+      { id: 'content_creator', title: 'Content Creator', status: 'pending' as const },
+      { id: 'visual_design', title: 'Visual Design', status: 'pending' as const },
+      { id: 'final_design', title: 'Final Design', status: 'pending' as const },
+      { id: 'client_approve', title: 'Client Approve', status: 'pending' as const },
+      { id: 'publish', title: 'Publish', status: 'pending' as const },
+    ];
+
+    const summaryNoteText = `إغلاق دورة «${cycleLabel}» (إنجاز المخرجات: ${totalDelivered}/${targets.totalTarget} بنسبة ${deliverablesCompletionRate}% • مراحل العمل: ${workflowCompletedStages}/${workflowTotalStages} • رصيد إعلاني مرحّل: ${(client.adCreditBalance || 0).toLocaleString()} ج.م) وبدء دورة جديدة من ${options.newStartDate} حتى ${options.newRenewalDate}.${options.cycleNotes?.trim() ? ` ملاحظة: ${options.cycleNotes.trim()}` : ''}`;
+
+    const closingNote = makeActivityNote(summaryNoteText, 'workflow', 'إدارة التشغيل والمالية', {
+      fieldChanged: 'billingCycleClose',
+      cycleRecord,
+    });
+
+    const existingHistory = client.cycleHistory || [];
+    const nextHistory = [cycleRecord, ...existingHistory];
+    const nextPendingAdCredit = Math.max(0, Number(options.newPendingAdCredit) || 0);
+
+    const resetReelStages = Array.from({ length: Math.max(0, Math.min(30, Math.floor(targets.reelsTarget || 0))) }, (_, idx) => ({
+      id: `reel_${idx + 1}`,
+      title: `Reel ${idx + 1}`,
+      status: 'pending' as const,
+      track: 'reel' as const,
+    }));
+
+    const updatedClientUpdates: Partial<Inquiry> = {
+      contractStartDate: options.newStartDate,
+      renewalDate: options.newRenewalDate,
+      contractStatus: 'active',
+      paymentStatus: 'pending',
+      postsDelivered: 0,
+      reelsDelivered: 0,
+      storiesDelivered: 0,
+      workflowStages: resetStages,
+      reelStages: resetReelStages,
+      currentWorkflowDay: 1,
+      todayTaskTitle: '',
+      pendingInvoiceAdCredit: nextPendingAdCredit,
+      cycleHistory: nextHistory,
+      clientNotes: [closingNote, ...(client.clientNotes || [])],
+    };
+
+    updateInquiry(client.id, updatedClientUpdates);
+
+    let createdInvoice: ClientInvoiceRecord | null = null;
+    if (options.issueInvoiceNow) {
+      const invNumber = generateUniqueInvoiceNumber(client.id, dataRef.current.invoices || []);
+      const grandTotal = retainerAmount + nextPendingAdCredit;
+      createdInvoice = addInvoice({
+        invoiceNumber: invNumber,
+        clientId: client.id,
+        clientName: client.name,
+        clientCompany: client.company,
+        clientPhone: client.phone,
+        sector: client.sector,
+        issueDate: options.newStartDate,
+        dueDate: options.newRenewalDate,
+        packageName: client.packageName || 'باقة تسويق رقمي',
+        retainerAmount,
+        adCreditAmount: nextPendingAdCredit,
+        grandTotal,
+        billingCycle: client.billingCycle || 'monthly',
+        paymentStatus: 'pending',
+        notes: options.cycleNotes?.trim() || undefined,
+        deliverables: {
+          posts: targets.postsTarget,
+          reels: targets.reelsTarget,
+          stories: targets.storiesTarget,
+        },
+      });
+    }
+
+    const updatedClient: Inquiry = {
+      ...client,
+      ...updatedClientUpdates,
+    };
+
+    return { updatedClient, createdInvoice };
+  };
+
   const getClientLedger = (clientId: string, fromDate?: string, toDate?: string) => {
     const client = (data.inquiries || []).find((c) => c.id === clientId);
     const clientInvoices = (data.invoices || []).filter((inv) => inv.clientId === clientId);
@@ -1629,7 +2140,21 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         notes: inv.adCreditAmount ? `أتعاب إدارة: ${inv.retainerAmount.toLocaleString()} ج.م + رصيد إعلاني: ${inv.adCreditAmount.toLocaleString()} ج.م` : undefined,
       });
 
-      if (inv.paymentStatus === 'paid' && (inv.paidAt || inv.issueDate)) {
+      if (Array.isArray(inv.payments) && inv.payments.length > 0) {
+        inv.payments.forEach((pay) => {
+          rawEntries.push({
+            id: `ledger-pay-${pay.id}`,
+            date: pay.date || inv.issueDate,
+            type: 'payment',
+            title: `دفعة مسددة (${pay.methodLabel}) — إيصال ${pay.receiptNumber}`,
+            reference: pay.receiptNumber,
+            debit: 0,
+            credit: Number(pay.amount) || 0,
+            balance: 0,
+            notes: pay.notes || pay.reference || `سداد على الفاتورة ${inv.invoiceNumber}`,
+          });
+        });
+      } else if (inv.paymentStatus === 'paid' && (inv.paidAt || inv.issueDate)) {
         rawEntries.push({
           id: `ledger-pay-${inv.id}`,
           date: inv.paidAt || inv.issueDate,
@@ -1718,6 +2243,263 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   };
 
+  // =========================================================================
+  // AD WALLET APPROVAL WORKFLOW (Media Buyer <-> Accountant / Admin)
+  // =========================================================================
+  const submitAdWalletRequest: AgencyContextType['submitAdWalletRequest'] = (
+    clientId,
+    payload
+  ) => {
+    const client = (dataRef.current.inquiries || []).find((c) => c.id === clientId);
+    if (!client) {
+      return { ok: false, errorAr: 'العميل غير موجود.', errorEn: 'Client not found.' };
+    }
+    const cleanAmount = Math.round(Number(payload.amount) || 0);
+    if (cleanAmount <= 0) {
+      return {
+        ok: false,
+        errorAr: 'يرجى إدخال مبلغ صحيح أكبر من صفر.',
+        errorEn: 'Please enter a valid amount greater than zero.',
+      };
+    }
+
+    const existingReqs = client.adWalletRequests || [];
+    const currentBalance = client.adCreditBalance || 0;
+
+    if (payload.type === 'spend') {
+      const pendingSpendTotal = existingReqs
+        .filter((r) => r.type === 'spend' && r.status === 'pending')
+        .reduce((sum, r) => sum + (r.amount || 0), 0);
+      const usableBalance = Math.max(0, currentBalance - pendingSpendTotal);
+      if (cleanAmount > usableBalance) {
+        return {
+          ok: false,
+          errorAr: `المبلغ المطلوب (${cleanAmount.toLocaleString()} ج.م) يتجاوز الرصيد المتاح بعد خصم الطلبات المعلقة (${usableBalance.toLocaleString()} ج.م).`,
+          errorEn: `Requested spend (${cleanAmount.toLocaleString()} EGP) exceeds available balance (${usableBalance.toLocaleString()} EGP).`,
+        };
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const actor = payload.requestedBy?.trim() || 'الميديا باير';
+    const platformLabel = payload.platform?.trim() || 'Meta Ads (Facebook & Instagram)';
+    const cleanNotes = payload.notes?.trim() || undefined;
+    const isAuto = Boolean(payload.autoApprove);
+
+    let linkedInvoiceNumber: string | undefined;
+
+    if (isAuto && payload.type === 'topup') {
+      // Find latest open unpaid invoice for this client and add the approved ad credit to it
+      const openInv = (dataRef.current.invoices || []).find(
+        (inv) =>
+          inv.clientId === clientId &&
+          (inv.paymentStatus === 'pending' || inv.paymentStatus === 'partially_paid')
+      );
+      if (openInv) {
+        linkedInvoiceNumber = openInv.invoiceNumber;
+        updateInvoice(openInv.id, {
+          adCreditAmount: (openInv.adCreditAmount || 0) + cleanAmount,
+          grandTotal: (openInv.grandTotal || 0) + cleanAmount,
+        });
+      }
+    }
+
+    const newReq: AdWalletRequest = {
+      id: `adreq-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      type: payload.type,
+      amount: cleanAmount,
+      platform: payload.type === 'spend' ? platformLabel : undefined,
+      notes: cleanNotes,
+      status: isAuto ? 'approved' : 'pending',
+      requestedBy: actor,
+      requestedAt: nowIso,
+      ...(isAuto ? { reviewedBy: actor, reviewedAt: nowIso } : {}),
+      ...(linkedInvoiceNumber ? { linkedInvoiceNumber } : {}),
+    };
+
+    const nextRequests = [newReq, ...existingReqs];
+
+    if (isAuto) {
+      if (payload.type === 'topup') {
+        const nextPendingAd = (client.pendingInvoiceAdCredit || 0) + cleanAmount;
+        const noteText = linkedInvoiceNumber
+          ? `💳 تم اعتماد إضافة رصيد إعلاني بمبلغ ${cleanAmount.toLocaleString()} ج.م بواسطة ${actor} وإدراجه تلقائياً في الفاتورة رقم ${linkedInvoiceNumber}.${cleanNotes ? ` (${cleanNotes})` : ''}`
+          : `💳 تم اعتماد إضافة رصيد إعلاني بمبلغ ${cleanAmount.toLocaleString()} ج.م بواسطة ${actor} وإدراجه كبند رصيد إعلاني في الفاتورة.${cleanNotes ? ` (${cleanNotes})` : ''}`;
+        updateInquiry(clientId, {
+          pendingInvoiceAdCredit: nextPendingAd,
+          adWalletRequests: nextRequests,
+          clientNotes: [
+            makeActivityNote(noteText, 'payment', actor, {
+              ...(linkedInvoiceNumber ? { invoiceNumber: linkedInvoiceNumber } : {}),
+            }),
+            ...(client.clientNotes || []),
+          ],
+        });
+      } else {
+        const newBalance = Math.max(0, currentBalance - cleanAmount);
+        const newSpentTotal = (client.adCreditSpentTotal || 0) + cleanAmount;
+        const noteText = `✅ [صرف إعلاني - ${platformLabel}] تم اعتماد وخصم ${cleanAmount.toLocaleString()} ج.م من الرصيد الإعلاني بواسطة ${actor}.${cleanNotes ? ` (${cleanNotes})` : ''} الرصيد المتبقي: ${newBalance.toLocaleString()} ج.م.`;
+        updateInquiry(clientId, {
+          adCreditBalance: newBalance,
+          adCreditSpentTotal: newSpentTotal,
+          adWalletRequests: nextRequests,
+          clientNotes: [
+            makeActivityNote(noteText, 'update', actor),
+            ...(client.clientNotes || []),
+          ],
+        });
+      }
+    } else {
+      const noteText =
+        payload.type === 'topup'
+          ? `⏳ قدّم ${actor} طلب إضافة رصيد إعلاني بمبلغ ${cleanAmount.toLocaleString()} ج.م — بانتظار موافقة المحاسب لإدراجه بالفاتورة.${cleanNotes ? ` (${cleanNotes})` : ''}`
+          : `⏳ سجّل ${actor} مصروف إعلاني بمبلغ ${cleanAmount.toLocaleString()} ج.م على (${platformLabel}) — بانتظار موافقة المحاسب للخصم من الرصيد الإعلاني.${cleanNotes ? ` (${cleanNotes})` : ''}`;
+
+      updateInquiry(clientId, {
+        adWalletRequests: nextRequests,
+        clientNotes: [
+          makeActivityNote(noteText, 'update', actor),
+          ...(client.clientNotes || []),
+        ],
+      });
+    }
+
+    return { ok: true, request: newReq, linkedInvoiceNumber };
+  };
+
+  const reviewAdWalletRequest: AgencyContextType['reviewAdWalletRequest'] = (
+    clientId,
+    requestId,
+    decision,
+    reviewerName,
+    rejectionReason
+  ) => {
+    const client = (dataRef.current.inquiries || []).find((c) => c.id === clientId);
+    if (!client) {
+      return { ok: false, errorAr: 'العميل غير موجود.', errorEn: 'Client not found.' };
+    }
+
+    const existingReqs = client.adWalletRequests || [];
+    const targetReq = existingReqs.find((r) => r.id === requestId);
+    if (!targetReq) {
+      return { ok: false, errorAr: 'الطلب غير موجود.', errorEn: 'Request not found.' };
+    }
+    if (targetReq.status !== 'pending') {
+      return {
+        ok: false,
+        errorAr: 'تمت مراجعة هذا الطلب بالفعل.',
+        errorEn: 'This request has already been reviewed.',
+      };
+    }
+
+    const nowIso = new Date().toISOString();
+    const reviewer = reviewerName?.trim() || 'المحاسب';
+    const cleanReason = rejectionReason?.trim() || undefined;
+
+    if (decision === 'rejected') {
+      const updatedReq: AdWalletRequest = {
+        ...targetReq,
+        status: 'rejected',
+        reviewedBy: reviewer,
+        reviewedAt: nowIso,
+        rejectionReason: cleanReason,
+      };
+      const nextRequests = existingReqs.map((r) => (r.id === requestId ? updatedReq : r));
+      const rejectNoteText =
+        targetReq.type === 'topup'
+          ? `❌ رفض المحاسب (${reviewer}) طلب إضافة الرصيد الإعلاني بمبلغ ${targetReq.amount.toLocaleString()} ج.م المقدم من ${targetReq.requestedBy}.${cleanReason ? ` السبب: ${cleanReason}` : ''}`
+          : `❌ رفض المحاسب (${reviewer}) مصروف الإعلانات بمبلغ ${targetReq.amount.toLocaleString()} ج.م (${targetReq.platform || 'حملات ممولة'}) المقدم من ${targetReq.requestedBy}.${cleanReason ? ` السبب: ${cleanReason}` : ''}`;
+
+      updateInquiry(clientId, {
+        adWalletRequests: nextRequests,
+        clientNotes: [
+          makeActivityNote(rejectNoteText, 'update', reviewer),
+          ...(client.clientNotes || []),
+        ],
+      });
+      return { ok: true, request: updatedReq };
+    }
+
+    // Approved
+    if (targetReq.type === 'topup') {
+      let linkedInvoiceNumber: string | undefined;
+      const openInv = (dataRef.current.invoices || []).find(
+        (inv) =>
+          inv.clientId === clientId &&
+          (inv.paymentStatus === 'pending' || inv.paymentStatus === 'partially_paid')
+      );
+      if (openInv) {
+        linkedInvoiceNumber = openInv.invoiceNumber;
+        updateInvoice(openInv.id, {
+          adCreditAmount: (openInv.adCreditAmount || 0) + targetReq.amount,
+          grandTotal: (openInv.grandTotal || 0) + targetReq.amount,
+        });
+      }
+
+      const updatedReq: AdWalletRequest = {
+        ...targetReq,
+        status: 'approved',
+        reviewedBy: reviewer,
+        reviewedAt: nowIso,
+        ...(linkedInvoiceNumber ? { linkedInvoiceNumber } : {}),
+      };
+      const nextRequests = existingReqs.map((r) => (r.id === requestId ? updatedReq : r));
+      const nextPendingAd = (client.pendingInvoiceAdCredit || 0) + targetReq.amount;
+
+      const approveTopUpNote = linkedInvoiceNumber
+        ? `✅ وافق المحاسب (${reviewer}) على طلب إضافة رصيد إعلاني بمبلغ ${targetReq.amount.toLocaleString()} ج.م (من ${targetReq.requestedBy}) وتم إدراجه تلقائياً في الفاتورة رقم ${linkedInvoiceNumber}.`
+        : `✅ وافق المحاسب (${reviewer}) على طلب إضافة رصيد إعلاني بمبلغ ${targetReq.amount.toLocaleString()} ج.م (من ${targetReq.requestedBy}) وتم إدراجه كبند رصيد إعلاني في الفاتورة.`;
+
+      updateInquiry(clientId, {
+        pendingInvoiceAdCredit: nextPendingAd,
+        adWalletRequests: nextRequests,
+        clientNotes: [
+          makeActivityNote(approveTopUpNote, 'payment', reviewer, {
+            ...(linkedInvoiceNumber ? { invoiceNumber: linkedInvoiceNumber } : {}),
+          }),
+          ...(client.clientNotes || []),
+        ],
+      });
+
+      return { ok: true, request: updatedReq, linkedInvoiceNumber };
+    }
+
+    // Approved Spend -> deduct from available adCreditBalance
+    const currentBalance = client.adCreditBalance || 0;
+    if (targetReq.amount > currentBalance) {
+      return {
+        ok: false,
+        errorAr: `الرصيد الإعلاني المتاح حالياً (${currentBalance.toLocaleString()} ج.م) غير كافٍ لخصم ${targetReq.amount.toLocaleString()} ج.م! يرجى تحصيل الفاتورة وإيداع الرصيد أولاً.`,
+        errorEn: `Available balance (${currentBalance.toLocaleString()} EGP) is lower than spend amount (${targetReq.amount.toLocaleString()} EGP).`,
+      };
+    }
+
+    const newBalance = currentBalance - targetReq.amount;
+    const newSpentTotal = (client.adCreditSpentTotal || 0) + targetReq.amount;
+    const updatedReq: AdWalletRequest = {
+      ...targetReq,
+      status: 'approved',
+      reviewedBy: reviewer,
+      reviewedAt: nowIso,
+    };
+    const nextRequests = existingReqs.map((r) => (r.id === requestId ? updatedReq : r));
+    const platformLabel = targetReq.platform || 'حملات ممولة';
+
+    const approveSpendNote = `✅ [صرف إعلاني - ${platformLabel}] وافق المحاسب (${reviewer}) على خصم ${targetReq.amount.toLocaleString()} ج.م من الرصيد الإعلاني (مقدم من ${targetReq.requestedBy}${targetReq.notes ? ` — ${targetReq.notes}` : ''}). الرصيد المتبقي: ${newBalance.toLocaleString()} ج.م.`;
+
+    updateInquiry(clientId, {
+      adCreditBalance: newBalance,
+      adCreditSpentTotal: newSpentTotal,
+      adWalletRequests: nextRequests,
+      clientNotes: [
+        makeActivityNote(approveSpendNote, 'update', reviewer),
+        ...(client.clientNotes || []),
+      ],
+    });
+
+    return { ok: true, request: updatedReq };
+  };
+
   const t = TRANSLATIONS[language];
 
   return (
@@ -1768,7 +2550,19 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         updateInvoice,
         deleteInvoice,
         markInvoiceAsPaid,
+        recordInvoicePayment,
+        deleteInvoicePayment,
+        addExpense,
+        updateExpense,
+        deleteExpense,
+        addTeamMember,
+        updateTeamMember,
+        deleteTeamMember,
+        updatePortalSettings,
+        closeClientBillingCycle,
         getClientLedger,
+        submitAdWalletRequest,
+        reviewAdWalletRequest,
         updateBanner,
         resetToDefaults,
         exportDataJson,

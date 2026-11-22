@@ -243,6 +243,105 @@ app.get('/api/geo', (req, res) => {
   });
 });
 
+// Server-side Team Account Password Hashing (scrypt) & Session Token Guard
+const TEAM_SESSION_SECRET =
+  process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16
+    ? process.env.SESSION_SECRET
+    : crypto.randomBytes(32).toString('hex');
+
+function signTeamSessionToken(payload: { sub: string; iat: number; exp: number }): string {
+  const body = Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
+  const sig = crypto
+    .createHmac('sha256', TEAM_SESSION_SECRET)
+    .update(body)
+    .digest('base64url');
+  return `${body}.${sig}`;
+}
+
+function verifyTeamSessionToken(token: string): { sub: string; exp: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 2) return null;
+    const [body, sig] = parts;
+    const expectedSig = crypto
+      .createHmac('sha256', TEAM_SESSION_SECRET)
+      .update(body)
+      .digest('base64url');
+    const sigBuf = Buffer.from(sig, 'utf-8');
+    const expBuf = Buffer.from(expectedSig, 'utf-8');
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return null;
+    }
+    const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf-8'));
+    if (!parsed || typeof parsed.exp !== 'number' || Date.now() > parsed.exp) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+app.post('/api/team/hash-password', (req, res) => {
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  if (password.length < 6 || password.length > 128) {
+    return res.status(400).json({ error: 'Password must be between 6 and 128 characters.' });
+  }
+  const salt = crypto.randomBytes(16).toString('hex');
+  crypto.scrypt(password, salt, 64, (err, derivedKey) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to hash password' });
+    }
+    return res.json({ hash: `scrypt$${salt}$${derivedKey.toString('hex')}` });
+  });
+});
+
+app.post('/api/team/verify-password', (req, res) => {
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  const storedHash = typeof req.body?.hash === 'string' ? req.body.hash : '';
+  if (!password || password.length > 128 || !storedHash.startsWith('scrypt$')) {
+    return res.json({ valid: false });
+  }
+  const parts = storedHash.split('$');
+  if (parts.length !== 3 || !/^[a-f0-9]{16,64}$/i.test(parts[1]) || !/^[a-f0-9]{64,256}$/i.test(parts[2])) {
+    return res.json({ valid: false });
+  }
+  const [, salt, expectedHex] = parts;
+  crypto.scrypt(password, salt, 64, (err, derivedKey) => {
+    if (err) {
+      return res.status(500).json({ valid: false });
+    }
+    try {
+      const expectedBuf = Buffer.from(expectedHex, 'hex');
+      const valid =
+        expectedBuf.length === derivedKey.length &&
+        crypto.timingSafeEqual(expectedBuf, derivedKey);
+      if (!valid) {
+        return res.json({ valid: false });
+      }
+      const now = Date.now();
+      const sessionToken = signTeamSessionToken({
+        sub: `team-${salt.slice(0, 8)}`,
+        iat: now,
+        exp: now + 12 * 60 * 60 * 1000,
+      });
+      return res.json({ valid: true, sessionToken });
+    } catch {
+      return res.json({ valid: false });
+    }
+  });
+});
+
+app.get('/api/team/verify-session', (req, res) => {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const verified = token ? verifyTeamSessionToken(token) : null;
+  if (!verified) {
+    return res.status(401).json({ valid: false });
+  }
+  return res.json({ valid: true, exp: verified.exp });
+});
+
 // Endpoint: AI Creative / Plan Image Analyzer using Gemini Vision
 app.post('/api/analyze-creative-image', async (req, res) => {
   try {
@@ -305,9 +404,14 @@ app.post('/api/analyze-creative-image', async (req, res) => {
     const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
     let resultJson = null;
 
+    const aiClient = getAiClient();
+    if (!aiClient) {
+      return res.json({ ...fallbackResponse, note: 'Used intelligent fallback (GEMINI_API_KEY not configured)' });
+    }
+
     for (const modelName of modelsToTry) {
       try {
-        const response = await ai.models.generateContent({
+        const response = await aiClient.models.generateContent({
           model: modelName,
           contents: { parts },
           config: {
@@ -343,15 +447,23 @@ app.post('/api/analyze-creative-image', async (req, res) => {
   }
 });
 
-// Initialize server-side Gemini client
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    },
-  },
-});
+// Lazily initialize server-side Gemini client so dev server boots cleanly even without GEMINI_API_KEY
+let _aiClient: GoogleGenAI | null = null;
+function getAiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  if (!_aiClient) {
+    _aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+  }
+  return _aiClient;
+}
 
 const SYSTEM_INSTRUCTION = `
 أنت "المساعد الذكي لوكالة ديجيتال إفكت" (Digital Effect AI Advisor).
@@ -559,9 +671,16 @@ app.post('/api/chat', async (req, res) => {
     const modelsToTry = ['gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
     let lastError: any = null;
 
+    const aiClient = getAiClient();
+    if (!aiClient) {
+      return res.status(500).json({ 
+        error: 'مفتاح Gemini API غير مهيأ على الخادم. يرجى ضبط GEMINI_API_KEY في إعدادات البيئة.' 
+      });
+    }
+
     for (const modelName of modelsToTry) {
       try {
-        const response = await ai.models.generateContent({
+        const response = await aiClient.models.generateContent({
           model: modelName,
           contents: contents,
           config: {

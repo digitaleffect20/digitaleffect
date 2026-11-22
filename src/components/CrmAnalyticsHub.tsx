@@ -17,13 +17,14 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { getAnalyticsSummary } from '../lib/analyticsTracker';
-import { ServicePackage, ClientInvoiceRecord } from '../types';
+import { ServicePackage, ClientInvoiceRecord, AgencyExpense } from '../types';
 import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 import { FinancialChartsDashboard, AnalyticsInquiry } from './FinancialChartsDashboard';
 
 interface CrmAnalyticsHubProps {
   inquiries: AnalyticsInquiry[];
   invoices?: ClientInvoiceRecord[];
+  expenses?: AgencyExpense[];
   packages: ServicePackage[];
   isAr: boolean;
 }
@@ -31,6 +32,7 @@ interface CrmAnalyticsHubProps {
 export const CrmAnalyticsHub: React.FC<CrmAnalyticsHubProps> = ({
   inquiries,
   invoices = [],
+  expenses = [],
   packages,
   isAr,
 }) => {
@@ -317,6 +319,7 @@ export const CrmAnalyticsHub: React.FC<CrmAnalyticsHubProps> = ({
           <FinancialChartsDashboard
             inquiries={inquiries}
             invoices={invoices}
+            expenses={expenses}
             packages={packages}
             isAr={isAr}
           />

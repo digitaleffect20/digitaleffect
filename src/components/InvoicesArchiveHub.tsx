@@ -22,12 +22,18 @@ import {
   X,
   Loader2,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Receipt,
+  Wallet,
+  MessageCircle,
+  Banknote
 } from 'lucide-react';
 import { useAgencyData } from '../context/AgencyDataContext';
-import { ClientInvoiceRecord, Inquiry } from '../types';
+import { ClientInvoiceRecord, Inquiry, PaymentChannel, InvoicePaymentEntry } from '../types';
 import {
   generateClientInvoicePdf,
+  generatePaymentReceiptPdf,
+  loadSavedTransferInfo,
   parseInvoiceAmount,
   generateUniqueInvoiceNumber,
 } from '../utils/invoicePdfGenerator';
@@ -38,13 +44,29 @@ interface InvoicesArchiveHubProps {
   isAr?: boolean;
 }
 
+const PAYMENT_CHANNEL_LABELS: Record<PaymentChannel, { ar: string; en: string }> = {
+  instapay: { ar: 'إنستاباي (InstaPay)', en: 'InstaPay' },
+  ewallet: { ar: 'محفظة إلكترونية (E-Wallet)', en: 'E-Wallet' },
+  bank_transfer: { ar: 'تحويل بنكي', en: 'Bank Transfer' },
+  cash: { ar: 'نقدي (Cash)', en: 'Cash' },
+};
+
 export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = true }) => {
-  const { data, addInvoice, updateInvoice, deleteInvoice, markInvoiceAsPaid } = useAgencyData();
+  const {
+    data,
+    addInvoice,
+    updateInvoice,
+    deleteInvoice,
+    markInvoiceAsPaid,
+    recordInvoicePayment,
+    deleteInvoicePayment,
+    logInquiryActivity,
+  } = useAgencyData();
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('all');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'paid' | 'partially_paid' | 'pending' | 'overdue'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'this_month' | 'last_month' | 'this_year'>('all');
 
   // Modals
@@ -53,6 +75,16 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
 
   const [previewInvoice, setPreviewInvoice] = useState<ClientInvoiceRecord | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
+  // Partial Payments & Receipts Modal
+  const [paymentsModalInvoiceId, setPaymentsModalInvoiceId] = useState<string | null>(null);
+  const [payAmountInput, setPayAmountInput] = useState<string>('');
+  const [payChannel, setPayChannel] = useState<PaymentChannel>('instapay');
+  const [payDate, setPayDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [payReference, setPayReference] = useState<string>('');
+  const [payNotes, setPayNotes] = useState<string>('');
+  const [payFormError, setPayFormError] = useState<string | null>(null);
+  const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
 
   // New Invoice Modal
   const [isNewInvoiceOpen, setIsNewInvoiceOpen] = useState(false);
@@ -105,8 +137,13 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
 
       // Payment status
       if (paymentStatusFilter !== 'all') {
+        const paidSoFar = inv.paymentStatus === 'paid' ? inv.grandTotal : Math.max(0, inv.paidAmount || 0);
+        const isPartial =
+          inv.paymentStatus === 'partially_paid' ||
+          (inv.paymentStatus !== 'paid' && inv.paymentStatus !== 'cancelled' && paidSoFar > 0 && paidSoFar < inv.grandTotal);
         if (paymentStatusFilter === 'paid' && inv.paymentStatus !== 'paid') return false;
-        if (paymentStatusFilter === 'pending' && inv.paymentStatus !== 'pending') return false;
+        if (paymentStatusFilter === 'partially_paid' && !isPartial) return false;
+        if (paymentStatusFilter === 'pending' && (inv.paymentStatus !== 'pending' || isPartial)) return false;
         if (paymentStatusFilter === 'overdue') {
           if (inv.paymentStatus === 'paid' || inv.paymentStatus === 'cancelled') return false;
           const today = new Date().toISOString().split('T')[0];
@@ -135,7 +172,12 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     });
   }, [invoices, searchQuery, selectedClientFilter, paymentStatusFilter, dateFilter]);
 
-  // Overall Financial Archive Metrics
+  const activePaymentInvoice = useMemo(() => {
+    if (!paymentsModalInvoiceId) return null;
+    return invoices.find((i) => i.id === paymentsModalInvoiceId) || null;
+  }, [invoices, paymentsModalInvoiceId]);
+
+  // Overall Financial Archive Metrics (accounts for partial payments accurately)
   const metrics = useMemo(() => {
     let totalCount = invoices.length;
     let totalInvoiced = 0;
@@ -144,12 +186,15 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     let totalAdCredit = 0;
 
     invoices.forEach((inv) => {
+      if (inv.paymentStatus === 'cancelled') return;
       totalInvoiced += inv.grandTotal;
       totalAdCredit += inv.adCreditAmount || 0;
       if (inv.paymentStatus === 'paid') {
         totalPaid += inv.grandTotal;
       } else {
-        totalPending += inv.grandTotal;
+        const paidSoFar = Math.min(inv.grandTotal, Math.max(0, inv.paidAmount || 0));
+        totalPaid += paidSoFar;
+        totalPending += Math.max(0, inv.grandTotal - paidSoFar);
       }
     });
 
@@ -219,6 +264,83 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     setPendingAction({ type: 'collect', invoice: inv });
   };
 
+  // Open Partial Payments & Receipts Modal
+  const openPaymentsModal = (inv: ClientInvoiceRecord) => {
+    const paidSoFar = inv.paymentStatus === 'paid' ? inv.grandTotal : Math.max(0, inv.paidAmount || 0);
+    const remaining = Math.max(0, inv.grandTotal - paidSoFar);
+    setPaymentsModalInvoiceId(inv.id);
+    setPayAmountInput(remaining > 0 ? String(Math.round(remaining / 2)) : '');
+    setPayChannel('instapay');
+    setPayDate(new Date().toISOString().split('T')[0]);
+    setPayReference('');
+    setPayNotes('');
+    setPayFormError(null);
+  };
+
+  const handleRecordPaymentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activePaymentInvoice) return;
+    setPayFormError(null);
+    const amountNum = Number(payAmountInput);
+    const paidSoFar =
+      activePaymentInvoice.paymentStatus === 'paid'
+        ? activePaymentInvoice.grandTotal
+        : Math.max(0, activePaymentInvoice.paidAmount || 0);
+    const remaining = Math.max(0, activePaymentInvoice.grandTotal - paidSoFar);
+
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      setPayFormError(isAr ? 'يرجى إدخال مبلغ صحيح أكبر من صفر.' : 'Please enter a valid payment amount.');
+      return;
+    }
+    if (amountNum > remaining && remaining > 0) {
+      setPayFormError(
+        isAr
+          ? `المبلغ المدخل أكبر من المتبقي المستحق (${remaining.toLocaleString()} ج.م).`
+          : `Amount exceeds remaining balance (${remaining.toLocaleString()} EGP).`
+      );
+      return;
+    }
+
+    const entry = recordInvoicePayment(activePaymentInvoice.id, {
+      amount: amountNum,
+      method: payChannel,
+      methodLabel: isAr ? PAYMENT_CHANNEL_LABELS[payChannel].ar : PAYMENT_CHANNEL_LABELS[payChannel].en,
+      date: payDate || new Date().toISOString().split('T')[0],
+      reference: payReference.trim() || undefined,
+      notes: payNotes.trim() || undefined,
+    });
+
+    if (entry) {
+      const nextRemaining = Math.max(0, remaining - amountNum);
+      setPayAmountInput(nextRemaining > 0 ? String(nextRemaining) : '');
+      setPayReference('');
+      setPayNotes('');
+      showToast(
+        isAr
+          ? `تم تسجيل دفعة ${amountNum.toLocaleString()} ج.م وإصدار الإيصال ${entry.receiptNumber}`
+          : `Recorded ${amountNum.toLocaleString()} EGP — Receipt ${entry.receiptNumber}`
+      );
+    }
+  };
+
+  const handleDownloadReceiptPdf = async (inv: ClientInvoiceRecord, payment: InvoicePaymentEntry) => {
+    setDownloadingReceiptId(payment.id);
+    try {
+      const res = await generatePaymentReceiptPdf({ invoice: inv, payment, isAr });
+      if (res.success) {
+        showToast(
+          isAr
+            ? `تم تحميل إيصال السداد الرسمي ${payment.receiptNumber}`
+            : `Receipt ${payment.receiptNumber} downloaded!`
+        );
+      }
+    } catch (err) {
+      console.error('Receipt PDF error:', err);
+    } finally {
+      setDownloadingReceiptId(null);
+    }
+  };
+
   // Update Invoice Payment Status from Archive selector
   const handleStatusChange = (
     inv: ClientInvoiceRecord,
@@ -227,6 +349,10 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     if (nextStatus === inv.paymentStatus) return;
     if (nextStatus === 'paid') {
       handleCollectInvoice(inv);
+      return;
+    }
+    if (nextStatus === 'partially_paid') {
+      openPaymentsModal(inv);
       return;
     }
     updateInvoice(inv.id, {
@@ -299,6 +425,65 @@ Total: ${inv.grandTotal.toLocaleString()} EGP
 Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
 
     return `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
+  };
+
+  // Build One-Click Polite WhatsApp Payment Reminder URL (with remaining due + InstaPay & E-Wallet details)
+  const getPaymentReminderWhatsAppHref = (inv: ClientInvoiceRecord) => {
+    const cleanPhone = (inv.clientPhone || '').replace(/\D/g, '');
+    const waPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
+    const transfer = loadSavedTransferInfo();
+    const paidSoFar = inv.paymentStatus === 'paid' ? inv.grandTotal : Math.min(inv.grandTotal, Math.max(0, inv.paidAmount || 0));
+    const remaining = Math.max(0, inv.grandTotal - paidSoFar);
+
+    const message = isAr
+      ? `السلام عليكم أستاذ/ ${inv.clientName || inv.clientCompany} 👋
+تحية طيبة من فريق *ديجيتال إفكت*،
+
+نود تذكير حضراتكم بلطف باستحقاق سداد الفاتورة التالية:
+📄 *رقم الفاتورة:* ${inv.invoiceNumber}
+📦 *الباقة:* ${inv.packageName}
+💰 *إجمالي الفاتورة:* ${inv.grandTotal.toLocaleString()} ج.م
+${paidSoFar > 0 ? `✅ *المدفوع حتى الآن:* ${paidSoFar.toLocaleString()} ج.م\n` : ''}⏳ *المبلغ المتبقي المستحق:* *${remaining.toLocaleString()} ج.م*
+${inv.dueDate ? `📅 *تاريخ الاستحقاق:* ${inv.dueDate}\n` : ''}
+💳 *بيانات التحويل السريع:*
+• إنستاباي (InstaPay): ${transfer.instaPay}
+• المحفظة الإلكترونية: ${transfer.walletNumber}
+
+يرجى إرسال صورة إيصال التحويل فور الإتمام لإصدار إيصال السداد الرسمي وتحديث حسابكم فوراً.
+شكراً لتعاونكم الدائم معنا 🌹`
+      : `Hello ${inv.clientName || inv.clientCompany},
+Warm greetings from *Digital Effect*.
+
+This is a friendly payment reminder for your invoice:
+📄 *Invoice #:* ${inv.invoiceNumber}
+📦 *Package:* ${inv.packageName}
+💰 *Grand Total:* ${inv.grandTotal.toLocaleString()} EGP
+${paidSoFar > 0 ? `✅ *Paid So Far:* ${paidSoFar.toLocaleString()} EGP\n` : ''}⏳ *Remaining Due:* *${remaining.toLocaleString()} EGP*
+${inv.dueDate ? `📅 *Due Date:* ${inv.dueDate}\n` : ''}
+💳 *Payment Details:*
+• InstaPay: ${transfer.instaPay}
+• E-Wallet: ${transfer.walletNumber}
+
+Please share the transfer screenshot once completed so we can issue your official receipt. Thank you!`;
+
+    return `https://wa.me/${waPhone}?text=${encodeURIComponent(message)}`;
+  };
+
+  const handleLogPaymentReminder = (inv: ClientInvoiceRecord) => {
+    const paidSoFar = Math.min(inv.grandTotal, Math.max(0, inv.paidAmount || 0));
+    const remaining = Math.max(0, inv.grandTotal - paidSoFar);
+    logInquiryActivity(inv.clientId, {
+      type: 'whatsapp',
+      text: isAr
+        ? `تذكير سداد واتساب — فاتورة ${inv.invoiceNumber}: تم إرسال مطالبة سداد بقيمة المتبقي ${remaining.toLocaleString()} ج.م عبر واتساب.`
+        : `WhatsApp payment reminder (${inv.invoiceNumber}): Sent reminder for remaining balance ${remaining.toLocaleString()} EGP.`,
+      meta: { channel: 'whatsapp', invoiceNumber: inv.invoiceNumber },
+    });
+    showToast(
+      isAr
+        ? `تم فتح تذكير الواتساب وتسجيل المتابعة في سجل العميل.`
+        : `WhatsApp payment reminder opened and logged.`
+    );
   };
 
   // Create New Invoice Submit
@@ -500,6 +685,7 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
             >
               <option value="all">{isAr ? 'كافة حالات السداد' : 'All Payment Statuses'}</option>
               <option value="paid">{isAr ? 'مدفوعة ومحصلة ✅' : 'Paid'}</option>
+              <option value="partially_paid">{isAr ? 'مدفوعة جزئياً 🟡' : 'Partially Paid'}</option>
               <option value="pending">{isAr ? 'قيد التحصيل ⏳' : 'Pending'}</option>
               <option value="overdue">{isAr ? 'متأخرة عن موعدها ⚠️' : 'Overdue'}</option>
             </select>
@@ -553,6 +739,16 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
             {filteredInvoices.map((inv) => {
               const isPaid = inv.paymentStatus === 'paid';
               const isCancelled = inv.paymentStatus === 'cancelled';
+              const paidSoFar = isPaid
+                ? inv.grandTotal
+                : Math.min(inv.grandTotal, Math.max(0, inv.paidAmount || 0));
+              const remainingAmount = isCancelled ? 0 : Math.max(0, inv.grandTotal - paidSoFar);
+              const isPartiallyPaid =
+                !isPaid &&
+                !isCancelled &&
+                (inv.paymentStatus === 'partially_paid' || (paidSoFar > 0 && remainingAmount > 0));
+              const paidPercent =
+                inv.grandTotal > 0 ? Math.min(100, Math.round((paidSoFar / inv.grandTotal) * 100)) : 0;
               const isOverdue =
                 !isPaid &&
                 !isCancelled &&
@@ -562,9 +758,12 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                 ? 'paid'
                 : isCancelled
                 ? 'cancelled'
+                : isPartiallyPaid
+                ? 'partially_paid'
                 : isOverdue
                 ? 'overdue'
                 : 'pending';
+              const receiptsCount = inv.payments?.length || 0;
 
               return (
                 <div 
@@ -572,7 +771,7 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                   className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   {/* Left: Invoice info & client details */}
-                  <div className="space-y-1.5 min-w-0">
+                  <div className="space-y-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono font-black text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
                         {inv.invoiceNumber}
@@ -588,6 +787,8 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                           : isCancelled
                           ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                          : isPartiallyPaid
+                          ? 'bg-sky-100 text-sky-800 border border-sky-200'
                           : isOverdue
                           ? 'bg-rose-100 text-rose-800 border border-rose-200 font-black'
                           : 'bg-amber-100 text-amber-800 border border-amber-200'
@@ -596,6 +797,8 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                           ? (isAr ? '✅ مدفوع بالكامل' : 'Paid in Full')
                           : isCancelled
                           ? (isAr ? '🚫 ملغاة' : 'Cancelled')
+                          : isPartiallyPaid
+                          ? (isAr ? `🟡 مدفوع جزئياً (${paidPercent}%)` : `Partially Paid (${paidPercent}%)`)
                           : isOverdue
                           ? (isAr ? '❌ متأخر عن السداد' : 'Overdue')
                           : (isAr ? '⏳ قيد التحصيل' : 'Pending')}
@@ -625,6 +828,35 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                         </>
                       )}
                     </div>
+
+                    {/* Partial Payment Progress Strip */}
+                    {(isPartiallyPaid || (receiptsCount > 0 && !isCancelled)) && (
+                      <div className="pt-1 max-w-md space-y-1">
+                        <div className="flex items-center justify-between text-[10px] font-bold">
+                          <span className="text-emerald-700">
+                            {isAr ? 'المدفوع:' : 'Paid:'} {paidSoFar.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                            {receiptsCount > 0 && (
+                              <span className="text-slate-400 ms-1">
+                                ({receiptsCount} {isAr ? 'إيصال' : 'receipts'})
+                              </span>
+                            )}
+                          </span>
+                          {remainingAmount > 0 && (
+                            <span className="text-amber-700">
+                              {isAr ? 'المتبقي:' : 'Due:'} {remainingAmount.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              isPaid ? 'bg-emerald-500' : 'bg-sky-500'
+                            }`}
+                            style={{ width: `${paidPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {inv.notes && (
                       <p className="text-[11px] text-slate-500 italic">{inv.notes}</p>
@@ -670,7 +902,7 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
 
                   {/* Right: Action Buttons */}
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                    {/* Invoice Payment Status Selector (matches CRM statuses per invoice) */}
+                    {/* Invoice Payment Status Selector */}
                     <div className="relative">
                       <select
                         value={displayStatus}
@@ -688,12 +920,15 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
                             : isCancelled
                             ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                            : isPartiallyPaid
+                            ? 'bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100'
                             : isOverdue
                             ? 'bg-rose-50 text-rose-800 border-rose-200 hover:bg-rose-100'
                             : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                         }`}
                       >
                         <option value="pending">{isAr ? '⏳ قيد التحصيل' : '⏳ Pending'}</option>
+                        <option value="partially_paid">{isAr ? '🟡 مدفوع جزئياً' : '🟡 Partially Paid'}</option>
                         <option value="paid">{isAr ? '✅ مدفوع بالكامل' : '✅ Paid in Full'}</option>
                         <option value="overdue">{isAr ? '❌ متأخر عن السداد' : '❌ Overdue'}</option>
                         <option value="cancelled">{isAr ? '🚫 ملغاة' : '🚫 Cancelled'}</option>
@@ -706,12 +941,47 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                             ? 'text-emerald-700'
                             : isCancelled
                             ? 'text-slate-500'
+                            : isPartiallyPaid
+                            ? 'text-sky-700'
                             : isOverdue
                             ? 'text-rose-700'
                             : 'text-amber-700'
                         }`}
                       />
                     </div>
+
+                    {/* Partial Payments & Official Receipts Button */}
+                    {!isCancelled && (
+                      <button
+                        type="button"
+                        onClick={() => openPaymentsModal(inv)}
+                        className="px-2.5 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                        title={isAr ? 'تسجيل دفعة جزئية أو تحميل إيصال سداد PDF' : 'Record payment / download receipt'}
+                      >
+                        <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>{isAr ? 'دفعات وإيصال' : 'Payments'}</span>
+                        {receiptsCount > 0 && (
+                          <span className="px-1.5 py-0.2 bg-indigo-600 text-white rounded-full text-[10px] font-black">
+                            {receiptsCount}
+                          </span>
+                        )}
+                      </button>
+                    )}
+
+                    {/* One-Click WhatsApp Payment Reminder Button (Unpaid / Partially Paid / Overdue) */}
+                    {!isPaid && !isCancelled && (
+                      <a
+                        href={getPaymentReminderWhatsAppHref(inv)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => handleLogPaymentReminder(inv)}
+                        className="px-2.5 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
+                        title={isAr ? 'إرسال تذكير سداد واتساب بالمبلغ المتبقي وبيانات التحويل' : 'Send WhatsApp payment reminder'}
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>{isAr ? 'تذكير سداد واتساب' : 'WA Reminder'}</span>
+                      </a>
+                    )}
 
                     {/* Download PDF Button */}
                     <button
@@ -739,13 +1009,13 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
                       <Eye className="w-3.5 h-3.5" />
                     </button>
 
-                    {/* WhatsApp Direct Anchor Link */}
+                    {/* WhatsApp Direct Share Anchor Link */}
                     <a
                       href={getInvoiceWhatsAppHref(inv)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer inline-flex items-center justify-center"
-                      title={isAr ? 'مشاركة عبر الواتساب' : 'WhatsApp'}
+                      title={isAr ? 'مشاركة تفاصيل الفاتورة عبر الواتساب' : 'Share Invoice via WhatsApp'}
                     >
                       <Share2 className="w-3.5 h-3.5" />
                     </a>
@@ -803,7 +1073,7 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
           contractStartDate={previewInvoice.issueDate}
           renewalDate={previewInvoice.dueDate}
           paymentStatus={
-            previewInvoice.paymentStatus === 'cancelled'
+            previewInvoice.paymentStatus === 'cancelled' || previewInvoice.paymentStatus === 'partially_paid'
               ? 'pending'
               : previewInvoice.paymentStatus === 'pending' &&
                 Boolean(previewInvoice.dueDate && previewInvoice.dueDate < new Date().toISOString().split('T')[0])
@@ -1053,6 +1323,321 @@ Status: ${inv.paymentStatus === 'paid' ? 'Paid' : 'Pending'}`;
           </div>
         </div>
       )}
+      {/* Partial Payments & Official Receipts Modal */}
+      {activePaymentInvoice && (() => {
+        const paidSoFar =
+          activePaymentInvoice.paymentStatus === 'paid'
+            ? activePaymentInvoice.grandTotal
+            : Math.min(activePaymentInvoice.grandTotal, Math.max(0, activePaymentInvoice.paidAmount || 0));
+        const remaining = Math.max(0, activePaymentInvoice.grandTotal - paidSoFar);
+        const pct =
+          activePaymentInvoice.grandTotal > 0
+            ? Math.min(100, Math.round((paidSoFar / activePaymentInvoice.grandTotal) * 100))
+            : 0;
+        const paymentsList = activePaymentInvoice.payments || [];
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+            onClick={() => setPaymentsModalInvoiceId(null)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-5 bg-gradient-to-r from-indigo-950 via-slate-900 to-blue-950 text-white flex items-center justify-between gap-3 sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300">
+                    <Receipt className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-black">
+                      {isAr ? 'الدفعات الجزئية وإيصالات السداد الرسمية' : 'Partial Payments & Official Receipts'}
+                    </h3>
+                    <p className="text-[11px] text-slate-300">
+                      <span className="font-mono text-sky-300">{activePaymentInvoice.invoiceNumber}</span> ·{' '}
+                      {activePaymentInvoice.clientCompany || activePaymentInvoice.clientName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPaymentsModalInvoiceId(null)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-5">
+                {/* Summary Strip */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                    <span className="text-[10px] font-bold text-slate-500 block">
+                      {isAr ? 'إجمالي الفاتورة' : 'Invoice Total'}
+                    </span>
+                    <span className="text-base font-black text-slate-900 font-mono">
+                      {activePaymentInvoice.grandTotal.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                    <span className="text-[10px] font-bold text-emerald-700 block">
+                      {isAr ? 'المدفوع حتى الآن' : 'Paid So Far'} ({pct}%)
+                    </span>
+                    <span className="text-base font-black text-emerald-900 font-mono">
+                      {paidSoFar.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
+                    <span className="text-[10px] font-bold text-amber-700 block">
+                      {isAr ? 'المتبقي المستحق' : 'Remaining Due'}
+                    </span>
+                    <span className="text-base font-black text-amber-900 font-mono">
+                      {remaining.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      remaining === 0 ? 'bg-emerald-500' : 'bg-indigo-500'
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                {/* Record New Payment Form */}
+                {remaining > 0 ? (
+                  <form
+                    onSubmit={handleRecordPaymentSubmit}
+                    className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200/80 space-y-3.5"
+                  >
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h4 className="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                        <Banknote className="w-4 h-4 text-indigo-600" />
+                        <span>{isAr ? 'تسجيل دفعة جديدة وإصدار إيصال' : 'Record New Payment'}</span>
+                      </h4>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPayAmountInput(
+                              String(Math.max(1, Math.round((paidSoFar === 0 ? activePaymentInvoice.grandTotal : remaining) / 2)))
+                            )
+                          }
+                          className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-700 text-[10px] font-black hover:bg-indigo-100 cursor-pointer"
+                        >
+                          {isAr ? '50% دفعة مقدمة' : '50% Split'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPayAmountInput(String(remaining))}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-black hover:bg-emerald-700 cursor-pointer"
+                        >
+                          {isAr
+                            ? `سداد المتبقي بالكامل (${remaining.toLocaleString()})`
+                            : `Pay Full Remaining (${remaining.toLocaleString()})`}
+                        </button>
+                      </div>
+                    </div>
+
+                    {payFormError && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>{payFormError}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">
+                          {isAr ? 'قيمة الدفعة (ج.م):' : 'Payment Amount (EGP):'}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={remaining}
+                          value={payAmountInput}
+                          onChange={(e) => setPayAmountInput(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-black font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">
+                          {isAr ? 'وسيلة التحويل / السداد:' : 'Payment Channel:'}
+                        </label>
+                        <select
+                          value={payChannel}
+                          onChange={(e) => setPayChannel(e.target.value as PaymentChannel)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                        >
+                          {(Object.keys(PAYMENT_CHANNEL_LABELS) as PaymentChannel[]).map((ch) => (
+                            <option key={ch} value={ch}>
+                              {isAr ? PAYMENT_CHANNEL_LABELS[ch].ar : PAYMENT_CHANNEL_LABELS[ch].en}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-slate-700">
+                          {isAr ? 'تاريخ الاستلام:' : 'Payment Date:'}
+                        </label>
+                        <input
+                          type="date"
+                          value={payDate}
+                          onChange={(e) => setPayDate(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={payReference}
+                        onChange={(e) => setPayReference(e.target.value)}
+                        placeholder={isAr ? 'رقم المرجع / العملية (اختياري)' : 'Reference / Transaction ID (optional)'}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      />
+                      <input
+                        type="text"
+                        value={payNotes}
+                        onChange={(e) => setPayNotes(e.target.value)}
+                        placeholder={isAr ? 'ملاحظات الدفعة (مثال: دفعة أولى 50%)' : 'Notes (e.g. 50% upfront)'}
+                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{isAr ? 'اعتماد الدفعة وإصدار الإيصال' : 'Record Payment & Issue Receipt'}</span>
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-black flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      {isAr
+                        ? 'تم سداد هذه الفاتورة بالكامل — يمكنك تحميل إيصالات السداد الرسمية أدناه.'
+                        : 'This invoice is fully paid — download official receipts below.'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Recorded Payments & Receipts History */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <Wallet className="w-4 h-4 text-emerald-600" />
+                      <span>
+                        {isAr
+                          ? `سجل الدفعات المسجلة والإيصالات (${paymentsList.length})`
+                          : `Recorded Payments & Receipts (${paymentsList.length})`}
+                      </span>
+                    </h4>
+                  </div>
+
+                  {paymentsList.length === 0 ? (
+                    <div className="p-6 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-400">
+                      {isAr
+                        ? 'لم يتم تسجيل أي دفعات جزئية على هذه الفاتورة بعد.'
+                        : 'No payments recorded on this invoice yet.'}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {paymentsList.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono font-black text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {entry.receiptNumber}
+                              </span>
+                              <span className="text-sm font-black text-slate-900 font-mono">
+                                {entry.amount.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                              </span>
+                              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                                {entry.methodLabel ||
+                                  (isAr
+                                    ? PAYMENT_CHANNEL_LABELS[entry.method]?.ar || entry.method
+                                    : PAYMENT_CHANNEL_LABELS[entry.method]?.en || entry.method)}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
+                              <span>
+                                {isAr ? 'التاريخ:' : 'Date:'} <strong>{entry.date}</strong>
+                              </span>
+                              {entry.reference && (
+                                <>
+                                  <span>•</span>
+                                  <span className="font-mono">
+                                    {isAr ? 'مرجع:' : 'Ref:'} {entry.reference}
+                                  </span>
+                                </>
+                              )}
+                              {entry.notes && (
+                                <>
+                                  <span>•</span>
+                                  <span>{entry.notes}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              disabled={downloadingReceiptId === entry.id}
+                              onClick={() => handleDownloadReceiptPdf(activePaymentInvoice, entry)}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black inline-flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                            >
+                              {downloadingReceiptId === entry.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Download className="w-3.5 h-3.5" />
+                              )}
+                              <span>{isAr ? 'تحميل إيصال PDF' : 'Receipt PDF'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                deleteInvoicePayment(activePaymentInvoice.id, entry.id);
+                                showToast(
+                                  isAr
+                                    ? `تم حذف الدفعة ${entry.receiptNumber} وإعادة احتساب المتبقي.`
+                                    : `Payment ${entry.receiptNumber} removed.`
+                                );
+                              }}
+                              className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer"
+                              title={isAr ? 'حذف الدفعة' : 'Delete payment'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

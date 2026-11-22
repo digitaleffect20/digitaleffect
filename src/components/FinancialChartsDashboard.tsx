@@ -22,7 +22,7 @@ import {
   DollarSign,
   AlertTriangle,
 } from 'lucide-react';
-import { ClientInvoiceRecord, Inquiry, ServicePackage } from '../types';
+import { AgencyExpense, ClientInvoiceRecord, Inquiry, ServicePackage } from '../types';
 import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 import { getClientDeliverableTargets } from '../utils/workflowUtils';
 
@@ -43,6 +43,7 @@ export type AnalyticsInquiry = Omit<
 interface FinancialChartsDashboardProps {
   inquiries: AnalyticsInquiry[];
   invoices?: ClientInvoiceRecord[];
+  expenses?: AgencyExpense[];
   packages: ServicePackage[];
   isAr: boolean;
 }
@@ -148,6 +149,7 @@ const CustomChartTooltip: React.FC<CustomTooltipProps> = ({
 export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> = ({
   inquiries,
   invoices = [],
+  expenses = [],
   packages,
   isAr,
 }) => {
@@ -295,63 +297,104 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
     };
   }, [projectCompletionData]);
 
-  // 3. Cash Flow Trends (Collected vs Pending vs Overdue over months)
+  // 3. Cash Flow & Net Profit Trends (Collected vs Expenses vs Net Profit vs Pending/Overdue)
   const cashFlowData = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     const activeInvoices = invoices.filter((inv) => inv.paymentStatus !== 'cancelled');
 
     const map = new Map<
       string,
-      { collected: number; pending: number; overdue: number }
+      { collected: number; pending: number; overdue: number; expenses: number }
     >();
     monthBuckets.forEach((key) => {
-      map.set(key, { collected: 0, pending: 0, overdue: 0 });
+      map.set(key, { collected: 0, pending: 0, overdue: 0, expenses: 0 });
     });
 
     activeInvoices.forEach((inv) => {
-      const isPaid = inv.paymentStatus === 'paid';
-      const dateSource = isPaid ? inv.paidAt || inv.issueDate : inv.issueDate;
-      const mKey = extractMonthKey(dateSource);
-      if (!mKey) return;
-      const bucket = map.get(mKey);
-      if (!bucket) return;
+      const grandTotal = Number(inv.grandTotal) || 0;
+      const payments = Array.isArray(inv.payments) ? inv.payments : [];
 
-      const amount = Number(inv.grandTotal) || 0;
-      if (isPaid) {
-        bucket.collected += amount;
+      if (payments.length > 0) {
+        let paidTotal = 0;
+        payments.forEach((p) => {
+          const amt = Number(p.amount) || 0;
+          paidTotal += amt;
+          const pmKey = extractMonthKey(p.date || inv.issueDate);
+          const pBucket = pmKey ? map.get(pmKey) : undefined;
+          if (pBucket) pBucket.collected += amt;
+        });
+
+        const remaining = Math.max(0, grandTotal - paidTotal);
+        if (remaining > 0) {
+          const imKey = extractMonthKey(inv.issueDate);
+          const iBucket = imKey ? map.get(imKey) : undefined;
+          if (iBucket) {
+            const isPastDue =
+              inv.paymentStatus === 'overdue' || Boolean(inv.dueDate && inv.dueDate < todayStr);
+            if (isPastDue) iBucket.overdue += remaining;
+            else iBucket.pending += remaining;
+          }
+        }
       } else {
-        const isPastDue =
-          inv.paymentStatus === 'overdue' || Boolean(inv.dueDate && inv.dueDate < todayStr);
-        if (isPastDue) {
-          bucket.overdue += amount;
+        const isPaid = inv.paymentStatus === 'paid';
+        const dateSource = isPaid ? inv.paidAt || inv.issueDate : inv.issueDate;
+        const mKey = extractMonthKey(dateSource);
+        if (!mKey) return;
+        const bucket = map.get(mKey);
+        if (!bucket) return;
+
+        if (isPaid) {
+          bucket.collected += grandTotal;
         } else {
-          bucket.pending += amount;
+          const isPastDue =
+            inv.paymentStatus === 'overdue' || Boolean(inv.dueDate && inv.dueDate < todayStr);
+          if (isPastDue) {
+            bucket.overdue += grandTotal;
+          } else {
+            bucket.pending += grandTotal;
+          }
         }
       }
     });
 
+    // Aggregate operating expenses per month
+    expenses.forEach((exp) => {
+      const mKey = extractMonthKey(exp.date);
+      if (!mKey) return;
+      const bucket = map.get(mKey);
+      if (bucket) {
+        bucket.expenses += Number(exp.amount) || 0;
+      }
+    });
+
     return monthBuckets.map((key) => {
-      const vals = map.get(key) || { collected: 0, pending: 0, overdue: 0 };
+      const vals = map.get(key) || { collected: 0, pending: 0, overdue: 0, expenses: 0 };
       return {
         monthKey: key,
         monthLabel: getMonthLabel(key, isAr),
         collected: vals.collected,
         pending: vals.pending,
         overdue: vals.overdue,
+        expenses: vals.expenses,
+        netProfit: vals.collected - vals.expenses,
       };
     });
-  }, [monthBuckets, invoices, isAr]);
+  }, [monthBuckets, invoices, expenses, isAr]);
 
   const cashFlowSummary = useMemo(() => {
     const totalCollected = cashFlowData.reduce((s, m) => s + m.collected, 0);
     const totalPending = cashFlowData.reduce((s, m) => s + m.pending, 0);
     const totalOverdue = cashFlowData.reduce((s, m) => s + m.overdue, 0);
+    const totalExpenses = cashFlowData.reduce((s, m) => s + m.expenses, 0);
+    const totalNetProfit = totalCollected - totalExpenses;
     const totalAll = totalCollected + totalPending + totalOverdue;
     const collectionRate = totalAll > 0 ? Math.round((totalCollected / totalAll) * 100) : 0;
     return {
       totalCollected,
       totalPending,
       totalOverdue,
+      totalExpenses,
+      totalNetProfit,
       outstanding: totalPending + totalOverdue,
       collectionRate,
     };
@@ -359,7 +402,7 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
 
   const hasAnyRevenue = monthlyRevenueData.some((d) => d.total > 0);
   const hasAnyCashFlow = cashFlowData.some(
-    (d) => d.collected > 0 || d.pending > 0 || d.overdue > 0
+    (d) => d.collected > 0 || d.pending > 0 || d.overdue > 0 || d.expenses > 0
   );
 
   return (
@@ -617,22 +660,22 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
         </div>
       </div>
 
-      {/* Bottom Row: Chart 3 (Cash Flow Trends - Full Width) */}
+      {/* Bottom Row: Chart 3 (Cash Flow, Expenses & Net Profit Trends - Full Width) */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h4 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
               <Wallet className="w-4 h-4 text-emerald-600" />
-              <span>{isAr ? 'اتجاهات التدفق النقدي والتحصيل المالي' : 'Cash Flow Trends'}</span>
+              <span>{isAr ? 'التدفق النقدي، المصروفات، وصافي الربح الشهري' : 'Cash Flow, Expenses & Net Profit Trends'}</span>
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
               {isAr
-                ? 'تتبع التحصيل الفعلي مقابل المستحقات قيد التحصيل والمتأخرات عبر الأشهر'
-                : 'Realized cash collections vs pending and overdue receivables over time'}
+                ? 'مقارنة التحصيل الفعلي مقابل مصروفات الوكالة وصافي الربح والمستحقات قيد التحصيل'
+                : 'Realized collections vs agency expenses, net profit, and pending receivables'}
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
             <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200/80">
               <span className="text-[10px] font-bold text-emerald-700 block">
                 {isAr ? 'إجمالي المحصل' : 'Collected'}
@@ -643,9 +686,19 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
               </span>
             </div>
 
+            <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200/80">
+              <span className="text-[10px] font-bold text-rose-700 block">
+                {isAr ? 'إجمالي المصروفات' : 'Expenses'}
+              </span>
+              <span className="text-sm font-black text-rose-900 tabular-nums">
+                {cashFlowSummary.totalExpenses.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
+                {isAr ? 'ج.م' : 'EGP'}
+              </span>
+            </div>
+
             <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200/80">
               <span className="text-[10px] font-bold text-amber-700 block">
-                {isAr ? 'مستحقات قيد التحصيل' : 'Pending / Overdue'}
+                {isAr ? 'قيد التحصيل' : 'Outstanding'}
               </span>
               <span className="text-sm font-black text-amber-900 tabular-nums">
                 {cashFlowSummary.outstanding.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
@@ -655,10 +708,15 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
 
             <div className="px-3 py-2 rounded-xl bg-slate-900 text-white border border-slate-800">
               <span className="text-[10px] font-bold text-slate-300 block">
-                {isAr ? 'نسبة التحصيل' : 'Collection Rate'}
+                {isAr ? 'صافي الربح' : 'Net Profit'}
               </span>
-              <span className="text-sm font-black text-emerald-400 tabular-nums">
-                {cashFlowSummary.collectionRate}%
+              <span
+                className={`text-sm font-black tabular-nums ${
+                  cashFlowSummary.totalNetProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                }`}
+              >
+                {cashFlowSummary.totalNetProfit.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
+                {isAr ? 'ج.م' : 'EGP'}
               </span>
             </div>
           </div>
@@ -670,28 +728,24 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
               <AlertTriangle className="w-8 h-8 text-slate-300" />
               <p className="text-xs font-bold text-slate-500">
                 {isAr
-                  ? 'أصدر أو حصّل فواتير العملاء لعرض منحنى التدفق النقدي والتحصيل الشهري.'
-                  : 'Issue or collect client invoices to visualize monthly cash flow trends.'}
+                  ? 'أصدر أو حصّل فواتير العملاء أو سجّل مصروفات لعرض منحنى التدفق النقدي وصافي الربح.'
+                  : 'Issue/collect invoices or record expenses to visualize cash flow and net profit.'}
               </p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
+              <ComposedChart
                 data={cashFlowData}
                 margin={{ top: 10, right: 16, left: 4, bottom: 4 }}
               >
                 <defs>
                   <linearGradient id="cfCollected" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.32} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
                   </linearGradient>
                   <linearGradient id="cfPending" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.28} />
                     <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="cfOverdue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
@@ -706,7 +760,7 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) =>
-                    v >= 1000 ? `${Math.round(v / 1000)}k` : String(v)
+                    Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(v)
                   }
                 />
                 <Tooltip content={<CustomChartTooltip isAr={isAr} unit="currency" />} />
@@ -727,20 +781,27 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
                   dataKey="pending"
                   name={isAr ? 'قيد التحصيل' : 'Pending Receivables'}
                   stroke="#f59e0b"
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#cfPending)"
                 />
-                <Area
-                  type="monotone"
-                  dataKey="overdue"
-                  name={isAr ? 'متأخر عن السداد' : 'Overdue'}
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#cfOverdue)"
+                <Bar
+                  dataKey="expenses"
+                  name={isAr ? 'المصروفات' : 'Expenses'}
+                  fill="#f43f5e"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={28}
                 />
-              </AreaChart>
+                <Line
+                  type="monotone"
+                  dataKey="netProfit"
+                  name={isAr ? 'صافي الربح' : 'Net Profit'}
+                  stroke="#0f172a"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#ffffff' }}
+                  activeDot={{ r: 6 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>

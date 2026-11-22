@@ -181,6 +181,29 @@ export type ActivityLogType =
   | 'workflow'
   | 'update';
 
+export interface ClientMonthlyCycleRecord {
+  id: string;
+  cycleLabel: string;
+  startDate: string;
+  endDate: string;
+  closedAt: string;
+  packageName: string;
+  retainerAmount: number;
+  postsDelivered: number;
+  postsTarget: number;
+  reelsDelivered: number;
+  reelsTarget: number;
+  storiesDelivered: number;
+  storiesTarget: number;
+  deliverablesCompletionRate: number;
+  workflowCompletedStages: number;
+  workflowTotalStages: number;
+  paymentStatus: 'paid' | 'pending' | 'partially_paid' | 'overdue';
+  adCreditBalanceCarriedOver: number;
+  invoiceNumber?: string;
+  notes?: string;
+}
+
 export interface ClientAccountNote {
   id: string;
   text: string;
@@ -194,6 +217,7 @@ export interface ClientAccountNote {
     invoiceNumber?: string;
     stageTitle?: string;
     fieldChanged?: string;
+    cycleRecord?: ClientMonthlyCycleRecord;
   };
 }
 
@@ -204,6 +228,7 @@ export interface ClientWorkflowStage {
   assignee?: string;
   notes?: string;
   completedAt?: string;
+  track?: 'main' | 'reel';
 }
 
 export interface Inquiry {
@@ -240,6 +265,7 @@ export interface Inquiry {
   accountManager?: string;
   clientNotes?: ClientAccountNote[];
   workflowStages?: ClientWorkflowStage[];
+  reelStages?: ClientWorkflowStage[];
   currentWorkflowDay?: number;
   todayTaskTitle?: string;
   // Ad Credit & Campaign Wallet (الرصيد الإعلاني وميزانية الحملات)
@@ -247,8 +273,110 @@ export interface Inquiry {
   pendingInvoiceAdCredit?: number;
   adCreditFundedTotal?: number;
   adCreditSpentTotal?: number;
+  adWalletRequests?: AdWalletRequest[];
   // Client Invoices History
   clientInvoices?: ClientInvoiceRecord[];
+  // Archived Monthly / Retainer Cycles History
+  cycleHistory?: ClientMonthlyCycleRecord[];
+}
+
+export interface AdWalletRequest {
+  id: string;
+  type: 'topup' | 'spend';
+  amount: number;
+  platform?: string;
+  notes?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedBy: string;
+  requestedAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  linkedInvoiceNumber?: string;
+}
+
+export type PortalRole = 'admin' | 'operations';
+
+export type PortalTabKey =
+  | 'inquiries'
+  | 'clients'
+  | 'tasks'
+  | 'invoices'
+  | 'expenses'
+  | 'activity'
+  | 'analytics'
+  | 'packages'
+  | 'projects'
+  | 'banner'
+  | 'backup';
+
+export type TeamRolePreset =
+  | 'content_creator'
+  | 'account_manager'
+  | 'media_buyer'
+  | 'video_editor'
+  | 'accountant'
+  | 'custom';
+
+export type WorkflowStageKey =
+  | 'content_creator'
+  | 'visual_design'
+  | 'final_design'
+  | 'client_approve'
+  | 'publish';
+
+export interface TeamMemberPermissions {
+  allowedTabs: PortalTabKey[];
+  canViewFinancials: boolean;
+  canEditClients: boolean;
+  canDeleteRecords: boolean;
+  canManageTeam: boolean;
+  onlyAssignedTasks: boolean;
+  allowedWorkflowStages?: WorkflowStageKey[];
+  canUpdateReelsTrack?: boolean;
+  canAssignTasks?: boolean;
+  canManageAdWallet?: boolean;
+  canApproveAdWallet?: boolean;
+}
+
+export interface AgencyTeamMember {
+  id: string;
+  name: string;
+  roleTitle: string;
+  rolePreset?: TeamRolePreset;
+  username?: string;
+  passwordHash?: string;
+  permissions?: TeamMemberPermissions;
+  active: boolean;
+  createdAt?: string;
+}
+
+export type ExpenseCategory = 'salaries' | 'freelancers' | 'tools' | 'ads' | 'rent' | 'other';
+
+export interface AgencyExpense {
+  id: string;
+  title: string;
+  category: ExpenseCategory;
+  amount: number;
+  date: string; // YYYY-MM-DD
+  paymentMethod?: string;
+  recurring?: boolean;
+  notes?: string;
+  createdAt: string;
+}
+
+export type PaymentChannel = 'instapay' | 'ewallet' | 'bank_transfer' | 'cash';
+
+export interface InvoicePaymentEntry {
+  id: string;
+  receiptNumber: string; // e.g. 'DE-RCP-202611-001'
+  amount: number;
+  date: string; // YYYY-MM-DD
+  method: PaymentChannel;
+  methodLabel: string;
+  reference?: string;
+  notes?: string;
+  createdAt: string;
 }
 
 export interface ClientInvoiceRecord {
@@ -271,6 +399,8 @@ export interface ClientInvoiceRecord {
   paymentStatus: 'paid' | 'pending' | 'partially_paid' | 'overdue' | 'cancelled';
   paidAt?: string;
   paymentMethod?: string; // e.g. 'تحويل بنكي', 'فودافون كاش', 'إنستاباي'
+  paidAmount?: number;
+  payments?: InvoicePaymentEntry[];
   deliverables?: {
     posts?: number;
     reels?: number;
@@ -333,6 +463,10 @@ export interface AgencyDataState {
   };
   inquiries?: Inquiry[];
   invoices?: ClientInvoiceRecord[];
+  expenses?: AgencyExpense[];
+  teamMembers?: AgencyTeamMember[];
+  opsAccessCode?: string;
+  opsAccountEmails?: string[];
 }
 
 
