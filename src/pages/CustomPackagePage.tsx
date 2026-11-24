@@ -1,23 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { CustomPackageCalculator } from '../components/CustomPackageCalculator';
+import { SectorFaqSection } from '../components/SectorFaqSection';
 import { buildServicePackageFromCustomCalculation, CustomPackageCalculation } from '../utils/pricingCalculator';
 import { 
   Sliders, 
   ArrowLeft, 
   ArrowRight, 
   Sparkles, 
-  CheckCircle2, 
   ShieldCheck, 
-  HelpCircle, 
   DollarSign, 
-  Layers, 
   Film, 
   MessageSquare, 
-  ChevronDown, 
-  ChevronUp,
-  Tag,
-  Calendar,
   Building2,
   ShoppingBag,
   Stethoscope
@@ -35,8 +29,6 @@ export const CustomPackagePage: React.FC = () => {
 
   const isAr = language === 'ar';
 
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
-
   const handleSelectCustomPackage = (calc: CustomPackageCalculation) => {
     const customPackage = {
       ...buildServicePackageFromCustomCalculation(calc),
@@ -45,33 +37,6 @@ export const CustomPackagePage: React.FC = () => {
     setSelectedPackageForInquiry(customPackage);
     setIsConsultationOpen(true);
   };
-
-  const faqs = [
-    {
-      q: isAr ? 'كيف يتم احتساب تكلفة الباقة المخصصة بدقة؟' : 'How is custom package pricing accurately calculated?',
-      a: isAr 
-        ? 'يتم احتساب التكلفة وفقاً لشيت التكاليف والأسعار الرسمية المعتمدة لوكالة «ديجيتال إفكت»؛ حيث تتضمن الباقة تكلفة أساسية لتشغيل الحملات والاستراتيجية، مضافاً إليها تكلفة كل وحدة (منشور تصميم، مقطع ريلز ذكاء اصطناعي، أو ستوري)، مع تطبيق تخفيضات الحجم للباقات الكبيرة.'
-        : 'Pricing is based on Digital Effect’s official rate sheet: a foundational campaign setup and strategy base, plus unit rates for posts, AI reels, and stories, with volume discounts applied automatically.'
-    },
-    {
-      q: isAr ? 'هل تتضمن الباقة المخصصة خطة عمل واستراتيجية شهرية؟' : 'Does the custom package include a full monthly strategic plan?',
-      a: isAr
-        ? 'نعم بكل تأكيد! كافة باقات ديجيتال إفكت تتضمن خطة محتوى شهرية معتمدة وموجهة لجمهورك المستهدف، مع إشراف فني على النشر ومتابعة دورية للنتائج.'
-        : 'Yes, absolutely! Every custom package comes with a dedicated monthly strategic content plan tailored to your audience, accompanied by professional supervision and performance reviews.'
-    },
-    {
-      q: isAr ? 'ما هي ميزة الاشتراك الربع سنوي (٣ أشهر)؟' : 'What are the benefits of a quarterly retainer (3 months)?',
-      a: isAr
-        ? 'الاشتراك الربع سنوي يمنحك استقراراً تسويقياً وفرصة لتحقيق نمو تراكمي في المبيعات والوصول، بالإضافة إلى خصم مباشر وتوفير مالي كبير يصل إلى أكثر من ١٧,٠٠٠ ج.م في الباقات المتقدمة والطبية.'
-        : 'Quarterly retainers provide compounding growth, campaign stability, and substantial cost savings of up to 17,700 EGP on advanced and medical packages.'
-    },
-    {
-      q: isAr ? 'هل يمكنني تطبيق كود خصم ترويجي على الباقة المخصصة؟' : 'Can I apply a promo code on my custom package?',
-      a: isAr
-        ? 'نعم، بعد اعتماد الباقة المخصصة والضغط على زر الحجز، يمكنك كتابة كود الخصم في نافذة الطلب ليتم تطبيق التخفيض الفوري على اشتراكك مباشرة.'
-        : 'Yes, after choosing your custom package and clicking book, enter your promo code in the checkout modal for an instant discount on your retainer.'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-slate-50 py-10 sm:py-16">
@@ -263,41 +228,8 @@ export const CustomPackagePage: React.FC = () => {
           </div>
         </div>
 
-        {/* FAQs Accordion */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 space-y-6">
-          <div className="space-y-1">
-            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-              <HelpCircle className="w-5 h-5 text-sky-600" />
-              <span>{isAr ? 'الأسئلة الشائعة حول الباقات المخصصة' : 'Frequently Asked Questions'}</span>
-            </h3>
-            <p className="text-xs text-slate-500">
-              {isAr ? 'إجابات واضحة ومباشرة حول كيفية عمل الباقات المخصصة والاشتراكات.' : 'Clear answers about custom scopes, payments, and deliverables.'}
-            </p>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-            {faqs.map((faq, idx) => {
-              const isOpen = activeFaq === idx;
-              return (
-                <div key={idx} className="py-3.5">
-                  <button
-                    type="button"
-                    onClick={() => setActiveFaq(isOpen ? null : idx)}
-                    className="w-full flex items-center justify-between text-start gap-4 font-bold text-xs sm:text-sm text-slate-800 hover:text-sky-600 transition-colors cursor-pointer"
-                  >
-                    <span>{faq.q}</span>
-                    {isOpen ? <ChevronUp className="w-4 h-4 text-sky-600 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
-                  </button>
-                  {isOpen && (
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed ps-2 border-s-2 border-sky-400 animate-in fade-in">
-                      {faq.a}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Pricing & Packages FAQs Accordion */}
+        <SectorFaqSection category="pricing" embedded />
 
         {/* Bottom Direct CTA */}
         <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl">

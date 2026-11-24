@@ -29,7 +29,7 @@ export const Footer: React.FC = () => {
 
             <div className="pt-2 flex items-center gap-3">
               <a
-                href={`https://wa.me/${info.whatsapp}`}
+                href={`https://wa.me/${info.whatsapp}?text=${encodeURIComponent(isAr ? 'مرحباً ديجيتال إفكت، أود الاستفسار عن خدماتكم' : 'Hello Digital Effect, I would like to inquire about your services')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-sm"
@@ -109,7 +109,7 @@ export const Footer: React.FC = () => {
                   className="hover:text-sky-400 text-sky-300/90 transition-colors cursor-pointer flex items-center gap-1"
                 >
                   <span>{isAr ? 'آراء وتقييمات العملاء' : 'Client Testimonials'}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300">★ 5.0</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300">{isAr ? '★ ٥٫٠' : '★ 5.0'}</span>
                 </button>
               </li>
             </ul>

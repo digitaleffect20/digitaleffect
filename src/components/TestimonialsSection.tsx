@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { SectorType, Testimonial } from '../types';
+import { formatLocalizedNumber } from '../utils/arabicNumbers';
 import { 
   Quote, 
   Star, 
@@ -32,8 +33,8 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'The results with Digital Effect exceeded all benchmarks. We transformed from a quiet page into a trusted regional physiotherapy center with fully booked appointment schedules thanks to high-converting clinical reels.',
     sector: 'medical',
     rating: 5,
-    metricResult: '+43,576% نمو التفاعل الإجمالي',
-    metricResultEn: '+43,576% Total Engagement Growth',
+    metricResult: 'أكثر من ٧٣ ألف تفاعل حقيقي و٦٥٤ ألف مشاهدة فيديو',
+    metricResultEn: '73K+ Genuine Engagements & 654K+ Video Views',
     logoUrl: '/assets/ipt/ipt_logo.png',
     projectUrl: 'ipt-case-study',
     avatarBg: 'bg-emerald-600',
@@ -50,7 +51,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'The brand transformation Digital Effect achieved for Penguin was remarkable. They elevated our creatives and motion reels to European standards, doubling retail showroom volume and installment sales.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '+310% نمو مبيعات التجزئة',
+    metricResult: '+٣١٠٪ نمو مبيعات التجزئة',
     metricResultEn: '+310% Retail Sales Surge',
     logoUrl: '/assets/penguin/penguin_logo.png',
     projectUrl: 'penguin-case-study',
@@ -82,11 +83,11 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     authorEn: 'Operations & Customer Experience Team',
     role: 'إدارة البنية السحابية والمبيعات',
     roleEn: 'Cloud Infrastructure & Commercial Team',
-    text: 'استطاعت ديجيتال إفكت صياغة عروض استضافة وسيرفرات سحابية جذبت آلاف أصحاب المتاجر والمواقع الرقمية الناشئة في مصر والعالم العربي، مع انخفاض بنسبة 42% في تكلفة الاستحواذ على المشترك (CAC).',
+    text: 'استطاعت ديجيتال إفكت صياغة عروض استضافة وسيرفرات سحابية جذبت آلاف أصحاب المتاجر والمواقع الرقمية الناشئة في مصر والعالم العربي، مع انخفاض بنسبة ٤٢٪ في تكلفة الاستحواذ على المشترك (CAC).',
     textEn: 'Digital Effect architected high-converting cloud hosting funnels that acquired thousands of online stores and SaaS founders across MENA, slashing our customer acquisition cost by 42%.',
     sector: 'b2b',
     rating: 5,
-    metricResult: '+280% اشتراكات سحابية شهرية',
+    metricResult: '+٢٨٠٪ اشتراكات سحابية شهرية',
     metricResultEn: '+280% Monthly Cloud Subscriptions',
     logoUrl: '/assets/binaryracks/binaryracks_img_1.png',
     projectUrl: 'binaryracks-case-study',
@@ -104,7 +105,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Aesthetic lifestyle reels and authentic Italian coffee storytelling built a dedicated coffee community, doubling online capsule sales and supermarket retail velocity.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '4.8X عائد إعلاني مستدام (ROAS)',
+    metricResult: '٤٫٨× عائد إعلاني مستدام (ROAS)',
     metricResultEn: '4.8X Sustained Ad Spend ROAS',
     logoUrl: '/assets/gimoka/gimoka_img_1.png',
     projectUrl: 'gimoka-case-study',
@@ -122,7 +123,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Digital Effect highlighted Siltal certified Italian heritage against low-cost competition, restoring consumer confidence and driving family refrigeration retail orders.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '2.4M+ مشاهدات حملات وتوسيع الموزعين',
+    metricResult: '٢٫٤ مليون+ مشاهدة حملات وتوسيع الموزعين',
     metricResultEn: '2.4M+ Household Impressions',
     logoUrl: '/assets/siltal-social/siltal-social_img_1.png',
     projectUrl: 'siltal-case-study',
@@ -136,11 +137,11 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     authorEn: 'Marketing & Product Strategy',
     role: 'سخانات وأجهزة باساب المنزلية',
     roleEn: 'Passap Water Heaters & Household Tech',
-    text: 'حملات «دش ساخن في عز البرد» وتفعيل الخط الساخن 16898 حققت أرقاماً استثنائية لمبيعات سخانات الغاز والكهرباء في أشهر ذروة الشتاء، مع دعم كامل لشبكة مراكز الصيانة والموزعين.',
+    text: 'حملات «دش ساخن في عز البرد» وتفعيل الخط الساخن ١٦٨٩٨ حققت أرقاماً استثنائية لمبيعات سخانات الغاز والكهرباء في أشهر ذروة الشتاء، مع دعم كامل لشبكة مراكز الصيانة والموزعين.',
     textEn: 'Winter campaign positioning and hotline 16898 direct triage generated record gas and electric water heater orders across all governorates during peak seasonal cold.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '+360% نمو مبيعات سخانات الشتاء',
+    metricResult: '+٣٦٠٪ نمو مبيعات سخانات الشتاء',
     metricResultEn: '+360% Peak Winter Heater Growth',
     logoUrl: '/assets/passap-2/passap-2_img_2.png',
     projectUrl: 'passap-case-study',
@@ -158,7 +159,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Digital Effect ensured our Umrah flights and leisure holiday departures were 100% booked weeks ahead of flight dates thanks to friction-free click-to-WhatsApp funnels.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '100% ملء مقاعد الأفواج السياحية',
+    metricResult: '١٠٠٪ ملء مقاعد الأفواج السياحية',
     metricResultEn: '100% Fully Booked Departures',
     logoUrl: '/assets/alwaad-travel/alwaad-travel_img_1.png',
     projectUrl: 'alwaad-case-study',
@@ -176,7 +177,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Digital Effect campaigns fully booked out our residential units in record time with unmatched cost per acquisition and pre-qualified buyers who appreciate true luxury.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '140M+ جنيه مبيعات سكنية محققة',
+    metricResult: '١٤٠ مليون+ جنيه مبيعات سكنية محققة',
     metricResultEn: '140M+ EGP Confirmed Residential Sales',
     logoUrl: '/assets/memar-lashin/memar-lashin_img_1.png',
     projectUrl: 'lashin-case-study',
@@ -194,7 +195,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Digital Effect brilliantly merged premium fashion aesthetics with hardcore commercial performance and showroom footfall, maintaining our category leadership.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '5.4X عائد إعلاني و +240% مبيعات',
+    metricResult: '٥٫٤× عائد إعلاني و+٢٤٠٪ مبيعات',
     metricResultEn: '5.4X Sustained ROAS & +240% Sales',
     logoUrl: '/assets/concrete/concrete_img_1.png',
     projectUrl: 'concrete-case-study',
@@ -212,7 +213,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Digital Effect visuals portrayed Hamburg appliances with ultimate modern elegance and practicality. Through these campaigns, our built-in range achieved unprecedented demand, doubling retail dealer orders nationwide.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '+260% نمو مبيعات البلت-إن و 4.9X ROAS',
+    metricResult: '+٢٦٠٪ نمو مبيعات البلت-إن و٤٫٩× ROAS',
     metricResultEn: '+260% Built-in Sales Growth & 4.9X ROAS',
     logoUrl: '/assets/hamburg-social/hamburg-social_img_1.png',
     projectUrl: 'hamburg-case-study',
@@ -230,7 +231,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Acton campaigns with Digital Effect scaled our household footprint and generated unprecedented cooling appliance orders, accelerating inventory turns through tailored installment campaigns and immaculate creative execution.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '+290% نمو مبيعات التجزئة و 14,200+ طلب تقسيط',
+    metricResult: '+٢٩٠٪ نمو مبيعات التجزئة و١٤٬٢٠٠+ طلب تقسيط',
     metricResultEn: '+290% Retail Sales Growth & 14,200+ Financing Orders',
     logoUrl: '/assets/acton-2/acton-2_img_1.png',
     projectUrl: 'acton-case-study',
@@ -248,7 +249,7 @@ const TESTIMONIALS_DATA: Testimonial[] = [
     textEn: 'Digital Effect modernized how households engage with our appliances; their creative direction, giveaway activations, and warranty messaging elevated Yoken across retail shelves nationwide.',
     sector: 'b2c',
     rating: 5,
-    metricResult: '+275% نمو مبيعات أجهزة المطبخ والغسيل',
+    metricResult: '+٢٧٥٪ نمو مبيعات أجهزة المطبخ والغسيل',
     metricResultEn: '+275% Kitchen & Laundry Sales Growth',
     logoUrl: '/assets/yoken-2/yoken-2_img_1.png',
     projectUrl: 'yoken-case-study',
@@ -416,8 +417,8 @@ export const TestimonialsSection: React.FC = () => {
             </h2>
             <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
               {isAr 
-                ? 'قصص ثقة ونجاح متبادلة مع مدراء تنفيذيين، أطباء استشاريين، ومدراء تسويق وثقوا في خبرتنا على مدار أكثر من ٢٠ عاماً.'
-                : 'Direct feedback from enterprise directors, clinical consultants, and marketing heads who trust our 20+ years of digital scaling expertise.'}
+                ? 'قصص ثقة ونجاح متبادلة مع مدراء تنفيذيين وأطباء استشاريين ومدراء تسويق، وثقوا في وكالة يمتد سجلها لأكثر من ١٢ عاماً وخبرة قياداتها لأكثر من ٢٠ عاماً.'
+                : 'Direct feedback from enterprise directors, clinical consultants, and marketing heads who trust an agency with a 12+ year track record and 20+ years of leadership expertise.'}
             </p>
           </div>
 
@@ -435,7 +436,7 @@ export const TestimonialsSection: React.FC = () => {
               >
                 <Layers className="w-3.5 h-3.5" />
                 <span>{isAr ? 'الكل' : 'All'}</span>
-                <span className="text-[10px] opacity-75">({TESTIMONIALS_DATA.length})</span>
+                <span className="text-[10px] opacity-75">({formatLocalizedNumber(TESTIMONIALS_DATA.length, isAr)})</span>
               </button>
 
               <button
@@ -495,7 +496,7 @@ export const TestimonialsSection: React.FC = () => {
               </button>
 
               <span className="text-xs font-bold text-slate-600 px-2 tabular-nums">
-                {currentIndex + 1} / {totalSlides}
+                {formatLocalizedNumber(currentIndex + 1, isAr)} / {formatLocalizedNumber(totalSlides, isAr)}
               </span>
 
               <button
@@ -650,7 +651,7 @@ export const TestimonialsSection: React.FC = () => {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span className="font-semibold text-slate-700">
-              {isAr ? 'معدل رضا العملاء ٩٨.٦٪ مع أكثر من ٢٥٠ مشروع ناجح' : '98.6% Client Satisfaction Rate Across 250+ Executed Projects'}
+              {isAr ? 'معدل رضا العملاء ٩٨٫٦٪ مع أكثر من ٢٥٠ مشروعاً ناجحاً' : '98.6% Client Satisfaction Rate Across 250+ Executed Projects'}
             </span>
           </div>
 

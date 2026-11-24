@@ -380,6 +380,7 @@ export interface GenerateInvoicePdfOptions {
   };
   totalCost?: string;
   adCreditAmount?: number;
+  taxAmount?: number;
   billingCycle?: Inquiry['billingCycle'];
   contractStartDate?: string;
   contractPeriod?: string;
@@ -403,6 +404,7 @@ export async function generateClientInvoicePdf(
     packageName = client.packageName || (options.isAr !== false ? 'باقة تسويق رقمي مخصصة' : 'Custom Digital Marketing Package'),
     totalCost = client.budget || (options.isAr !== false ? '15,000 ج.م' : '15,000 EGP'),
     adCreditAmount = options.adCreditAmount ?? client.pendingInvoiceAdCredit ?? 0,
+    taxAmount = options.taxAmount ?? 0,
     billingCycle = client.billingCycle || 'monthly',
     contractStartDate = client.contractStartDate || client.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
     contractPeriod,
@@ -419,11 +421,12 @@ export async function generateClientInvoicePdf(
     walletNumber: options.transferInfo?.walletNumber?.trim() || savedTransfer.walletNumber,
   };
 
-  // Calculate numeric grand total including ad credit (supports Arabic-Indic & English digits)
+  // Calculate numeric grand total including ad credit & tax (supports Arabic-Indic & English digits)
   const parsedCost = parseInvoiceAmount(totalCost);
   const numericRetainer = parsedCost > 0 ? parsedCost : (client.retainerAmount || 0);
   const effectiveAdCredit = parseInvoiceAmount(adCreditAmount);
-  const grandTotalNumeric = numericRetainer + effectiveAdCredit;
+  const effectiveTaxAmount = parseInvoiceAmount(taxAmount);
+  const grandTotalNumeric = numericRetainer + effectiveAdCredit + effectiveTaxAmount;
 
   const formattedRetainerStr = numericRetainer > 0
     ? `${numericRetainer.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
@@ -507,7 +510,7 @@ export async function generateClientInvoicePdf(
           </p>
           <div style="margin-top: 5px; font-size: 10px; color: #64748b; line-height: 1.5;">
             <div>📍 ${isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</div>
-            <div>📞 01505000349 • ✉️ Sales@digitaleffect.net | www.digitaleffect.net</div>
+            <div>📞 01505000349 • ✉️ sales@digitaleffect.net | www.digitaleffect.net</div>
           </div>
         </div>
 
@@ -710,6 +713,13 @@ export async function generateClientInvoicePdf(
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #1d4ed8; font-weight: 800;">
             <span>${isAr ? 'الرصيد الإعلاني الممول المضاف:' : 'Added Ad Spend Credit:'}</span>
             <span>+${effectiveAdCredit.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}</span>
+          </div>
+          ` : ''}
+
+          ${effectiveTaxAmount > 0 ? `
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #92400e; font-weight: 800;">
+            <span>${isAr ? 'الضرائب المضافة (بند منفصل):' : 'Taxes (Separate Line):'}</span>
+            <span>+${effectiveTaxAmount.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}</span>
           </div>
           ` : ''}
 

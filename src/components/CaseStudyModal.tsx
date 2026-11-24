@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { getCaseStudyCreatives, getCaseStudyVideos } from '../utils/caseStudyMedia';
 import { CaseStudyVideoSection } from './CaseStudyVideoSection';
+import { formatLocalizedMetric, formatLocalizedNumber } from '../utils/arabicNumbers';
 
 export const CaseStudyModal: React.FC = () => {
   const { selectedCaseStudy, setSelectedCaseStudy, setIsConsultationOpen, language, t } = useAgencyData();
@@ -144,7 +145,7 @@ export const CaseStudyModal: React.FC = () => {
             {selectedCaseStudy.metrics.map((metric, idx) => (
               <div key={idx} className="bg-white p-4 rounded-xl border border-sky-100/60 text-center">
                 <div className="text-2xl sm:text-3xl font-black text-sky-600 tabular-nums">
-                  {metric.value}
+                  {formatLocalizedMetric(metric.value, isAr)}
                 </div>
                 <div className="text-xs font-bold text-slate-800 mt-1">
                   {isAr ? metric.label : metric.labelEn}
@@ -212,7 +213,7 @@ export const CaseStudyModal: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span>{isAr ? `معرض النماذج والخطط الإعلانية (${creatives.length} نموذج):` : `Campaign Creatives & Plans (${creatives.length}):`}</span>
+                  <span>{isAr ? `معرض النماذج والخطط الإعلانية (${formatLocalizedNumber(creatives.length, true)} نموذج):` : `Campaign Creatives & Plans (${creatives.length}):`}</span>
                 </h4>
                 {selectedCaseStudy.clientUrl && (
                   <a

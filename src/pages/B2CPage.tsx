@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { HighlightedPackageCard } from '../components/HighlightedPackageCard';
+import { SectorFaqSection } from '../components/SectorFaqSection';
+import { formatLocalizedMetric, formatLocalizedNumber } from '../utils/arabicNumbers';
 import { 
   ShoppingBag, 
   Zap, 
@@ -281,7 +283,7 @@ export const B2CPage: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
                       <span className="bg-white/10 px-3 py-1 rounded-lg text-slate-200">{isAr ? 'كمبروسر استوائي' : 'Tropical Compressor'}</span>
                       <span className="bg-white/10 px-3 py-1 rounded-lg text-slate-200">{isAr ? 'مكونات إيطالية' : 'Italian Tech'}</span>
-                      <span className="bg-white/10 px-3 py-1 rounded-lg text-slate-200">{isAr ? 'تقسيط 0% مع ValU' : 'ValU 0% Installment'}</span>
+                      <span className="bg-white/10 px-3 py-1 rounded-lg text-slate-200">{isAr ? 'تقسيط ٠٪ مع ValU' : 'ValU 0% Installment'}</span>
                       <span className="bg-white/10 px-3 py-1 rounded-lg text-slate-200">{isAr ? 'موزعي 2B' : '2B Retailers'}</span>
                     </div>
                   </div>
@@ -307,10 +309,10 @@ export const B2CPage: React.FC = () => {
                       <span>{isAr ? 'نمو مبيعات التجزئة' : 'Retail Sales Growth'}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      +310%
+                      {formatLocalizedMetric('+310%', isAr)}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-1">
-                      {isAr ? 'طفرة في مبردات المياه والديب فريزر' : 'dispeners & freezers demand'}
+                      {isAr ? 'طفرة في مبردات المياه والديب فريزر' : 'dispensers & freezers demand'}
                     </div>
                   </div>
 
@@ -320,7 +322,7 @@ export const B2CPage: React.FC = () => {
                       <span>{isAr ? 'مشاهدات الحملات' : 'Campaign Impressions'}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      3.6M+
+                      {formatLocalizedMetric('3.6M+', isAr)}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-1">
                       {isAr ? 'وصول دقيق لجمهور التجهيز المنزلي' : 'targeted consumer reach'}
@@ -333,7 +335,7 @@ export const B2CPage: React.FC = () => {
                       <span>{isAr ? 'عائد الإنفاق ROAS' : 'Return on Ad Spend'}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      4.8X
+                      {formatLocalizedMetric('4.8X', isAr)}
                     </div>
                     <div className="text-[11px] text-sky-400 mt-1 font-semibold">
                       {isAr ? 'ربحية عالية خلال مواسم الذروة' : 'sustained peak efficiency'}
@@ -346,7 +348,7 @@ export const B2CPage: React.FC = () => {
                       <span>{isAr ? 'استفسارات الشراء والموزعين' : 'Showroom Inquiries'}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      85,000+
+                      {formatLocalizedMetric('85,000+', isAr)}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-1">
                       {isAr ? 'توجيه لمنافذ 2B والمعارض' : 'routed to 2B showrooms'}
@@ -402,7 +404,7 @@ export const B2CPage: React.FC = () => {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                         <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[11px] font-bold text-white text-center p-1">
-                          {isAr ? `بوست ${num}` : `Post ${num}`}
+                          {isAr ? `بوست ${formatLocalizedNumber(num, true)}` : `Post ${num}`}
                         </div>
                       </div>
                     ))}
@@ -523,7 +525,7 @@ export const B2CPage: React.FC = () => {
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent"></div>
                           {study.gallery && study.gallery.length > 1 && (
                             <div className="absolute bottom-2 end-2 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-bold px-2 py-0.5 rounded-md border border-white/20">
-                              {isAr ? `${study.gallery.length} تصاميم` : `${study.gallery.length} Creatives`}
+                              {isAr ? `${formatLocalizedNumber(study.gallery.length, true)} تصاميم` : `${study.gallery.length} Creatives`}
                             </div>
                           )}
                         </div>
@@ -533,7 +535,7 @@ export const B2CPage: React.FC = () => {
                       <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-100 flex items-center justify-between">
                         <div>
                           <div className="text-3xl sm:text-4xl font-black text-amber-600 tabular-nums">
-                            {mainMetric?.value}
+                            {formatLocalizedMetric(mainMetric?.value, isAr)}
                           </div>
                           <div className="text-xs font-bold text-slate-800 mt-0.5">
                             {isAr ? mainMetric?.label : mainMetric?.labelEn}
@@ -542,7 +544,7 @@ export const B2CPage: React.FC = () => {
                         {study.metrics[1] && (
                           <div className="text-end">
                             <div className="text-2xl font-black text-slate-900 tabular-nums">
-                              {study.metrics[1].value}
+                              {formatLocalizedMetric(study.metrics[1].value, isAr)}
                             </div>
                             <div className="text-[11px] text-slate-500">
                               {isAr ? study.metrics[1].label : study.metrics[1].labelEn}
@@ -588,6 +590,9 @@ export const B2CPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* B2C Sector FAQ Section */}
+      <SectorFaqSection category="b2c" />
 
       {/* B2C Call To Action Box */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

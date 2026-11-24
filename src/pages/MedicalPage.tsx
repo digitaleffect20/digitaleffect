@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { HighlightedPackageCard } from '../components/HighlightedPackageCard';
+import { SectorFaqSection } from '../components/SectorFaqSection';
+import { formatLocalizedMetric, formatLocalizedNumber } from '../utils/arabicNumbers';
 import { 
   Stethoscope, 
   MapPin, 
@@ -278,13 +280,26 @@ export const MedicalPage: React.FC = () => {
                   <div className="bg-slate-900/90 border border-emerald-500/30 p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-400 transition-colors">
                     <div className="text-xs text-emerald-400 font-bold mb-1 flex items-center gap-1.5">
                       <TrendingUp className="w-3.5 h-3.5" />
-                      <span>{isAr ? 'نمو معدل التفاعل' : 'Engagement Growth'}</span>
+                      <span>{isAr ? 'تفاعل حقيقي خلال ٦ أشهر' : 'Genuine Engagements (6 Mo)'}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      +43,576%
+                      {isAr ? '+٧٣ ألف' : '73,000+'}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-1">
-                      {isAr ? 'تفاعل غير مسبوق مع المحتوى' : 'Audited multi-channel surge'}
+                    <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      {isAr ? 'من حضور شبه معدوم إلى أكثر من ٧٣ ألف تفاعل حقيقي خلال ٦ أشهر' : 'From near-zero reach to 73K+ genuine engagements in 6 months'}
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-400 transition-colors">
+                    <div className="text-xs text-emerald-400 font-bold mb-1 flex items-center gap-1.5">
+                      <Video className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'مشاهدات الفيديو التوعوي' : 'Educational Video Views'}</span>
+                    </div>
+                    <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
+                      {isAr ? '+٦٥٤ ألف' : '654K+'}
+                    </div>
+                    <div className="text-[11px] text-emerald-400 mt-1 font-semibold leading-relaxed">
+                      {isAr ? 'أكثر من ٦٥٤ ألف مشاهدة فيديو، منها ١٢٫٧ ألف إعجاب و٢٫٧ ألف تعليق' : '654K+ video views, including 12.7K reactions & 2.7K comments'}
                     </div>
                   </div>
 
@@ -294,36 +309,23 @@ export const MedicalPage: React.FC = () => {
                       <span>{isAr ? 'مشاهدات الحملات' : 'Campaign Impressions'}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      2.4M+
+                      {formatLocalizedMetric('2.4M+', isAr)}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-1">
-                      {isAr ? 'وصول دقيق لحالات التأهيل' : 'Targeted potential patients'}
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-400 transition-colors">
-                    <div className="text-xs text-emerald-400 font-bold mb-1 flex items-center gap-1.5">
-                      <Video className="w-3.5 h-3.5" />
-                      <span>{isAr ? 'مشاهدات فيديو > ٣ ث' : '3-Sec Video Views'}</span>
-                    </div>
-                    <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      654K+
-                    </div>
-                    <div className="text-[11px] text-emerald-400 mt-1 font-semibold">
-                      {isAr ? '+120,522% زيادة المشاهدة' : '+120,522% video watch rate'}
+                      {isAr ? 'وصول دقيق لحالات التأهيل الحركي' : 'Targeted potential patients'}
                     </div>
                   </div>
 
                   <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-2xl relative overflow-hidden group hover:border-emerald-400 transition-colors">
                     <div className="text-xs text-emerald-400 font-bold mb-1 flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5" />
-                      <span>{isAr ? 'تفاعل حقيقي مع المحتوى' : 'Direct Interactions'}</span>
+                      <span>{isAr ? 'استفسارات حجز العيادات' : 'Clinic Booking Inquiries'}</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                      73,000+
+                      {formatLocalizedMetric('1,800+', isAr)}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-1">
-                      {isAr ? '١٢.٧ ألف إعجاب و ٢.٧ ألف تعليق' : '12.7K reactions & 2.7K inquiries'}
+                      {isAr ? 'استفسارات وحجوزات جلسات علاج طبيعي' : 'Direct physiotherapy booking inquiries'}
                     </div>
                   </div>
                 </div>
@@ -376,7 +378,7 @@ export const MedicalPage: React.FC = () => {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                         <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs font-bold text-white">
-                          {isAr ? `تصميم ${num}` : `Post ${num}`}
+                          {isAr ? `تصميم ${formatLocalizedNumber(num, true)}` : `Post ${num}`}
                         </div>
                       </div>
                     ))}
@@ -419,7 +421,7 @@ export const MedicalPage: React.FC = () => {
                         <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-100 flex items-center justify-between">
                           <div>
                             <div className="text-3xl sm:text-4xl font-black text-emerald-600 tabular-nums">
-                              {mainMetric?.value}
+                              {formatLocalizedMetric(mainMetric?.value, isAr)}
                             </div>
                             <div className="text-xs font-bold text-slate-800 mt-0.5">
                               {isAr ? mainMetric?.label : mainMetric?.labelEn}
@@ -428,7 +430,7 @@ export const MedicalPage: React.FC = () => {
                           {study.metrics[1] && (
                             <div className="text-end">
                               <div className="text-2xl font-black text-slate-900 tabular-nums">
-                                {study.metrics[1].value}
+                                {formatLocalizedMetric(study.metrics[1].value, isAr)}
                               </div>
                               <div className="text-[11px] text-slate-500">
                                 {isAr ? study.metrics[1].label : study.metrics[1].labelEn}
@@ -459,6 +461,9 @@ export const MedicalPage: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* Medical Sector FAQ Section */}
+      <SectorFaqSection category="medical" />
 
       {/* Medical Call To Action Box */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

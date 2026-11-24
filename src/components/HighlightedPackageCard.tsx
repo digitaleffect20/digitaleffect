@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { ServicePackage } from '../types';
+import { formatLocalizedNumber } from '../utils/arabicNumbers';
 import { 
   Check, 
   Sparkles, 
@@ -103,7 +104,7 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
                   {(() => {
                     const diffDays = Math.ceil((new Date(pkg.offerExpiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                     if (diffDays <= 0) return isAr ? 'ينتهي اليوم' : 'Ends today';
-                    return isAr ? `متبقي ${diffDays} يوم` : `${diffDays}d left`;
+                    return isAr ? `متبقي ${formatLocalizedNumber(diffDays, true)} يوم` : `${diffDays}d left`;
                   })()}
                 </span>
               </span>
@@ -123,39 +124,47 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
       </div>
 
       {/* Official Deliverables Metrics Matrix Strip (Direct from PDF sheet) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5 p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-        {pkg.postsCount !== undefined && (
-          <div className="bg-white p-2 rounded-xl border border-slate-100 text-center">
-            <div className="text-lg font-black text-sky-600 tabular-nums">
-              {pkg.postsCount}
-            </div>
-            <div className="text-[10px] font-bold text-slate-600">
-              {pkg.sector === 'medical' ? (isAr ? 'منشور / كاروسيل' : 'Posts/Carousels') : (isAr ? 'منشور شهرياً' : 'Posts / mo')}
-            </div>
-          </div>
-        )}
+      {(() => {
+        const hasPosts = pkg.postsCount !== undefined;
+        const hasReels = pkg.reelsCount !== undefined;
+        const hasStories = pkg.storiesCount !== undefined && pkg.storiesCount > 0;
+        const topMetricCount = [hasPosts, hasReels, hasStories].filter(Boolean).length;
+        const useTwoCols = topMetricCount === 2 && !pkg.frequency && !pkg.hasMonthlyPlan;
 
-        {pkg.reelsCount !== undefined && (
-          <div className="bg-white p-2 rounded-xl border border-slate-100 text-center">
-            <div className="text-lg font-black text-purple-600 tabular-nums">
-              {pkg.reelsCount}
-            </div>
-            <div className="text-[10px] font-bold text-slate-600">
-              {pkg.sector === 'b2c' ? (isAr ? 'ريلز AI' : 'AI Reels') : (isAr ? 'ريلز طبي' : 'Reels')}
-            </div>
-          </div>
-        )}
+        return (
+          <div className={`grid ${useTwoCols ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'} gap-2 mb-5 p-3 bg-slate-50 rounded-2xl border border-slate-200/80`}>
+            {hasPosts && (
+              <div className="bg-white p-2 rounded-xl border border-slate-100 text-center">
+                <div className="text-lg font-black text-sky-600 tabular-nums">
+                  {formatLocalizedNumber(pkg.postsCount!, isAr)}
+                </div>
+                <div className="text-[10px] font-bold text-slate-600">
+                  {pkg.sector === 'medical' ? (isAr ? 'منشور / كاروسيل' : 'Posts/Carousels') : (isAr ? 'منشور شهرياً' : 'Posts / mo')}
+                </div>
+              </div>
+            )}
 
-        {pkg.storiesCount !== undefined && (
-          <div className="bg-white p-2 rounded-xl border border-slate-100 text-center">
-            <div className="text-lg font-black text-amber-600 tabular-nums">
-              {pkg.storiesCount}
-            </div>
-            <div className="text-[10px] font-bold text-slate-600">
-              {isAr ? 'ستوريز' : 'Stories'}
-            </div>
-          </div>
-        )}
+            {hasReels && (
+              <div className="bg-white p-2 rounded-xl border border-slate-100 text-center">
+                <div className="text-lg font-black text-purple-600 tabular-nums">
+                  {formatLocalizedNumber(pkg.reelsCount!, isAr)}
+                </div>
+                <div className="text-[10px] font-bold text-slate-600">
+                  {pkg.sector === 'b2c' ? (isAr ? 'ريلز AI' : 'AI Reels') : (isAr ? 'ريلز طبي' : 'Reels')}
+                </div>
+              </div>
+            )}
+
+            {hasStories && (
+              <div className="bg-white p-2 rounded-xl border border-slate-100 text-center">
+                <div className="text-lg font-black text-amber-600 tabular-nums">
+                  {formatLocalizedNumber(pkg.storiesCount!, isAr)}
+                </div>
+                <div className="text-[10px] font-bold text-slate-600">
+                  {isAr ? 'ستوريز' : 'Stories'}
+                </div>
+              </div>
+            )}
 
         {pkg.frequency && (
           <div className="bg-white p-2 rounded-xl border border-slate-100 text-center col-span-2 sm:col-span-1">
@@ -180,7 +189,9 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
             </div>
           </div>
         )}
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Billing Switch for Packages that have Quarterly pricing (Medical) */}
       {hasQuarterly && (
@@ -235,7 +246,7 @@ export const HighlightedPackageCard: React.FC<Props> = ({ pkg }) => {
                 {pkg.originalPrice.toLocaleString(isAr ? 'ar-EG' : 'en-US')} {currency}
               </span>
               <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                {t.common.save} {Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100)}%
+                {t.common.save} {formatLocalizedNumber(Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100), isAr)}{isAr ? '٪' : '%'}
               </span>
             </div>
           )}

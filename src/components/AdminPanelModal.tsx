@@ -185,7 +185,7 @@ export const AdminPanelModal: React.FC = () => {
     setPkgPostsCount(chosenSector === 'b2b' ? 4 : chosenSector === 'medical' ? 8 : 12);
     setPkgReelsCount(chosenSector === 'b2b' ? 0 : chosenSector === 'medical' ? 8 : 2);
     setPkgStoriesCount(chosenSector === 'b2c' ? 2 : 0);
-    setPkgFrequency(chosenSector === 'b2b' ? 'منشور أسبوعياً' : '٣ منشورات / أسبوع');
+    setPkgFrequency(chosenSector === 'b2b' ? 'منشور أسبوعي' : '٣ منشورات / أسبوع');
     setPkgHasMonthlyPlan(true);
     setPkgHasOffer(false);
     setPkgOfferNote('');
@@ -1661,7 +1661,7 @@ export const AdminPanelModal: React.FC = () => {
                         type="text"
                         value={pkgFrequency}
                         onChange={(e) => setPkgFrequency(e.target.value)}
-                        placeholder={isAr ? 'مثال: منشور أسبوعياً (1 post / week)' : '1 post / week'}
+                        placeholder={isAr ? 'مثال: منشور أسبوعي (1 post / week)' : '1 post / week'}
                         className="w-full text-xs p-2 rounded-lg border border-slate-200 bg-white"
                       />
                     </div>

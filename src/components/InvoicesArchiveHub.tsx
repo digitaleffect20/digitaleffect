@@ -26,7 +26,9 @@ import {
   Receipt,
   Wallet,
   MessageCircle,
-  Banknote
+  Banknote,
+  Ban,
+  Lock
 } from 'lucide-react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { ClientInvoiceRecord, Inquiry, PaymentChannel, InvoicePaymentEntry } from '../types';
@@ -38,11 +40,17 @@ import {
   generateUniqueInvoiceNumber,
 } from '../utils/invoicePdfGenerator';
 import { formatInvoicePeriodLabel } from '../utils/billingPeriodUtils';
+import {
+  detectInvoicePackageMismatch,
+  extractMonthKey,
+  findDuplicatePaymentReference,
+} from '../utils/accountingEngine';
 import { ClientInvoiceModal } from './ClientInvoiceModal';
 import { AccountStatementModal } from './AccountStatementModal';
 
 interface InvoicesArchiveHubProps {
   isAr?: boolean;
+  actorName?: string;
 }
 
 const PAYMENT_CHANNEL_LABELS: Record<PaymentChannel, { ar: string; en: string }> = {
@@ -52,16 +60,21 @@ const PAYMENT_CHANNEL_LABELS: Record<PaymentChannel, { ar: string; en: string }>
   cash: { ar: 'نقدي (Cash)', en: 'Cash' },
 };
 
-export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = true }) => {
+export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({
+  isAr = true,
+  actorName = 'الإدارة المالية',
+}) => {
   const {
     data,
     addInvoice,
     updateInvoice,
     deleteInvoice,
+    voidInvoiceWithReversal,
     markInvoiceAsPaid,
     recordInvoicePayment,
     deleteInvoicePayment,
     logInquiryActivity,
+    isMonthClosed,
   } = useAgencyData();
 
   // Search & Filters
@@ -86,6 +99,8 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
   const [payNotes, setPayNotes] = useState<string>('');
   const [payFormError, setPayFormError] = useState<string | null>(null);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
+  const [reversingPayment, setReversingPayment] = useState<InvoicePaymentEntry | null>(null);
+  const [paymentReversalReason, setPaymentReversalReason] = useState<string>('');
 
   // New Invoice Modal
   const [isNewInvoiceOpen, setIsNewInvoiceOpen] = useState(false);
@@ -93,6 +108,11 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
   const [newInvoicePackage, setNewInvoicePackage] = useState('');
   const [newInvoiceRetainer, setNewInvoiceRetainer] = useState(15000);
   const [newInvoiceAdCredit, setNewInvoiceAdCredit] = useState(5000);
+  const [newInvoiceTaxAmount, setNewInvoiceTaxAmount] = useState(0);
+  const [newInvoiceServiceStart, setNewInvoiceServiceStart] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newInvoiceServiceEnd, setNewInvoiceServiceEnd] = useState('');
+  const [newInvoiceAdPolicy, setNewInvoiceAdPolicy] = useState<'client_passthrough' | 'agency_principal'>('client_passthrough');
+  const [newInvoiceIsDraft, setNewInvoiceIsDraft] = useState(false);
   const [newInvoiceDueDate, setNewInvoiceDueDate] = useState('');
   const [newInvoicePeriod, setNewInvoicePeriod] = useState('');
   const [newInvoiceNotes, setNewInvoiceNotes] = useState('');
@@ -101,8 +121,9 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [toastNotice, setToastNotice] = useState<string | null>(null);
   const [newInvoiceError, setNewInvoiceError] = useState<string | null>(null);
+  const [voidReasonInput, setVoidReasonInput] = useState<string>('');
   const [pendingAction, setPendingAction] = useState<{
-    type: 'delete' | 'collect';
+    type: 'delete' | 'void' | 'collect';
     invoice: ClientInvoiceRecord;
   } | null>(null);
 
@@ -239,6 +260,7 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
         packageName: inv.packageName,
         totalCost: `${inv.retainerAmount.toLocaleString()} ج.م`,
         adCreditAmount: inv.adCreditAmount || 0,
+        taxAmount: inv.taxAmount || 0,
         billingCycle: inv.billingCycle || 'monthly',
         contractStartDate: inv.issueDate,
         contractPeriod:
@@ -281,6 +303,8 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     setPayReference('');
     setPayNotes('');
     setPayFormError(null);
+    setReversingPayment(null);
+    setPaymentReversalReason('');
   };
 
   const handleRecordPaymentSubmit = (e: React.FormEvent) => {
@@ -307,14 +331,37 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
       return;
     }
 
-    const entry = recordInvoicePayment(activePaymentInvoice.id, {
-      amount: amountNum,
-      method: payChannel,
-      methodLabel: isAr ? PAYMENT_CHANNEL_LABELS[payChannel].ar : PAYMENT_CHANNEL_LABELS[payChannel].en,
-      date: payDate || new Date().toISOString().split('T')[0],
-      reference: payReference.trim() || undefined,
-      notes: payNotes.trim() || undefined,
-    });
+    if (isMonthClosed(payDate || activePaymentInvoice.issueDate)) {
+      setPayFormError(
+        isAr
+          ? 'تاريخ الدفعة يقع داخل شهر مالي مقفول — أعد فتح الشهر من قسم الإقفال والرقابة أولاً.'
+          : 'Payment date falls inside a locked financial month.'
+      );
+      return;
+    }
+
+    const dupRef = findDuplicatePaymentReference(invoices, payReference);
+    if (dupRef) {
+      setPayFormError(
+        isAr
+          ? `رقم المرجع البنكي/التحويل مكرر! مستخدم مسبقاً في إيصال ${dupRef.receiptNumber} على فاتورة ${dupRef.invoiceNumber} (${dupRef.clientName}) بتاريخ ${dupRef.date}.`
+          : `Duplicate transfer reference! Already used on receipt ${dupRef.receiptNumber} (${dupRef.invoiceNumber}).`
+      );
+      return;
+    }
+
+    const entry = recordInvoicePayment(
+      activePaymentInvoice.id,
+      {
+        amount: amountNum,
+        method: payChannel,
+        methodLabel: isAr ? PAYMENT_CHANNEL_LABELS[payChannel].ar : PAYMENT_CHANNEL_LABELS[payChannel].en,
+        date: payDate || new Date().toISOString().split('T')[0],
+        reference: payReference.trim() || undefined,
+        notes: payNotes.trim() || undefined,
+      },
+      actorName
+    );
 
     if (entry) {
       const nextRemaining = Math.max(0, remaining - amountNum);
@@ -353,6 +400,14 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     nextStatus: ClientInvoiceRecord['paymentStatus']
   ) => {
     if (nextStatus === inv.paymentStatus) return;
+    if (isMonthClosed(inv.issueDate)) {
+      showToast(
+        isAr
+          ? `الفاتورة تقع داخل شهر مقفول (${extractMonthKey(inv.issueDate)}) — لا يمكن تعديل حالتها مباشرة.`
+          : 'This invoice belongs to a locked financial month.'
+      );
+      return;
+    }
     if (nextStatus === 'paid') {
       handleCollectInvoice(inv);
       return;
@@ -361,18 +416,21 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
       openPaymentsModal(inv);
       return;
     }
-    updateInvoice(inv.id, {
-      paymentStatus: nextStatus,
-      paidAt: undefined,
-    });
-    const labelAr =
-      nextStatus === 'overdue'
-        ? 'متأخر عن السداد'
-        : nextStatus === 'cancelled'
-        ? 'ملغاة'
-        : 'قيد التحصيل';
-    const labelEn =
-      nextStatus === 'overdue' ? 'Overdue' : nextStatus === 'cancelled' ? 'Cancelled' : 'Pending';
+    if (nextStatus === 'cancelled') {
+      setVoidReasonInput('');
+      setPendingAction({ type: 'void', invoice: inv });
+      return;
+    }
+    updateInvoice(
+      inv.id,
+      {
+        paymentStatus: nextStatus,
+        paidAt: undefined,
+      },
+      actorName
+    );
+    const labelAr = nextStatus === 'overdue' ? 'متأخر عن السداد' : 'قيد التحصيل';
+    const labelEn = nextStatus === 'overdue' ? 'Overdue' : 'Pending';
     showToast(
       isAr
         ? `تم تحديث حالة الفاتورة ${inv.invoiceNumber} إلى «${labelAr}».`
@@ -380,30 +438,52 @@ export const InvoicesArchiveHub: React.FC<InvoicesArchiveHubProps> = ({ isAr = t
     );
   };
 
-  // Delete Invoice (via in-app confirmation modal — works reliably inside iframes)
+  // Accounting Control: Issued/Paid invoices are VOIDED with a reversal trail; only drafts can be hard-deleted
   const handleDeleteInvoice = (inv: ClientInvoiceRecord) => {
-    setPendingAction({ type: 'delete', invoice: inv });
+    if (isMonthClosed(inv.issueDate)) {
+      showToast(
+        isAr
+          ? `الفاتورة تقع داخل شهر مقفول (${extractMonthKey(inv.issueDate)}) — أعد فتح الشهر أولاً لتنفيذ إلغاء عكسي.`
+          : 'Invoice belongs to a locked month.'
+      );
+      return;
+    }
+    if (inv.isDraft) {
+      setPendingAction({ type: 'delete', invoice: inv });
+    } else {
+      setVoidReasonInput('');
+      setPendingAction({ type: 'void', invoice: inv });
+    }
   };
 
   const handleConfirmPendingAction = () => {
     if (!pendingAction) return;
     const { type, invoice } = pendingAction;
     if (type === 'collect') {
-      markInvoiceAsPaid(invoice.id, 'تحويل بنكي');
+      markInvoiceAsPaid(invoice.id, 'تحويل بنكي', actorName);
       showToast(
         isAr
           ? `تم تحصيل الفاتورة ${invoice.invoiceNumber} وإيداع الرصيد الإعلاني بنجاح!`
           : `Invoice ${invoice.invoiceNumber} collected and ad credit deposited!`
       );
-    } else {
-      deleteInvoice(invoice.id);
+    } else if (type === 'void') {
+      if (!voidReasonInput.trim()) return;
+      voidInvoiceWithReversal(invoice.id, voidReasonInput.trim(), actorName);
       showToast(
         isAr
-          ? `تم حذف الفاتورة ${invoice.invoiceNumber} من الأرشيف.`
-          : `Invoice ${invoice.invoiceNumber} deleted.`
+          ? `تم إلغاء الفاتورة ${invoice.invoiceNumber} بمستند عكسي موثق مع حفظ الأثر التاريخي في الأرشيف.`
+          : `Invoice ${invoice.invoiceNumber} voided with documented reversal trail.`
+      );
+    } else {
+      deleteInvoice(invoice.id, actorName);
+      showToast(
+        isAr
+          ? `تم حذف مسودة الفاتورة ${invoice.invoiceNumber}.`
+          : `Draft invoice ${invoice.invoiceNumber} deleted.`
       );
     }
     setPendingAction(null);
+    setVoidReasonInput('');
   };
 
   // Build WhatsApp direct URL cleanly for anchor tags (avoids window.open blocking in iframes)
@@ -505,39 +585,66 @@ Please share the transfer screenshot once completed so we can issue your officia
     const client = clientList.find((c) => c.id === newInvoiceClientId);
     if (!client) return;
 
-    const grand = Number(newInvoiceRetainer) + Number(newInvoiceAdCredit || 0);
+    const grand = Number(newInvoiceRetainer) + Number(newInvoiceAdCredit || 0) + Number(newInvoiceTaxAmount || 0);
     const today = new Date().toISOString().split('T')[0];
+    if (isMonthClosed(today)) {
+      setNewInvoiceError(
+        isAr
+          ? 'الشهر الحالي مقفول محاسبياً — أعد فتحه من قسم الإقفال الشهري قبل إصدار فواتير جديدة عليه.'
+          : 'Current financial month is locked.'
+      );
+      return;
+    }
 
     const resolvedPeriod =
       newInvoicePeriod.trim() ||
-      formatInvoicePeriodLabel(client.contractStartDate || today, client.billingCycle || 'monthly', isAr);
+      formatInvoicePeriodLabel(newInvoiceServiceStart || client.contractStartDate || today, client.billingCycle || 'monthly', isAr);
 
-    addInvoice({
-      invoiceNumber: generateUniqueInvoiceNumber(client.id, invoices),
-      clientId: client.id,
-      clientName: client.name,
-      clientCompany: client.company,
-      clientPhone: client.phone,
-      sector: client.sector,
-      issueDate: today,
-      dueDate: newInvoiceDueDate || new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      packageName: newInvoicePackage || client.packageName || (isAr ? 'باقة تسويق رقمي' : 'Marketing Package'),
-      retainerAmount: Number(newInvoiceRetainer),
-      adCreditAmount: Number(newInvoiceAdCredit || 0),
-      grandTotal: grand,
-      billingCycle: client.billingCycle || 'monthly',
-      contractPeriod: resolvedPeriod,
-      paymentStatus: 'pending',
-      notes: newInvoiceNotes,
-      deliverables: {
-        posts: client.postsTarget || 8,
-        reels: client.reelsTarget || 4,
-        stories: client.storiesTarget || 0,
+    addInvoice(
+      {
+        invoiceNumber: generateUniqueInvoiceNumber(client.id, invoices),
+        clientId: client.id,
+        clientName: client.name,
+        clientCompany: client.company,
+        clientPhone: client.phone,
+        sector: client.sector,
+        issueDate: today,
+        dueDate: newInvoiceDueDate || new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        serviceStartDate: newInvoiceServiceStart || today,
+        serviceEndDate: newInvoiceServiceEnd || undefined,
+        packageName: newInvoicePackage || client.packageName || (isAr ? 'باقة تسويق رقمي' : 'Marketing Package'),
+        retainerAmount: Number(newInvoiceRetainer),
+        adCreditAmount: Number(newInvoiceAdCredit || 0),
+        taxAmount: Number(newInvoiceTaxAmount || 0) || undefined,
+        adFundsTreatment: newInvoiceAdPolicy,
+        isDraft: newInvoiceIsDraft,
+        grandTotal: grand,
+        billingCycle: client.billingCycle || 'monthly',
+        contractPeriod: resolvedPeriod,
+        paymentStatus: 'pending',
+        notes: newInvoiceNotes,
+        deliverables: {
+          posts: client.postsTarget || 8,
+          reels: client.reelsTarget || 4,
+          stories: client.storiesTarget || 0,
+        },
       },
-    });
+      actorName
+    );
 
     setIsNewInvoiceOpen(false);
-    showToast(isAr ? 'تم إصدار الفاتورة وإدراجها في الأرشيف المالي بنجاح!' : 'New invoice issued and archived!');
+    setNewInvoiceTaxAmount(0);
+    setNewInvoiceServiceEnd('');
+    setNewInvoiceIsDraft(false);
+    showToast(
+      newInvoiceIsDraft
+        ? isAr
+          ? 'تم حفظ مسودة الفاتورة (لن تدخل قائمة الأرباح والخسائر إلا بعد اعتمادها وإصدارها).'
+          : 'Draft invoice saved.'
+        : isAr
+        ? 'تم إصدار الفاتورة وإدراجها في الأرشيف المالي وتوزيع إيرادها المستحق بنجاح!'
+        : 'New invoice issued and archived!'
+    );
   };
 
   return (
@@ -880,6 +987,64 @@ Please share the transfer screenshot once completed so we can issue your officia
                       </div>
                     )}
 
+                    {inv.isDraft && (
+                      <div className="pt-1 flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-200 text-slate-800">
+                          {isAr ? '📝 مسودة (غير محتسبة في P&L)' : 'Draft (Excluded from P&L)'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateInvoice(inv.id, { isDraft: false }, actorName);
+                            showToast(isAr ? `تم اعتماد وإصدار الفاتورة ${inv.invoiceNumber}.` : 'Draft issued.');
+                          }}
+                          className="text-[10px] font-black px-2.5 py-0.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 cursor-pointer"
+                        >
+                          {isAr ? 'اعتماد وإصدار رسمي' : 'Issue Now'}
+                        </button>
+                      </div>
+                    )}
+
+                    {(inv.serviceStartDate || inv.serviceEndDate) && (
+                      <div className="text-[10px] font-bold text-indigo-700">
+                        {isAr ? 'فترة استحقاق الخدمة:' : 'Service Period:'}{' '}
+                        <span className="font-mono">
+                          {inv.serviceStartDate || inv.issueDate}
+                          {inv.serviceEndDate ? ` ← ${inv.serviceEndDate}` : ''}
+                        </span>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const matchedClient = clientList.find((c) => c.id === inv.clientId);
+                      const mismatch = detectInvoicePackageMismatch(inv, matchedClient, data.packages);
+                      if (!mismatch) return null;
+                      return (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-900">
+                          <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>{isAr ? `تنبيه تعارض مع باقة العميل: ${mismatch}` : `Package mismatch: ${mismatch}`}</span>
+                        </div>
+                      );
+                    })()}
+
+                    {inv.cancellationReason && (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-200 text-[10px] font-bold text-rose-800">
+                        <Ban className="w-3 h-3 text-rose-600 shrink-0" />
+                        <span>
+                          {isAr
+                            ? `إلغاء عكسي موثق (${inv.cancelledBy || 'الإدارة'}): ${inv.cancellationReason}`
+                            : `Voided: ${inv.cancellationReason}`}
+                        </span>
+                      </div>
+                    )}
+
+                    {isMonthClosed(inv.issueDate) && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>{isAr ? 'شهر مقفول' : 'Closed Month'}</span>
+                      </span>
+                    )}
+
                     {inv.notes && (
                       <p className="text-[11px] text-slate-500 italic">{inv.notes}</p>
                     )}
@@ -1042,15 +1207,25 @@ Please share the transfer screenshot once completed so we can issue your officia
                       <Share2 className="w-3.5 h-3.5" />
                     </a>
 
-                    {/* Delete Button */}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteInvoice(inv)}
-                      className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                      title={isAr ? 'حذف من الأرشيف' : 'Delete'}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Void / Delete Draft Button (Accounting Control: Never Hard-Delete Issued Invoices) */}
+                    {!isCancelled && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteInvoice(inv)}
+                        className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                        title={
+                          inv.isDraft
+                            ? isAr
+                              ? 'حذف المسودة'
+                              : 'Delete Draft'
+                            : isAr
+                            ? 'إلغاء بمستند عكسي موثق (حفظ الأثر التاريخي)'
+                            : 'Void with Reversal Trail'
+                        }
+                      >
+                        {inv.isDraft ? <Trash2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1091,6 +1266,7 @@ Please share the transfer screenshot once completed so we can issue your officia
           packageName={previewInvoice.packageName}
           budget={`${previewInvoice.retainerAmount.toLocaleString()} ج.م`}
           adCreditAmount={previewInvoice.adCreditAmount}
+          taxAmount={previewInvoice.taxAmount || 0}
           billingCycle={previewInvoice.billingCycle || 'monthly'}
           contractStartDate={previewInvoice.issueDate}
           contractPeriod={
@@ -1220,6 +1396,59 @@ Please share the transfer screenshot once completed so we can issue your officia
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'بداية فترة الخدمة (للاستحقاق):' : 'Service Start Date:'}
+                  </label>
+                  <input
+                    type="date"
+                    value={newInvoiceServiceStart}
+                    onChange={(e) => setNewInvoiceServiceStart(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'نهاية فترة الخدمة (اختياري للمتعددة):' : 'Service End Date:'}
+                  </label>
+                  <input
+                    type="date"
+                    value={newInvoiceServiceEnd}
+                    onChange={(e) => setNewInvoiceServiceEnd(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700">
+                    {isAr ? 'الضرائب (بند مستقل — ج.م):' : 'Tax Amount (EGP):'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newInvoiceTaxAmount}
+                    onChange={(e) => setNewInvoiceTaxAmount(Number(e.target.value))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold font-mono text-slate-900"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-purple-700">
+                    {isAr ? 'معالجة أموال الإعلانات:' : 'Ad Funds Treatment:'}
+                  </label>
+                  <select
+                    value={newInvoiceAdPolicy}
+                    onChange={(e) => setNewInvoiceAdPolicy(e.target.value as 'client_passthrough' | 'agency_principal')}
+                    className="w-full bg-purple-50/70 border border-purple-200 rounded-xl px-3 py-2 text-xs font-bold text-purple-900"
+                  >
+                    <option value="client_passthrough">{isAr ? 'أمانة عميل (خارج إيراد الوكالة)' : 'Client Passthrough (Agent)'}</option>
+                    <option value="agency_principal">{isAr ? 'أصيل (تُدرج بالإيراد والمصروف)' : 'Agency Principal'}</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-bold text-indigo-800">
                   {isAr ? 'فترة الفاتورة (تُكتب تحت تاريخ الإصدار):' : 'Invoice Period (Shown Under Date):'}
@@ -1246,12 +1475,22 @@ Please share the transfer screenshot once completed so we can issue your officia
                 />
               </div>
 
+              <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newInvoiceIsDraft}
+                  onChange={(e) => setNewInvoiceIsDraft(e.target.checked)}
+                  className="rounded border-slate-300"
+                />
+                <span>{isAr ? 'حفظ كمسودة للمراجعة قبل الإصدار الرسمي (لا تدخل قائمة P&L)' : 'Save as Draft (Excluded from P&L until issued)'}</span>
+              </label>
+
               <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between">
                 <span className="text-xs font-bold text-blue-900">
                   {isAr ? 'الإجمالي المستحق بالفاتورة:' : 'Total Amount Due:'}
                 </span>
                 <span className="text-sm font-black text-blue-900 font-mono">
-                  {(Number(newInvoiceRetainer) + Number(newInvoiceAdCredit || 0)).toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                  {(Number(newInvoiceRetainer) + Number(newInvoiceAdCredit || 0) + Number(newInvoiceTaxAmount || 0)).toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
                 </span>
               </div>
 
@@ -1267,7 +1506,9 @@ Please share the transfer screenshot once completed so we can issue your officia
                   type="submit"
                   className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-all cursor-pointer"
                 >
-                  {isAr ? 'حفظ وإصدار الفاتورة' : 'Issue & Archive'}
+                  {newInvoiceIsDraft
+                    ? isAr ? 'حفظ كمسودة' : 'Save Draft'
+                    : isAr ? 'حفظ وإصدار الفاتورة' : 'Issue & Archive'}
                 </button>
               </div>
             </form>
@@ -1275,7 +1516,7 @@ Please share the transfer screenshot once completed so we can issue your officia
         </div>
       )}
 
-      {/* In-App Confirmation Modal for Delete / Collect Invoice (Iframe-safe) */}
+      {/* In-App Confirmation Modal for Void / Delete Draft / Collect Invoice */}
       {pendingAction && (
         <div
           className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
@@ -1288,12 +1529,14 @@ Please share the transfer screenshot once completed so we can issue your officia
             <div className="flex items-start gap-3">
               <div
                 className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                  pendingAction.type === 'delete'
+                  pendingAction.type === 'delete' || pendingAction.type === 'void'
                     ? 'bg-rose-100 text-rose-600'
                     : 'bg-emerald-100 text-emerald-600'
                 }`}
               >
-                {pendingAction.type === 'delete' ? (
+                {pendingAction.type === 'void' ? (
+                  <Ban className="w-5 h-5" />
+                ) : pendingAction.type === 'delete' ? (
                   <AlertTriangle className="w-5 h-5" />
                 ) : (
                   <CheckCircle2 className="w-5 h-5" />
@@ -1301,25 +1544,48 @@ Please share the transfer screenshot once completed so we can issue your officia
               </div>
               <div className="space-y-1">
                 <h4 className="text-base font-black text-slate-900">
-                  {pendingAction.type === 'delete'
+                  {pendingAction.type === 'void'
                     ? isAr
-                      ? 'تأكيد حذف الفاتورة نهائياً'
-                      : 'Confirm Invoice Deletion'
+                      ? 'إلغاء الفاتورة بمستند عكسي موثق'
+                      : 'Void Invoice with Reversal Trail'
+                    : pendingAction.type === 'delete'
+                    ? isAr
+                      ? 'تأكيد حذف مسودة الفاتورة'
+                      : 'Delete Draft Invoice'
                     : isAr
                     ? 'تأكيد تحصيل الفاتورة'
                     : 'Confirm Invoice Collection'}
                 </h4>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  {pendingAction.type === 'delete'
+                  {pendingAction.type === 'void'
                     ? isAr
-                      ? `هل أنت متأكد من حذف الفاتورة (${pendingAction.invoice.invoiceNumber}) الخاصة بـ "${pendingAction.invoice.clientCompany || pendingAction.invoice.clientName}" نهائياً من الأرشيف؟`
-                      : `Are you sure you want to permanently delete invoice ${pendingAction.invoice.invoiceNumber} from archive?`
+                      ? `وفق قواعد الرقابة المالية لا تُحذف الفواتير الصادرة نهائياً. سيتم إلغاء الفاتورة (${pendingAction.invoice.invoiceNumber}) بقيد عكسي موثق واستبعادها من الإيرادات مع حفظ الأثر التاريخي في سجل الرقابة.`
+                      : `Issued invoices are never erased. Invoice ${pendingAction.invoice.invoiceNumber} will be voided with a documented reversal entry.`
+                    : pendingAction.type === 'delete'
+                    ? isAr
+                      ? `هل أنت متأكد من حذف مسودة الفاتورة (${pendingAction.invoice.invoiceNumber})؟`
+                      : `Delete draft invoice ${pendingAction.invoice.invoiceNumber}?`
                     : isAr
                     ? `هل تريد تأكيد تحصيل الفاتورة (${pendingAction.invoice.invoiceNumber}) بقيمة ${pendingAction.invoice.grandTotal.toLocaleString()} ج.م وإيداع الرصيد الإعلاني تلقائياً؟`
                     : `Confirm collection of invoice ${pendingAction.invoice.invoiceNumber} for ${pendingAction.invoice.grandTotal.toLocaleString()} EGP?`}
                 </p>
               </div>
             </div>
+
+            {pendingAction.type === 'void' && (
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700">
+                  {isAr ? 'سبب الإلغاء العكسي (إلزامي) *' : 'Reversal Reason (Required) *'}
+                </label>
+                <input
+                  type="text"
+                  value={voidReasonInput}
+                  onChange={(e) => setVoidReasonInput(e.target.value)}
+                  placeholder={isAr ? 'مثال: تعديل نطاق الباقة وإعادة الإصدار، إلغاء التعاقد...' : 'e.g. Re-issued with revised scope...'}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900"
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
@@ -1331,23 +1597,30 @@ Please share the transfer screenshot once completed so we can issue your officia
               </button>
               <button
                 type="button"
+                disabled={pendingAction.type === 'void' && !voidReasonInput.trim()}
                 onClick={handleConfirmPendingAction}
-                className={`px-5 py-2 text-xs font-black text-white rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer ${
-                  pendingAction.type === 'delete'
+                className={`px-5 py-2 text-xs font-black text-white rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                  pendingAction.type === 'delete' || pendingAction.type === 'void'
                     ? 'bg-rose-600 hover:bg-rose-700'
                     : 'bg-emerald-600 hover:bg-emerald-700'
                 }`}
               >
-                {pendingAction.type === 'delete' ? (
+                {pendingAction.type === 'void' ? (
+                  <Ban className="w-3.5 h-3.5" />
+                ) : pendingAction.type === 'delete' ? (
                   <Trash2 className="w-3.5 h-3.5" />
                 ) : (
                   <CheckCircle2 className="w-3.5 h-3.5" />
                 )}
                 <span>
-                  {pendingAction.type === 'delete'
+                  {pendingAction.type === 'void'
                     ? isAr
-                      ? 'نعم، احذف الفاتورة'
-                      : 'Yes, Delete Invoice'
+                      ? 'اعتماد الإلغاء العكسي'
+                      : 'Confirm Void'
+                    : pendingAction.type === 'delete'
+                    ? isAr
+                      ? 'نعم، احذف المسودة'
+                      : 'Yes, Delete Draft'
                     : isAr
                     ? 'نعم، تأكيد التحصيل'
                     : 'Yes, Confirm Collection'}
@@ -1590,80 +1863,165 @@ Please share the transfer screenshot once completed so we can issue your officia
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {paymentsList.map((entry) => (
+                      {paymentsList.map((entry) => {
+                        const isPaymentLocked =
+                          isMonthClosed(entry.date || activePaymentInvoice.issueDate) ||
+                          isMonthClosed(activePaymentInvoice.issueDate);
+                        const isConfirmingReverse = reversingPayment?.id === entry.id;
+                        return (
                         <div
                           key={entry.id}
-                          className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                          className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5"
                         >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono font-black text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                {entry.receiptNumber}
-                              </span>
-                              <span className="text-sm font-black text-slate-900 font-mono">
-                                {entry.amount.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
-                              </span>
-                              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
-                                {entry.methodLabel ||
-                                  (isAr
-                                    ? PAYMENT_CHANNEL_LABELS[entry.method]?.ar || entry.method
-                                    : PAYMENT_CHANNEL_LABELS[entry.method]?.en || entry.method)}
-                              </span>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono font-black text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                  {entry.receiptNumber}
+                                </span>
+                                <span className="text-sm font-black text-slate-900 font-mono">
+                                  {entry.amount.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                                </span>
+                                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                                  {entry.methodLabel ||
+                                    (isAr
+                                      ? PAYMENT_CHANNEL_LABELS[entry.method]?.ar || entry.method
+                                      : PAYMENT_CHANNEL_LABELS[entry.method]?.en || entry.method)}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
+                                <span>
+                                  {isAr ? 'التاريخ:' : 'Date:'} <strong>{entry.date}</strong>
+                                </span>
+                                {entry.reference && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-mono">
+                                      {isAr ? 'مرجع:' : 'Ref:'} {entry.reference}
+                                    </span>
+                                  </>
+                                )}
+                                {entry.notes && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{entry.notes}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
-                              <span>
-                                {isAr ? 'التاريخ:' : 'Date:'} <strong>{entry.date}</strong>
-                              </span>
-                              {entry.reference && (
-                                <>
-                                  <span>•</span>
-                                  <span className="font-mono">
-                                    {isAr ? 'مرجع:' : 'Ref:'} {entry.reference}
-                                  </span>
-                                </>
-                              )}
-                              {entry.notes && (
-                                <>
-                                  <span>•</span>
-                                  <span>{entry.notes}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              disabled={downloadingReceiptId === entry.id}
-                              onClick={() => handleDownloadReceiptPdf(activePaymentInvoice, entry)}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black inline-flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
-                            >
-                              {downloadingReceiptId === entry.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                disabled={downloadingReceiptId === entry.id}
+                                onClick={() => handleDownloadReceiptPdf(activePaymentInvoice, entry)}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black inline-flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                              >
+                                {downloadingReceiptId === entry.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Download className="w-3.5 h-3.5" />
+                                )}
+                                <span>{isAr ? 'تحميل إيصال PDF' : 'Receipt PDF'}</span>
+                              </button>
+
+                              {isPaymentLocked ? (
+                                <span
+                                  className="p-2 text-slate-400 bg-slate-100 rounded-xl inline-flex items-center"
+                                  title={
+                                    isAr
+                                      ? 'دفعة ضمن شهر مالي مقفول — لا يمكن عكسها إلا بعد إعادة فتح الشهر'
+                                      : 'Payment inside a locked month'
+                                  }
+                                >
+                                  <Lock className="w-3.5 h-3.5" />
+                                </span>
                               ) : (
-                                <Download className="w-3.5 h-3.5" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setReversingPayment(isConfirmingReverse ? null : entry);
+                                    setPaymentReversalReason('');
+                                  }}
+                                  className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer"
+                                  title={isAr ? 'عكس الدفعة بقيد موثق' : 'Reverse payment with reason'}
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                </button>
                               )}
-                              <span>{isAr ? 'تحميل إيصال PDF' : 'Receipt PDF'}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                deleteInvoicePayment(activePaymentInvoice.id, entry.id);
-                                showToast(
-                                  isAr
-                                    ? `تم حذف الدفعة ${entry.receiptNumber} وإعادة احتساب المتبقي.`
-                                    : `Payment ${entry.receiptNumber} removed.`
-                                );
-                              }}
-                              className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl cursor-pointer"
-                              title={isAr ? 'حذف الدفعة' : 'Delete payment'}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            </div>
                           </div>
+
+                          {isConfirmingReverse && (
+                            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 space-y-2">
+                              <div className="text-[11px] font-black text-rose-900 flex items-center gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>
+                                  {isAr
+                                    ? `تأكيد عكس الدفعة ${entry.receiptNumber} (يُوثق في سجل الرقابة):`
+                                    : `Confirm reversal of ${entry.receiptNumber} (logged in audit trail):`}
+                                </span>
+                              </div>
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <input
+                                  type="text"
+                                  value={paymentReversalReason}
+                                  onChange={(e) => setPaymentReversalReason(e.target.value)}
+                                  placeholder={
+                                    isAr
+                                      ? 'اكتب سبب عكس الدفعة (مثال: تحويل مكرر / خطأ في المبلغ)...'
+                                      : 'Enter mandatory reversal reason...'
+                                  }
+                                  className="flex-1 bg-white border border-rose-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                                />
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={!paymentReversalReason.trim()}
+                                    onClick={() => {
+                                      const ok = deleteInvoicePayment(
+                                        activePaymentInvoice.id,
+                                        entry.id,
+                                        paymentReversalReason.trim(),
+                                        actorName
+                                      );
+                                      if (ok) {
+                                        showToast(
+                                          isAr
+                                            ? `تم عكس الدفعة ${entry.receiptNumber} وتوثيق السبب في سجل الرقابة.`
+                                            : `Payment ${entry.receiptNumber} reversed and logged.`
+                                        );
+                                        setReversingPayment(null);
+                                        setPaymentReversalReason('');
+                                      } else {
+                                        setPayFormError(
+                                          isAr
+                                            ? 'لا يمكن عكس الدفعة لأنها تقع داخل شهر مالي مقفول.'
+                                            : 'Cannot reverse payment inside a locked financial month.'
+                                        );
+                                      }
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white text-xs font-black cursor-pointer"
+                                  >
+                                    {isAr ? 'تأكيد العكس' : 'Confirm Reversal'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setReversingPayment(null);
+                                      setPaymentReversalReason('');
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 text-xs font-bold cursor-pointer"
+                                  >
+                                    {isAr ? 'إلغاء' : 'Cancel'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   )}
                 </div>

@@ -1,7 +1,7 @@
 {
   "agencyInfo": {
     "name": "Digital Effect",
-    "email": "Sales@digitaleffect.net",
+    "email": "sales@digitaleffect.net",
     "phone": "01505000349",
     "nameEn": "Digital Effect",
     "address": "العاشر من رمضان - مصر",
@@ -12,7 +12,7 @@
   },
   "banner": {
     "tag": "عرض خاص",
-    "text": "وفر حتى ١٧,٧٠٠ ج.م عند الاشتراك الربع سنوي في باقات القطاع الطبي، وخصومات حصرية على باقات B2C و B2B",
+    "text": "وفر حتى ١٧٬٧٠٠ ج.م عند الاشتراك الربع سنوي في باقات القطاع الطبي، وخصومات حصرية على باقات B2C وB2B",
     "tagEn": "Special Offer",
     "textEn": "Save up to 17,700 EGP on quarterly medical retainers, with exclusive savings across B2C & B2B packages",
     "enabled": true,
@@ -61,32 +61,32 @@
       "logoUrl": "/assets/ipt/ipt_logo.png",
       "metrics": [
         {
+          "hint": "من حضور شبه معدوم إلى أكثر من ٧٣ ألف تفاعل حقيقي خلال ٦ أشهر",
+          "label": "تفاعل حقيقي خلال ٦ أشهر",
+          "value": "73K+",
+          "hintEn": "From near-zero reach to 73K+ genuine engagements in 6 months",
+          "labelEn": "Genuine Engagements (6 Mo)"
+        },
+        {
+          "hint": "أكثر من ٦٥٤ ألف مشاهدة فيديو، منها ١٢٫٧ ألف إعجاب و٢٫٧ ألف تعليق",
+          "label": "مشاهدات الفيديو التوعوي",
+          "value": "654K+",
+          "hintEn": "654K+ video views, including 12.7K reactions & 2.7K comments",
+          "labelEn": "Educational Video Views"
+        },
+        {
           "hint": "وصول موجه بدقة لمرضى التأهيل الحركي",
           "label": "مشاهدات الحملات التوعوية",
           "value": "2.4M+",
-          "hintEn": "hyper-targeted audience reach",
-          "labelEn": "Targeted Video Impressions"
+          "hintEn": "Hyper-targeted patient audience reach",
+          "labelEn": "Targeted Campaign Reach"
         },
         {
-          "hint": "قفزة استثنائية في تفاعل المتابعين",
-          "label": "نمو معدل التفاعل الإجمالي",
-          "value": "+43,576%",
-          "hintEn": "explosive patient interaction",
-          "labelEn": "Engagement Growth Rate"
-        },
-        {
-          "hint": "نمو استثنائي بنسبة +120,522%",
-          "label": "مشاهدات فيديو لأكثر من ٣ ثوانٍ",
-          "value": "654K+",
-          "hintEn": "+120,522% video watch growth",
-          "labelEn": "3-Sec Video Views"
-        },
-        {
-          "hint": "١٢.٧ ألف إعجاب و ٢.٧ ألف تعليق",
-          "label": "تفاعل حقيقي مع المحتوى",
-          "value": "73K+",
-          "hintEn": "12.7K reactions & 2.7K inquiries",
-          "labelEn": "Total Patient Engagements"
+          "hint": "تحويل المشاهدات والتفاعل إلى حجوزات جلسات علاج طبيعي",
+          "label": "استفسارات حجز العيادات",
+          "value": "1,800+",
+          "hintEn": "Views converted into confirmed physiotherapy bookings",
+          "labelEn": "Clinic Booking Inquiries"
         }
       ],
       "titleEn": "IPT Physiotherapy Center — Scaled Digital Reach & Record Patient Inquiries",
@@ -1110,9 +1110,9 @@
       ],
       "titleEn": "SILTAL Home Appliances — Corporate Identity, Modular Packaging System & Technical Catalog",
       "clientEn": "SILTAL Home Appliances Egypt",
-      "duration": "3 أشهر (الهوية، تغليف 7 خطوط، والكتالوج)",
+      "duration": "٣ أشهر (الهوية، تغليف ٧ خطوط، والكتالوج)",
       "featured": true,
-      "industry": "تصنيع وتجميع الأجهزة المنزلية والكهربائية (6 أكتوبر)",
+      "industry": "تصنيع وتجميع الأجهزة المنزلية والكهربائية (٦ أكتوبر)",
       "services": [
         "تطوير الشعار ثنائي اللغة والخطوط المخصصة (SILTAL / سيلتال)",
         "هندسة نظام تغليف الأجهزة الكهربائية (Modular Packaging System)",
@@ -1121,8 +1121,8 @@
         "تصميم الكتالوج الموحد وجداول المواصفات الفنية (Corporate Catalog)",
         "توثيق نظام الألوان الصناعي وشرائح التغليف القطرية"
       ],
-      "solution": "طور فريق ديجيتال إفكت الشعار ثنائي اللغة المائل باللون القرمزي، وبنى شبكة تغليف هندسية باللونين القرمزي والبترولي الداكن تم تطبيقها على 7 موديلات رئيسية بجانب تصميم كتالوج المواصفات الفنية الموحد.",
-      "subtitle": "توحيد الهوية البصرية ثنائية اللغة وتصميم نظام تغليف معماري لـ 7 خطوط إنتاج من الفريزر والأفران والمكانس والعجان بجانب الكتالوج الرسمي",
+      "solution": "طور فريق ديجيتال إفكت الشعار ثنائي اللغة المائل باللون القرمزي، وبنى شبكة تغليف هندسية باللونين القرمزي والبترولي الداكن تم تطبيقها على ٧ موديلات رئيسية بجانب تصميم كتالوج المواصفات الفنية الموحد.",
+      "subtitle": "توحيد الهوية البصرية ثنائية اللغة وتصميم نظام تغليف معماري لـ ٧ خطوط إنتاج من الفريزر والأفران والمكانس والعجان بجانب الكتالوج الرسمي",
       "challenge": "احتاج مصنع سيلتال بمدينة السادس من أكتوبر إلى نظام هوية مؤسسية وتغليف موحد يربط بين تنوع أجهزته (ديب فريزر أفقي ورأسي، أفران كهربائية، مكانس، وعجان) تحت مظهر صناعي قوي وسهل التمييز في الأسواق والمعارض.",
       "clientUrl": "https://digitaleffect.net/siltal-identity/",
       "durationEn": "3 Months (Identity, 7-SKU Packaging & Catalog)",
@@ -2513,7 +2513,7 @@
       "idealFor": "براندات الأزياء، العناية، الإلكترونيات، والمتاجر الطامحة لمضاعفة الـ ROAS.",
       "periodEn": "/ month",
       "isPopular": true,
-      "offerNote": "الأكثر مبيعاً • وفر ٤,٠٠٠ ج.م شهرياً",
+      "offerNote": "الأكثر مبيعاً • وفر ٤٬٠٠٠ ج.م شهرياً",
       "taglineEn": "The ideal balance of posts, viral reels, and stories for sustained sales",
       "currencyEn": "EGP",
       "featuresEn": [
@@ -2556,7 +2556,7 @@
       "idealFor": "العلامات التجارية الكبرى والمتاجر ذات الحجم الضخم من المنتجات والطلبات.",
       "periodEn": "/ month",
       "isPopular": false,
-      "offerNote": "باقة التوسع الشامل • وفر ٥,٠٠٠ ج.م",
+      "offerNote": "باقة التوسع الشامل • وفر ٥٬٠٠٠ ج.م",
       "taglineEn": "Maximum content velocity with 6 AI Reels for total algorithm dominance",
       "currencyEn": "EGP",
       "featuresEn": [
@@ -2584,11 +2584,11 @@
       "period": "/ شهرياً",
       "sector": "b2b",
       "badgeEn": "Official B2B Retainer",
-      "tagline": "حضور مؤسسي منتظم بمعدل منشور أسبوعياً مع خطة استراتيجية شهرية متكاملة",
+      "tagline": "حضور مؤسسي منتظم بمعدل منشور أسبوعي مع خطة استراتيجية شهرية متكاملة",
       "currency": "ج.م",
       "features": [
         "٤ منشورات متخصصة شهرياً (4 Industry Posts)",
-        "معدل النشر: منشور أسبوعياً بانتظام (Frequency: 1 post / week)",
+        "معدل النشر: منشور أسبوعي بانتظام (Frequency: 1 post / week)",
         "خطة شهرية متكاملة متضمنة (Monthly Plan: Included)",
         "كتابة محتوى مهني يعزز الريادة الفكرية والموثوقية المؤسسية",
         "تنسيق الهوية المؤسسية للشركات وصناع القرار",
@@ -2597,7 +2597,7 @@
       "hasOffer": true,
       "idealFor": "المصانع، الموردين، شركات الـ IT، والاستشارات الهندسية والتجارية.",
       "periodEn": "/ month",
-      "frequency": "منشور أسبوعياً (1 post / week)",
+      "frequency": "منشور أسبوعي (1 post / week)",
       "isPopular": true,
       "offerNote": "خطة شهرية شاملة متضمنة مجاناً",
       "taglineEn": "Consistent corporate authority with weekly posting and monthly strategic plan",
@@ -2630,8 +2630,8 @@
       "features": [
         "٦ منشورات / كاروسيل طبي تثقيفي شهرياً (6 Posts / Carousels)",
         "٤ مقاطع ريلز وفيديوهات توعوية طبية (4 Reels)",
-        "الاشتراك الشهري: ١٢,٥٠٠ ج.م / شهرياً",
-        "الاشتراك الربع سنوي: ٣٣,٧٥٠ ج.م / ٣ أشهر (توفير ٣,٧٥٠ ج.م)",
+        "الاشتراك الشهري: ١٢٬٥٠٠ ج.م / شهرياً",
+        "الاشتراك الربع سنوي: ٣٣٬٧٥٠ ج.م / ٣ أشهر (توفير ٣٬٧٥٠ ج.م)",
         "محتوى طبي معتمد وأخلاقي يراعي لوائح الرعاية الصحية",
         "تصميمات طبية مريحة تعزز ثقة المريض قبل الزيارة"
       ],
@@ -2639,7 +2639,7 @@
       "idealFor": "العيادات التخصصية الفردية والأطباء الاستشاريين الراغبين في بناء تواجد رصين.",
       "periodEn": "/ month",
       "isPopular": false,
-      "offerNote": "وفر ٣,٧٥٠ ج.م عند الدفع الربع سنوي",
+      "offerNote": "وفر ٣٬٧٥٠ ج.م عند الدفع الربع سنوي",
       "taglineEn": "Dignified medical presence blending patient education carousels and reels",
       "currencyEn": "EGP",
       "featuresEn": [
@@ -2670,8 +2670,8 @@
       "features": [
         "٨ منشورات / كاروسيل طبي عالي الاحترافية (8 Posts / Carousels)",
         "٨ مقاطع ريلز وفيديوهات طبية شهرياً (8 Reels)",
-        "الاشتراك الشهري: ١٩,٥٠٠ ج.م / شهرياً",
-        "الاشتراك الربع سنوي: ٤٩,٧٥٠ ج.م / ٣ أشهر (توفير ٨,٧٥٠ ج.م)",
+        "الاشتراك الشهري: ١٩٬٥٠٠ ج.م / شهرياً",
+        "الاشتراك الربع سنوي: ٤٩٬٧٥٠ ج.م / ٣ أشهر (توفير ٨٬٧٥٠ ج.م)",
         "خطة محتوى متكاملة لشرح الحالات العلاجية ومزايا الأجهزة",
         "ربط الحملات وتوجيه المرضى مباشرة لخط حجز الواتساب والاستقبال",
         "متابعة شهرية دقيقة لمعدلات الحجز وتكلفة استقطاب المريض"
@@ -2680,7 +2680,7 @@
       "idealFor": "مجمعات العيادات، مراكز الأسنان الكبرى، ومراكز الجلدية والتجميل وجراحة اليوم الواحد.",
       "periodEn": "/ month",
       "isPopular": true,
-      "offerNote": "الأكثر طلباً • وفر ٨,٧٥٠ ج.م ربع سنوياً",
+      "offerNote": "الأكثر طلباً • وفر ٨٬٧٥٠ ج.م ربع سنوياً",
       "taglineEn": "High-performing balance to double clinic appointments and video authority",
       "currencyEn": "EGP",
       "featuresEn": [
@@ -2712,8 +2712,8 @@
       "features": [
         "١٢ منشوراً / كاروسيل طبي موسع شهرياً (12 Posts / Carousels)",
         "١٢ مقطع ريلز وفيديو طبي شهرياً (12 Reels)",
-        "الاشتراك الشهري: ٢٩,٥٠٠ ج.م / شهرياً",
-        "الاشتراك الربع سنوي: ٧٠,٨٠٠ ج.م / ٣ أشهر (توفير ضخم بقيمة ١٧,٧٠٠ ج.م)",
+        "الاشتراك الشهري: ٢٩٬٥٠٠ ج.م / شهرياً",
+        "الاشتراك الربع سنوي: ٧٠٬٨٠٠ ج.م / ٣ أشهر (توفير ضخم بقيمة ١٧٬٧٠٠ ج.م)",
         "تغطية متعددة التخصصات الطبية والأطباء الاستشاريين",
         "أولوية قصوى في سرعة التنفيذ والتصوير والمونتاج الطبي",
         "إشراف مباشر من استشاري التسويق الطبي ذوي الخبرة التراكمية"
@@ -2722,7 +2722,7 @@
       "idealFor": "المستشفيات، مجمعات جراحة اليوم الواحد، وشبكات العيادات متعددة الفروع.",
       "periodEn": "/ month",
       "isPopular": false,
-      "offerNote": "وفر ١٧,٧٠٠ ج.م عند الدفع الربع سنوي",
+      "offerNote": "وفر ١٧٬٧٠٠ ج.م عند الدفع الربع سنوي",
       "taglineEn": "Maximum medical content velocity with 12 Reels and 12 Posts monthly",
       "currencyEn": "EGP",
       "featuresEn": [
@@ -2760,7 +2760,7 @@
     {
       "id": "promo-growth3000",
       "code": "GROWTH3000",
-      "title": "خصم نقدي مباشر ٣,٠٠٠ ج.م للشركات",
+      "title": "خصم نقدي مباشر ٣٬٠٠٠ ج.م للشركات",
       "titleEn": "Direct 3,000 EGP Voucher for Enterprise",
       "isActive": true,
       "maxUsage": 50,
@@ -2788,7 +2788,2932 @@
       "applicableSector": "all"
     }
   ],
-  "inquiries": [],
+  "inquiries": [
+    {
+      "id": "834d48a9-422d-4f64-a8ad-c9efc940497a",
+      "name": "أ / نورهان",
+      "phone": "01019444221",
+      "phoneE164": "+201019444221",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "روبو باك",
+      "sector": "b2b",
+      "packageName": "باقة مخصصة — الشركات والمصانع (10 منشور • 3 ريلز)",
+      "budget": "35000 ج.م / ربع سنوي",
+      "notes": "يتم تحصيل ٥٠٪ دفعه مقديه و ٥٠٪ في نصف الفتره",
+      "discountAmount": 0,
+      "createdAt": "2026-11-22T14:30:53.488Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-22",
+      "renewalDate": "2026-12-22",
+      "contractStatus": "active",
+      "paymentStatus": "partially_paid",
+      "billingCycle": "quarterly",
+      "retainerAmount": 35000,
+      "postsTarget": 10,
+      "postsDelivered": 0,
+      "reelsTarget": 3,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "pending"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "pending"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "pending"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "pending"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "reelStages": [
+        {
+          "id": "reel_1",
+          "title": "Reel 1",
+          "track": "reel",
+          "status": "pending",
+          "assignee": "محمد اكرم"
+        },
+        {
+          "id": "reel_2",
+          "title": "Reel 2",
+          "track": "reel",
+          "status": "pending",
+          "assignee": "محمد اكرم"
+        },
+        {
+          "id": "reel_3",
+          "title": "Reel 3",
+          "track": "reel",
+          "status": "pending",
+          "assignee": "محمد اكرم"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795358354701-kapd",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-497"
+          },
+          "text": "تم استلام دفعة جزئية بمبلغ 17,500 ج.م (إنستاباي (InstaPay)) بإيصال رقم DE-RCP-202611-107 على الفاتورة DE-INV-202611-497 — المتبقي: 17,500 ج.م.",
+          "type": "payment",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-22T14:39:14.701Z"
+        },
+        {
+          "id": "act-1795357957893-mouo",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-497"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-497 بقيمة إجمالية 35,000 ج.م (باقة مخصصة — الشركات والمصانع (10 منشور • 3 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-22T14:32:37.893Z"
+        },
+        {
+          "id": "act-1795357853488-6yhs",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — الشركات والمصانع (10 منشور • 3 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-22T14:30:53.488Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "d94483bd-e96b-400c-a5a2-102b437ec07b",
+      "name": "أ / طارق",
+      "phone": "010961055864",
+      "phoneE164": "010961055864",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "Smart Vision",
+      "sector": "b2b",
+      "packageName": "باقة مخصصة — الشركات والمصانع (4 منشور • 0 ريلز)",
+      "budget": "3500 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-19T22:27:41.852Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-19",
+      "renewalDate": "2026-12-19",
+      "contractStatus": "active",
+      "paymentStatus": "pending",
+      "billingCycle": "monthly",
+      "retainerAmount": 3500,
+      "postsTarget": 4,
+      "postsDelivered": 0,
+      "reelsTarget": 0,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "in_progress",
+          "assignee": "دعاء",
+          "completedAt": "2026-11-22T15:51:02.554Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "pending",
+          "assignee": "محمد رضوان"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "pending",
+          "assignee": "محمد رضوان"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "pending",
+          "assignee": "دعاء"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795362662554-o8e",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:51:02.554Z"
+        },
+        {
+          "id": "act-1795362661587-2ul",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:51:01.587Z"
+        },
+        {
+          "id": "act-1795362660688-ekb",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:51:00.688Z"
+        },
+        {
+          "id": "act-1795362659953-zbb",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:50:59.953Z"
+        },
+        {
+          "id": "act-1795362659187-59t",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:50:59.187Z"
+        },
+        {
+          "id": "act-1795362657872-op8",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:50:57.872Z"
+        },
+        {
+          "id": "act-1795343190523-s6q",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-22T10:26:30.523Z"
+        },
+        {
+          "id": "act-1795263120383-ga8",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T12:12:00.383Z"
+        },
+        {
+          "id": "act-1795263119367-r9a",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T12:11:59.367Z"
+        },
+        {
+          "id": "act-1795263118117-37y",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T12:11:58.117Z"
+        },
+        {
+          "id": "act-1795263058735-045u",
+          "meta": {
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ «Client Approve» إلى «قيد التنفيذ» بواسطة دعاء.",
+          "type": "workflow",
+          "author": "دعاء",
+          "createdAt": "2026-11-21T12:10:58.735Z"
+        },
+        {
+          "id": "act-1795263057500-lpdt",
+          "meta": {
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ «Client Approve» إلى «قيد الانتظار» بواسطة دعاء.",
+          "type": "workflow",
+          "author": "دعاء",
+          "createdAt": "2026-11-21T12:10:57.500Z"
+        },
+        {
+          "id": "act-1795263055619-pedn",
+          "meta": {
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ «Client Approve» إلى «مكتملة» بواسطة دعاء.",
+          "type": "workflow",
+          "author": "دعاء",
+          "createdAt": "2026-11-21T12:10:55.619Z"
+        },
+        {
+          "id": "act-1795263049798-nou",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "دعاء",
+          "createdAt": "2026-11-21T12:10:49.798Z"
+        },
+        {
+          "id": "act-1795262437493-17qf",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-707"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-707 بقيمة إجمالية 3,500 ج.م (باقة مخصصة — الشركات والمصانع (4 منشور • 0 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-21T12:00:37.493Z"
+        },
+        {
+          "id": "act-1795262069866-afd0",
+          "meta": {
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ «Visual Design» إلى «قيد الانتظار».",
+          "type": "workflow",
+          "author": "فريق التنفيذ",
+          "createdAt": "2026-11-21T11:54:29.866Z"
+        },
+        {
+          "id": "act-1795262066465-o4sl",
+          "meta": {
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ «Visual Design» إلى «مكتملة».",
+          "type": "workflow",
+          "author": "فريق التنفيذ",
+          "createdAt": "2026-11-21T11:54:26.465Z"
+        },
+        {
+          "id": "act-1795262065497-uoj2",
+          "meta": {
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ «Visual Design» إلى «قيد التنفيذ».",
+          "type": "workflow",
+          "author": "فريق التنفيذ",
+          "createdAt": "2026-11-21T11:54:25.497Z"
+        },
+        {
+          "id": "act-1795262063714-p997",
+          "meta": {
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ «Client Approve» إلى «قيد الانتظار».",
+          "type": "workflow",
+          "author": "فريق التنفيذ",
+          "createdAt": "2026-11-21T11:54:23.714Z"
+        },
+        {
+          "id": "act-1795262062666-c019",
+          "meta": {
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ «Client Approve» إلى «مكتملة».",
+          "type": "workflow",
+          "author": "فريق التنفيذ",
+          "createdAt": "2026-11-21T11:54:22.666Z"
+        },
+        {
+          "id": "act-1795262055514-a4nl",
+          "meta": {
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ «Client Approve» إلى «قيد التنفيذ».",
+          "type": "workflow",
+          "author": "فريق التنفيذ",
+          "createdAt": "2026-11-21T11:54:15.514Z"
+        },
+        {
+          "id": "act-1795262036716-qylk",
+          "meta": {
+            "stageTitle": "Content Creator"
+          },
+          "text": "تم إسناد مرحلة «Content Creator» إلى دعاء.",
+          "type": "workflow",
+          "author": "إدارة التشغيل",
+          "createdAt": "2026-11-21T11:53:56.716Z"
+        },
+        {
+          "id": "act-1795262023831-k7b",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T11:53:43.831Z"
+        },
+        {
+          "id": "act-1795262022665-nsa",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T11:53:42.665Z"
+        },
+        {
+          "id": "act-1795127261852-x80g",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — الشركات والمصانع (4 منشور • 0 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-19T22:27:41.852Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "d836aa94-5940-4802-adde-01eb0aad44dc",
+      "name": "آ / احمد حسن",
+      "phone": "01020403362",
+      "phoneE164": "+201020403362",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "Acton",
+      "sector": "b2c",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)",
+      "budget": "3500 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-19T22:25:17.314Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-01",
+      "renewalDate": "2026-11-30",
+      "contractStatus": "active",
+      "paymentStatus": "pending",
+      "billingCycle": "monthly",
+      "retainerAmount": 3500,
+      "postsTarget": 4,
+      "postsDelivered": 0,
+      "reelsTarget": 1,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:54:41.323Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:54:43.622Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:54:45.372Z"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "completed",
+          "completedAt": "2026-11-23T14:43:51.222Z"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "completed",
+          "completedAt": "2026-11-23T14:44:00.905Z"
+        }
+      ],
+      "reelStages": [
+        {
+          "id": "reel_1",
+          "title": "Reel 1",
+          "track": "reel",
+          "status": "in_progress",
+          "assignee": "محمد اكرم",
+          "completedAt": "2026-11-19T22:54:55.588Z"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795445040905-5mr",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T14:44:00.905Z"
+        },
+        {
+          "id": "act-1795445039006-2z0",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T14:43:59.006Z"
+        },
+        {
+          "id": "act-1795445031222-amn",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T14:43:51.222Z"
+        },
+        {
+          "id": "act-1795362887355-a9v",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:47.355Z"
+        },
+        {
+          "id": "act-1795362885372-b2c",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:45.372Z"
+        },
+        {
+          "id": "act-1795362884672-f9u",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:44.672Z"
+        },
+        {
+          "id": "act-1795362883622-mnj",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:43.622Z"
+        },
+        {
+          "id": "act-1795362882356-3am",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:42.356Z"
+        },
+        {
+          "id": "act-1795362881323-fxq",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:41.323Z"
+        },
+        {
+          "id": "act-1795362879473-zz1",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:39.473Z"
+        },
+        {
+          "id": "act-1795267600076-15zr",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-044"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-044 بقيمة إجمالية 3,500 ج.م (باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-21T13:26:40.076Z"
+        },
+        {
+          "id": "act-1795264044574-kkv",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق المونتاج (Reels)",
+          "createdAt": "2026-11-21T12:27:24.574Z"
+        },
+        {
+          "id": "act-1795264043425-mnj",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق المونتاج (Reels)",
+          "createdAt": "2026-11-21T12:27:23.425Z"
+        },
+        {
+          "id": "act-1795264042707-gl2",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق المونتاج (Reels)",
+          "createdAt": "2026-11-21T12:27:22.707Z"
+        },
+        {
+          "id": "act-1795263575430-hum",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:35.430Z"
+        },
+        {
+          "id": "act-1795263573998-c7d",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:33.998Z"
+        },
+        {
+          "id": "act-1795263572898-7gv",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:32.898Z"
+        },
+        {
+          "id": "act-1795263570432-2d4",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:30.432Z"
+        },
+        {
+          "id": "act-1795263568280-s0i",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:28.280Z"
+        },
+        {
+          "id": "act-1795263567365-i8y",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:27.365Z"
+        },
+        {
+          "id": "act-1795263566697-l2d",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:26.697Z"
+        },
+        {
+          "id": "act-1795263566182-r1k",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:26.182Z"
+        },
+        {
+          "id": "act-1795263564464-bhu",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:24.464Z"
+        },
+        {
+          "id": "act-1795263563547-04j",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:23.547Z"
+        },
+        {
+          "id": "act-1795263562014-r54",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:22.014Z"
+        },
+        {
+          "id": "act-1795263560614-hjp",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-21T12:19:20.614Z"
+        },
+        {
+          "id": "act-1795128895588-jpt",
+          "meta": {
+            "toStatus": "قيد التنفيذ",
+            "stageTitle": "ريلز 1"
+          },
+          "text": "تحديث تايم لاين الريلز (ريلز 1) إلى «قيد التنفيذ» (المكتمل: 0/1).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:54:55.588Z"
+        },
+        {
+          "id": "act-1795128893955-pa6j",
+          "text": "تحديث رصيد المخرجات المسلمة (الريلز: 0).",
+          "type": "deliverable",
+          "author": "فريق المحتوى",
+          "createdAt": "2026-11-19T22:54:53.955Z"
+        },
+        {
+          "id": "act-1795128893955-t03",
+          "meta": {
+            "toStatus": "في الانتظار",
+            "stageTitle": "ريلز 1"
+          },
+          "text": "تحديث تايم لاين الريلز (ريلز 1) إلى «في الانتظار» (المكتمل: 0/1).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:54:53.955Z"
+        },
+        {
+          "id": "act-1795128892172-23cj",
+          "text": "تحديث رصيد المخرجات المسلمة (الريلز: 1).",
+          "type": "deliverable",
+          "author": "فريق المحتوى",
+          "createdAt": "2026-11-19T22:54:52.172Z"
+        },
+        {
+          "id": "act-1795128892172-ekf",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "ريلز 1"
+          },
+          "text": "تحديث تايم لاين الريلز (ريلز 1) إلى «مكتمل» (المكتمل: 1/1).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:54:52.172Z"
+        },
+        {
+          "id": "act-1795128885701-lhd",
+          "meta": {
+            "toStatus": "قيد التنفيذ",
+            "stageTitle": "ريلز 1"
+          },
+          "text": "تحديث تايم لاين الريلز (ريلز 1) إلى «قيد التنفيذ» (المكتمل: 0/1).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:54:45.701Z"
+        },
+        {
+          "id": "act-1795127117314-kepf",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-19T22:25:17.314Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "f3180626-f5f9-4bf7-bed6-97949b0f882e",
+      "name": "أ / احمد الطيب",
+      "phone": "01000908081",
+      "phoneE164": "+201000908081",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "Yoken",
+      "sector": "medical",
+      "packageName": "باقة مخصصة — القطاع الطبي (10 منشور • 2 ريلز)",
+      "budget": "10000 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-19T22:22:11.139Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-19",
+      "renewalDate": "2026-12-19",
+      "contractStatus": "active",
+      "paymentStatus": "paid",
+      "billingCycle": "monthly",
+      "retainerAmount": 10000,
+      "postsTarget": 10,
+      "postsDelivered": 0,
+      "reelsTarget": 2,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "in_progress",
+          "completedAt": "2026-11-22T15:54:52.455Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "pending"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "pending"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "pending"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "reelStages": [
+        {
+          "id": "reel_1",
+          "title": "Reel 1",
+          "track": "reel",
+          "status": "pending",
+          "assignee": "محمد اكرم"
+        },
+        {
+          "id": "reel_2",
+          "title": "Reel 2",
+          "track": "reel",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795362892455-nmv",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:54:52.455Z"
+        },
+        {
+          "id": "note-1795267454549",
+          "text": "تم تحصيل الفاتورة DE-INV-202611-882 بقيمة 15,000 ج.م وتم إيداع 5,000 ج.م في محفظة الإعلانات الممولة (الرصيد المتاح: 5,000 ج.م).",
+          "type": "payment",
+          "createdAt": "2026-11-21T13:24:14.549Z"
+        },
+        {
+          "id": "act-1795267394791-aauz",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-882"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-882 بقيمة إجمالية 10,000 ج.م (باقة مخصصة — القطاع الطبي (10 منشور • 2 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-21T13:23:14.791Z"
+        },
+        {
+          "id": "act-1795126931139-vpyy",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — القطاع الطبي (10 منشور • 2 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-19T22:22:11.139Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 5000,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 5000,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "5aaa47a0-5d76-44cd-9c82-3c6953e5c08a",
+      "name": "د / ايمن البنداري",
+      "phone": "01222313437",
+      "phoneE164": "+201222313437",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "IPT Center",
+      "sector": "medical",
+      "packageName": "باقة مخصصة — القطاع الطبي (8 منشور • 8 ريلز)",
+      "budget": "21000 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-19T22:18:49.666Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-19",
+      "renewalDate": "2026-12-19",
+      "contractStatus": "active",
+      "paymentStatus": "pending",
+      "billingCycle": "monthly",
+      "retainerAmount": 21000,
+      "postsTarget": 8,
+      "postsDelivered": 0,
+      "reelsTarget": 8,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:55:15.772Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:55:17.788Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:55:19.470Z"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "in_progress",
+          "completedAt": "2026-11-22T15:55:20.971Z"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795362920971-365",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:20.971Z"
+        },
+        {
+          "id": "act-1795362919470-rb0",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:19.470Z"
+        },
+        {
+          "id": "act-1795362918655-98l",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:18.655Z"
+        },
+        {
+          "id": "act-1795362917788-alo",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:17.788Z"
+        },
+        {
+          "id": "act-1795362916588-nft",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:16.588Z"
+        },
+        {
+          "id": "act-1795362915772-v5c",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:15.772Z"
+        },
+        {
+          "id": "act-1795362913438-o31",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:13.438Z"
+        },
+        {
+          "id": "act-1795267493114-y8zx",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-508"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-508 بقيمة إجمالية 21,000 ج.م (باقة مخصصة — القطاع الطبي (8 منشور • 8 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-21T13:24:53.114Z"
+        },
+        {
+          "id": "act-1795126729666-83sf",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — القطاع الطبي (8 منشور • 8 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-19T22:18:49.666Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "39b4a277-7485-4b3f-b4c6-b7023c2a44f2",
+      "name": "آ / احمد",
+      "phone": "01061544747",
+      "phoneE164": "+201061544747",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "معمار لاشين",
+      "sector": "b2c",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (8 منشور • 0 ريلز)",
+      "budget": "6000 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-19T22:14:41.902Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-19",
+      "renewalDate": "2026-12-19",
+      "contractStatus": "active",
+      "paymentStatus": "paid",
+      "billingCycle": "monthly",
+      "retainerAmount": 6000,
+      "postsTarget": 8,
+      "postsDelivered": 0,
+      "reelsTarget": 0,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:55:25.621Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:55:27.121Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:55:28.797Z"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:55:31.487Z"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "in_progress",
+          "completedAt": "2026-11-22T15:55:33.453Z"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795362933453-394",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:33.453Z"
+        },
+        {
+          "id": "act-1795362931487-snw",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:31.487Z"
+        },
+        {
+          "id": "act-1795362929804-o2k",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:29.804Z"
+        },
+        {
+          "id": "act-1795362928797-4qc",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:28.797Z"
+        },
+        {
+          "id": "act-1795362928055-g1b",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:28.055Z"
+        },
+        {
+          "id": "act-1795362927121-yhn",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:27.121Z"
+        },
+        {
+          "id": "act-1795362926438-dm0",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:26.438Z"
+        },
+        {
+          "id": "act-1795362925621-3y6",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:25.621Z"
+        },
+        {
+          "id": "act-1795362924771-zeq",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:55:24.771Z"
+        },
+        {
+          "id": "note-1795268236968",
+          "text": "تم تحصيل الفاتورة DE-INV-202611-442 بقيمة 6,000 ج.م.",
+          "type": "payment",
+          "createdAt": "2026-11-21T13:37:16.968Z"
+        },
+        {
+          "id": "act-1795267642576-x0sy",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-442"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-442 بقيمة إجمالية 6,000 ج.م (باقة مخصصة — التجزئة والمتاجر (8 منشور • 0 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-21T13:27:22.576Z"
+        },
+        {
+          "id": "act-1795126481902-xyfm",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — التجزئة والمتاجر (8 منشور • 0 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-19T22:14:41.902Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "2efc809c-1c71-45d6-a5b9-374ce7767090",
+      "name": "أ / احمد حسن",
+      "phone": "01115641115",
+      "phoneE164": "+201115641115",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "hamburg",
+      "sector": "b2c",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (12 منشور • 1 ريلز)",
+      "budget": "9000 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-19T22:10:50.781Z",
+      "status": "closed",
+      "contractStartDate": "2026-12-01",
+      "renewalDate": "2026-12-01",
+      "contractStatus": "active",
+      "paymentStatus": "pending",
+      "billingCycle": "monthly",
+      "retainerAmount": 9000,
+      "postsTarget": 12,
+      "postsDelivered": 0,
+      "reelsTarget": 1,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-22T15:24:13.456Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "in_progress",
+          "completedAt": "2026-11-22T15:24:15.608Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "pending"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "pending"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "reelStages": [
+        {
+          "id": "reel_1",
+          "title": "Reel 1",
+          "track": "reel",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795361055608-mr6",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:24:15.608Z"
+        },
+        {
+          "id": "act-1795361053456-7uq",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:24:13.456Z"
+        },
+        {
+          "id": "act-1795361052134-mtw",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:24:12.134Z"
+        },
+        {
+          "id": "act-1795361011461-2fls",
+          "meta": {
+            "toStatus": "قيد التحصيل",
+            "fromStatus": "مدفوع بالكامل",
+            "fieldChanged": "paymentStatus"
+          },
+          "text": "تحديث حالة السداد المالي من «مدفوع بالكامل» إلى «قيد التحصيل».",
+          "type": "payment",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-22T15:23:31.461Z"
+        },
+        {
+          "id": "act-1795361011461-thjk",
+          "meta": {
+            "cycleRecord": {
+              "id": "cycle-1795361011461-ni4k",
+              "endDate": "2026-12-19",
+              "closedAt": "2026-11-22T15:23:31.461Z",
+              "startDate": "2026-11-19",
+              "cycleLabel": "نوفمبر 2026",
+              "packageName": "باقة مخصصة — التجزئة والمتاجر (12 منشور • 1 ريلز)",
+              "postsTarget": 12,
+              "reelsTarget": 1,
+              "invoiceNumber": "DE-INV-202611-090",
+              "paymentStatus": "paid",
+              "storiesTarget": 0,
+              "postsDelivered": 0,
+              "reelsDelivered": 0,
+              "retainerAmount": 9000,
+              "storiesDelivered": 0,
+              "workflowTotalStages": 5,
+              "workflowCompletedStages": 5,
+              "adCreditBalanceCarriedOver": 0,
+              "deliverablesCompletionRate": 0
+            },
+            "fieldChanged": "billingCycleClose"
+          },
+          "text": "إغلاق دورة «نوفمبر 2026» (إنجاز المخرجات: 0/13 بنسبة 0% • مراحل العمل: 5/5 • رصيد إعلاني مرحّل: 0 ج.م) وبدء دورة جديدة من 2026-12-01 حتى 2026-12-01.",
+          "type": "workflow",
+          "author": "إدارة التشغيل والمالية",
+          "createdAt": "2026-11-22T15:23:31.461Z"
+        },
+        {
+          "id": "note-1795268149128",
+          "text": "تم تحصيل الفاتورة DE-INV-202611-090 بقيمة 9,000 ج.م.",
+          "type": "payment",
+          "createdAt": "2026-11-21T13:35:49.128Z"
+        },
+        {
+          "id": "act-1795268117227-ckmz",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-090"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-090 بقيمة إجمالية 9,000 ج.م (باقة مخصصة — التجزئة والمتاجر (12 منشور • 1 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-21T13:35:17.227Z"
+        },
+        {
+          "id": "act-1795267963939-0rn",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:43.939Z"
+        },
+        {
+          "id": "act-1795267962130-il8",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:42.130Z"
+        },
+        {
+          "id": "act-1795267953617-jun",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:33.617Z"
+        },
+        {
+          "id": "act-1795267951094-4fl",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:31.094Z"
+        },
+        {
+          "id": "act-1795267947173-otq",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:27.173Z"
+        },
+        {
+          "id": "act-1795267943048-di8",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:23.048Z"
+        },
+        {
+          "id": "act-1795267941429-t6x",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:21.429Z"
+        },
+        {
+          "id": "act-1795267939991-08q",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:19.991Z"
+        },
+        {
+          "id": "act-1795267939313-4l0",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:19.313Z"
+        },
+        {
+          "id": "act-1795267938149-b1x",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "محمد رضوان",
+          "createdAt": "2026-11-21T13:32:18.149Z"
+        },
+        {
+          "id": "act-1795126500884-b6m",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:15:00.884Z"
+        },
+        {
+          "id": "act-1795126499750-cq1",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:14:59.750Z"
+        },
+        {
+          "id": "act-1795126496374-c79",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:14:56.374Z"
+        },
+        {
+          "id": "act-1795126250781-tu7f",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — التجزئة والمتاجر (12 منشور • 1 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-19T22:10:50.781Z"
+        }
+      ],
+      "cycleHistory": [
+        {
+          "id": "cycle-1795361011461-ni4k",
+          "endDate": "2026-12-19",
+          "closedAt": "2026-11-22T15:23:31.461Z",
+          "startDate": "2026-11-19",
+          "cycleLabel": "نوفمبر 2026",
+          "packageName": "باقة مخصصة — التجزئة والمتاجر (12 منشور • 1 ريلز)",
+          "postsTarget": 12,
+          "reelsTarget": 1,
+          "invoiceNumber": "DE-INV-202611-090",
+          "paymentStatus": "paid",
+          "storiesTarget": 0,
+          "postsDelivered": 0,
+          "reelsDelivered": 0,
+          "retainerAmount": 9000,
+          "storiesDelivered": 0,
+          "workflowTotalStages": 5,
+          "workflowCompletedStages": 5,
+          "adCreditBalanceCarriedOver": 0,
+          "deliverablesCompletionRate": 0
+        }
+      ],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "0e90983a-39f6-4603-b7dd-dcf4ba9fe449",
+      "name": "م / اسلام",
+      "phone": "01029990602",
+      "phoneE164": "+201029990602",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "فريست كوك",
+      "sector": "b2c",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (8 منشور • 1 ريلز)",
+      "budget": "٦٠٠٠ ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-19T12:21:55.612Z",
+      "status": "closed",
+      "contractStartDate": "2026-12-01",
+      "renewalDate": "2026-12-31",
+      "contractStatus": "active",
+      "paymentStatus": "pending",
+      "billingCycle": "monthly",
+      "retainerAmount": 6000,
+      "postsTarget": 8,
+      "postsDelivered": 0,
+      "reelsTarget": 1,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-23T15:35:59.306Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "completed",
+          "completedAt": "2026-11-23T15:36:01.206Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "completed",
+          "completedAt": "2026-11-23T15:36:02.690Z"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "completed",
+          "completedAt": "2026-11-23T15:36:04.990Z"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "reelStages": [
+        {
+          "id": "reel_1",
+          "title": "Reel 1",
+          "track": "reel",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795448164990-jfe",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:36:04.990Z"
+        },
+        {
+          "id": "act-1795448163923-uqy",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:36:03.923Z"
+        },
+        {
+          "id": "act-1795448162690-ypl",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:36:02.690Z"
+        },
+        {
+          "id": "act-1795448162040-4m6",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:36:02.040Z"
+        },
+        {
+          "id": "act-1795448161206-fzp",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:36:01.206Z"
+        },
+        {
+          "id": "act-1795448160273-o1c",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:36:00.273Z"
+        },
+        {
+          "id": "act-1795448159306-nky",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:35:59.306Z"
+        },
+        {
+          "id": "act-1795448158390-kzo",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:35:58.390Z"
+        },
+        {
+          "id": "act-1795448130454-cvkr",
+          "meta": {
+            "cycleRecord": {
+              "id": "cycle-1795448130454-mab5",
+              "endDate": "2026-12-19",
+              "closedAt": "2026-11-23T15:35:30.454Z",
+              "startDate": "2026-11-19",
+              "cycleLabel": "دورة شهر نوفمبر 2026",
+              "packageName": "باقة مخصصة — التجزئة والمتاجر (8 منشور • 1 ريلز)",
+              "postsTarget": 8,
+              "reelsTarget": 1,
+              "invoiceNumber": "DE-INV-202611-449",
+              "paymentStatus": "pending",
+              "storiesTarget": 0,
+              "postsDelivered": 0,
+              "reelsDelivered": 0,
+              "retainerAmount": 6000,
+              "storiesDelivered": 0,
+              "workflowTotalStages": 5,
+              "workflowCompletedStages": 5,
+              "adCreditBalanceCarriedOver": 0,
+              "deliverablesCompletionRate": 0
+            },
+            "fieldChanged": "billingCycleClose"
+          },
+          "text": "إغلاق «دورة شهر نوفمبر 2026» (إنجاز المخرجات: 0/9 بنسبة 0% • مراحل العمل: 5/5 • رصيد إعلاني مرحّل: 0 ج.م) وبدء «دورة شهر ديسمبر 2026» من 2026-12-01 حتى 2026-12-31.",
+          "type": "workflow",
+          "author": "إدارة التشغيل والمالية",
+          "createdAt": "2026-11-23T15:35:30.454Z"
+        },
+        {
+          "id": "act-1795448086357-m1z",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:34:46.357Z"
+        },
+        {
+          "id": "act-1795448084890-aor",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-23T15:34:44.890Z"
+        },
+        {
+          "id": "act-1795360804579-1x8",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-22T15:20:04.579Z"
+        },
+        {
+          "id": "act-1795097205842-hp2b",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-449"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-449 بقيمة إجمالية 14,000 ج.م (باقة مخصصة — التجزئة والمتاجر (8 منشور • 1 ريلز)) تتضمن رصيد إعلاني 8,000 ج.م.",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-19T14:06:45.842Z"
+        },
+        {
+          "id": "act-1795090939079-e77",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T12:22:19.079Z"
+        },
+        {
+          "id": "act-1795090936979-v5j",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T12:22:16.979Z"
+        },
+        {
+          "id": "act-1795090935996-sb4",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T12:22:15.996Z"
+        },
+        {
+          "id": "act-1795090935147-l6a",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T12:22:15.147Z"
+        },
+        {
+          "id": "act-1795090934362-5cl",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T12:22:14.362Z"
+        },
+        {
+          "id": "act-1795090933413-ooz",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T12:22:13.413Z"
+        },
+        {
+          "id": "act-1795090931313-wu7",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T12:22:11.313Z"
+        },
+        {
+          "id": "act-1795090915612-ezaj",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — التجزئة والمتاجر (8 منشور • 1 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-19T12:21:55.612Z"
+        }
+      ],
+      "cycleHistory": [
+        {
+          "id": "cycle-1795448130454-mab5",
+          "endDate": "2026-12-19",
+          "closedAt": "2026-11-23T15:35:30.454Z",
+          "startDate": "2026-11-19",
+          "cycleLabel": "دورة شهر نوفمبر 2026",
+          "packageName": "باقة مخصصة — التجزئة والمتاجر (8 منشور • 1 ريلز)",
+          "postsTarget": 8,
+          "reelsTarget": 1,
+          "invoiceNumber": "DE-INV-202611-449",
+          "paymentStatus": "pending",
+          "storiesTarget": 0,
+          "postsDelivered": 0,
+          "reelsDelivered": 0,
+          "retainerAmount": 6000,
+          "storiesDelivered": 0,
+          "workflowTotalStages": 5,
+          "workflowCompletedStages": 5,
+          "adCreditBalanceCarriedOver": 0,
+          "deliverablesCompletionRate": 0
+        }
+      ],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 8000,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "e81fdd96-ae22-47e0-8872-c11c27bb1c45",
+      "name": "د / اشرف محروس",
+      "phone": "01283544999",
+      "phoneE164": "+201283544999",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "sector": "medical",
+      "packageName": "باقة مخصصة — القطاع الطبي (4 منشور • 4 ريلز)",
+      "budget": "8000 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-17T20:39:07.235Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-17",
+      "renewalDate": "2026-12-17",
+      "contractStatus": "active",
+      "paymentStatus": "pending",
+      "billingCycle": "monthly",
+      "retainerAmount": 8000,
+      "postsTarget": 4,
+      "postsDelivered": 0,
+      "reelsTarget": 4,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "in_progress",
+          "completedAt": "2026-11-17T20:39:44.873Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "pending"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "pending"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "pending"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1794948030912-ncvd",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-145"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-145 بقيمة إجمالية 12,500 ج.م (باقة مخصصة — القطاع الطبي (4 منشور • 4 ريلز)) تتضمن رصيد إعلاني 4,500 ج.م.",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T20:40:30.912Z"
+        },
+        {
+          "id": "act-1794947984873-z8cr",
+          "meta": {
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ «Content Creator» إلى «قيد التنفيذ».",
+          "type": "workflow",
+          "author": "فريق التنفيذ",
+          "createdAt": "2026-11-17T20:39:44.873Z"
+        },
+        {
+          "id": "act-1794947967743-x0ih",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fromStatus": "جديد (لم يتم الرد)",
+            "fieldChanged": "status"
+          },
+          "text": "تم تغيير حالة الطلب من «جديد (لم يتم الرد)» إلى «تم التعاقد» وتحويل الحساب لقسم العملاء والتعاقدات.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-17T20:39:27.743Z"
+        },
+        {
+          "id": "act-1794947947235-6w8r",
+          "meta": {
+            "toStatus": "جديد (لم يتم الرد)",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل طلب جديد للعميل (د / اشرف محروس) بخصوص باقة: باقة مخصصة — القطاع الطبي (4 منشور • 4 ريلز).",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-17T20:39:07.235Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 4500,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "88a16469-21c8-4fd8-a90f-802d6ab76175",
+      "name": "م / احمد",
+      "phone": "01023404006",
+      "phoneE164": "+201023404006",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "JM Pack",
+      "sector": "b2b",
+      "packageName": "باقة مخصصة — الشركات والمصانع (8 منشور • 4 ريلز)",
+      "budget": "11500 ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-17T20:22:23.139Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-17",
+      "renewalDate": "2026-12-17",
+      "contractStatus": "active",
+      "paymentStatus": "partially_paid",
+      "billingCycle": "monthly",
+      "retainerAmount": 11500,
+      "postsTarget": 8,
+      "postsDelivered": 0,
+      "reelsTarget": 4,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-17T20:22:39.612Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "completed",
+          "completedAt": "2026-11-17T20:22:41.695Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "completed",
+          "completedAt": "2026-11-17T20:22:44.061Z"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "in_progress",
+          "completedAt": "2026-11-19T22:06:20.713Z"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "adWalletRequests": [
+        {
+          "id": "adreq-1795267031673-55gj",
+          "type": "spend",
+          "amount": 7500,
+          "status": "approved",
+          "platform": "Meta Ads (Facebook & Instagram)",
+          "reviewedAt": "2026-11-21T13:19:12.650Z",
+          "reviewedBy": "المحاسب / الإدارة المالية",
+          "requestedAt": "2026-11-21T13:17:11.673Z",
+          "requestedBy": "دعاء"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "act-1795267299233-99yz",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-175"
+          },
+          "text": "تم استلام دفعة جزئية بمبلغ 10,000 ج.م (إنستاباي (InstaPay)) بإيصال رقم DE-RCP-202611-101 على الفاتورة DE-INV-202611-175 — المتبقي: 1,500 ج.م.",
+          "type": "payment",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-21T13:21:39.233Z"
+        },
+        {
+          "id": "act-1795267152650-057l",
+          "text": "✅ [صرف إعلاني - Meta Ads (Facebook & Instagram)] وافق المحاسب (المحاسب / الإدارة المالية) على خصم 7,500 ج.م من الرصيد الإعلاني (مقدم من دعاء). الرصيد المتبقي: 2,500 ج.م.",
+          "type": "update",
+          "author": "المحاسب / الإدارة المالية",
+          "createdAt": "2026-11-21T13:19:12.650Z"
+        },
+        {
+          "id": "act-1795267031673-mcx2",
+          "text": "⏳ سجّل دعاء مصروف إعلاني بمبلغ 7,500 ج.م على (Meta Ads (Facebook & Instagram)) — بانتظار موافقة المحاسب للخصم من الرصيد الإعلاني.",
+          "type": "update",
+          "author": "دعاء",
+          "createdAt": "2026-11-21T13:17:11.673Z"
+        },
+        {
+          "id": "act-1795125980713-g5y",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:06:20.713Z"
+        },
+        {
+          "id": "act-1795125979209-w0i",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:06:19.209Z"
+        },
+        {
+          "id": "act-1795125973914-ol2",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:06:13.914Z"
+        },
+        {
+          "id": "act-1794947474462-up16",
+          "meta": {
+            "toStatus": "قيد التحصيل",
+            "fromStatus": "دفعة مقدمة 50%",
+            "fieldChanged": "paymentStatus"
+          },
+          "text": "تحديث حالة السداد المالي من «دفعة مقدمة 50%» إلى «قيد التحصيل».",
+          "type": "payment",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T20:31:14.462Z"
+        },
+        {
+          "id": "act-1794947474462-n5zt",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-175"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-175 بقيمة إجمالية 11,500 ج.م (باقة مخصصة — الشركات والمصانع (8 منشور • 4 ريلز)).",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T20:31:14.462Z"
+        },
+        {
+          "id": "act-1794947114636-vf31",
+          "meta": {
+            "toStatus": "دفعة مقدمة 50%",
+            "fromStatus": "مدفوع بالكامل",
+            "fieldChanged": "paymentStatus"
+          },
+          "text": "تحديث حالة السداد المالي من «مدفوع بالكامل» إلى «دفعة مقدمة 50%».",
+          "type": "payment",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T20:25:14.636Z"
+        },
+        {
+          "id": "note-1794947099880",
+          "text": "💵 تم تأكيد تحصيل الفاتورة رسمياً وإيداع مبلغ 10,000 ج.م في الرصيد الإعلاني للعميل. (الرصيد المتاح الحالي: 10,000 ج.م).",
+          "type": "payment",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T20:24:59.880Z"
+        },
+        {
+          "id": "act-1794946968612-rla",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:48.612Z"
+        },
+        {
+          "id": "act-1794946966911-kzy",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Publish"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Publish\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:46.911Z"
+        },
+        {
+          "id": "act-1794946965928-qry",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:45.928Z"
+        },
+        {
+          "id": "act-1794946964978-fwi",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:44.978Z"
+        },
+        {
+          "id": "act-1794946964061-8lp",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:44.061Z"
+        },
+        {
+          "id": "act-1794946962829-q6k",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:42.829Z"
+        },
+        {
+          "id": "act-1794946961695-cqv",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:41.695Z"
+        },
+        {
+          "id": "act-1794946960695-enm",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:40.695Z"
+        },
+        {
+          "id": "act-1794946959612-q7h",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:39.612Z"
+        },
+        {
+          "id": "act-1794946958062-4bb",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:38.062Z"
+        },
+        {
+          "id": "act-1794946943139-wzdu",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — الشركات والمصانع (8 منشور • 4 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-17T20:22:23.139Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 2500,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 10000,
+      "adCreditSpentTotal": 7500
+    },
+    {
+      "id": "375c1f3d-eda1-4490-82ae-5e96192e6c86",
+      "name": "م / احمد",
+      "phone": "01023404006",
+      "phoneE164": "+201023404006",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "اليابانيه",
+      "sector": "b2b",
+      "packageName": "باقة مخصصة — الشركات والمصانع (4 منشور • 1 ريلز)",
+      "budget": "٦٬٠٠٠ ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-17T20:19:13.594Z",
+      "status": "contacted",
+      "contractStatus": "active",
+      "paymentStatus": "pending",
+      "billingCycle": "monthly",
+      "retainerAmount": 6000,
+      "postsTarget": 4,
+      "postsDelivered": 0,
+      "reelsTarget": 1,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "clientNotes": [
+        {
+          "id": "act-1794946753594-bi8w",
+          "meta": {
+            "toStatus": "قيد التواصل",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل طلب جديد للعميل (م / احمد) بخصوص باقة: باقة مخصصة — الشركات والمصانع (4 منشور • 1 ريلز).",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-17T20:19:13.594Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 0,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 0,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "09029e9e-5c15-4fa5-bb59-a589f0e37022",
+      "name": "أ / محمود",
+      "phone": "01063581555",
+      "phoneE164": "+201063581555",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "هانورا للتطوير العقاري",
+      "sector": "b2c",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)",
+      "budget": "5000 ج.م / شهرياً",
+      "notes": "يتم عمل ٤ بوستات صور متابعه اعمال",
+      "discountAmount": 0,
+      "createdAt": "2026-11-17T19:50:29.973Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-17",
+      "renewalDate": "2026-12-17",
+      "contractStatus": "active",
+      "paymentStatus": "paid",
+      "billingCycle": "monthly",
+      "retainerAmount": 5000,
+      "postsTarget": 4,
+      "postsDelivered": 0,
+      "reelsTarget": 1,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 1,
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "completed",
+          "completedAt": "2026-11-17T20:22:50.828Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "completed",
+          "completedAt": "2026-11-17T20:22:52.630Z"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "completed",
+          "completedAt": "2026-11-17T20:22:54.494Z"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "completed",
+          "completedAt": "2026-11-17T20:22:57.495Z"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "note-1795267355910",
+          "text": "تم تحصيل الفاتورة DE-INV-202611-022 بقيمة 11,000 ج.م وتم إيداع 6,000 ج.م في محفظة الإعلانات الممولة (الرصيد المتاح: 6,000 ج.م).",
+          "type": "payment",
+          "createdAt": "2026-11-21T13:22:35.910Z"
+        },
+        {
+          "id": "act-1794947459265-7dfz",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-022"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-022 بقيمة إجمالية 11,000 ج.م (باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)) تتضمن رصيد إعلاني 6,000 ج.م.",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T20:30:59.265Z"
+        },
+        {
+          "id": "act-1794946977495-p1v",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:57.495Z"
+        },
+        {
+          "id": "act-1794946975445-vva",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Client Approve"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Client Approve\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:55.445Z"
+        },
+        {
+          "id": "act-1794946974494-uc4",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:54.494Z"
+        },
+        {
+          "id": "act-1794946973628-4x2",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:53.628Z"
+        },
+        {
+          "id": "act-1794946972630-uja",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:52.630Z"
+        },
+        {
+          "id": "act-1794946972028-vi7",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:52.028Z"
+        },
+        {
+          "id": "act-1794946970828-fnh",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:50.828Z"
+        },
+        {
+          "id": "act-1794946970162-w0q",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T20:22:50.162Z"
+        },
+        {
+          "id": "act-1794945029973-iwnt",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-17T19:50:29.973Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 6000,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 6000,
+      "adCreditSpentTotal": 0
+    },
+    {
+      "id": "74bf3b9c-4361-4d58-aa99-734bfd05ebfd",
+      "name": "هيثم رزق",
+      "phone": "01115919529",
+      "phoneE164": "+201115919529",
+      "phoneCountry": "EG",
+      "visitorCountry": "CRM Manual",
+      "company": "بنجوين",
+      "sector": "b2c",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (6 منشور • 4 ريلز)",
+      "budget": "١٣٥٠٠ ج.م / شهرياً",
+      "discountAmount": 0,
+      "createdAt": "2026-11-17T18:47:22.675Z",
+      "status": "closed",
+      "contractStartDate": "2026-11-17",
+      "renewalDate": "2026-12-17",
+      "contractStatus": "active",
+      "paymentStatus": "paid",
+      "billingCycle": "monthly",
+      "retainerAmount": 13500,
+      "postsTarget": 6,
+      "postsDelivered": 0,
+      "reelsTarget": 4,
+      "reelsDelivered": 0,
+      "storiesTarget": 0,
+      "storiesDelivered": 0,
+      "currentWorkflowDay": 12,
+      "todayTaskTitle": "تصميم النسخة النهائية للمحتوى",
+      "workflowStages": [
+        {
+          "id": "content_creator",
+          "title": "Content Creator",
+          "status": "in_progress",
+          "completedAt": "2026-11-19T22:05:46.788Z"
+        },
+        {
+          "id": "visual_design",
+          "title": "Visual Design",
+          "status": "pending"
+        },
+        {
+          "id": "final_design",
+          "title": "Final Design",
+          "status": "pending"
+        },
+        {
+          "id": "client_approve",
+          "title": "Client Approve",
+          "status": "pending"
+        },
+        {
+          "id": "publish",
+          "title": "Publish",
+          "status": "pending"
+        }
+      ],
+      "clientNotes": [
+        {
+          "id": "note-1795267368126",
+          "text": "تم تحصيل الفاتورة DE-INV-202611-405 بقيمة 16,000 ج.م وتم إيداع 2,500 ج.م في محفظة الإعلانات الممولة (الرصيد المتاح: 2,500 ج.م).",
+          "type": "payment",
+          "createdAt": "2026-11-21T13:22:48.126Z"
+        },
+        {
+          "id": "act-1795125946788-l0r",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:46.788Z"
+        },
+        {
+          "id": "act-1795125945285-bd4",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:45.285Z"
+        },
+        {
+          "id": "act-1795125943754-vws",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:43.754Z"
+        },
+        {
+          "id": "act-1795125942187-u0a",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:42.187Z"
+        },
+        {
+          "id": "act-1795125940721-inj",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:40.721Z"
+        },
+        {
+          "id": "act-1795125936043-a13",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:36.043Z"
+        },
+        {
+          "id": "act-1795125934087-glc",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:34.087Z"
+        },
+        {
+          "id": "act-1795125933163-kun",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:33.163Z"
+        },
+        {
+          "id": "act-1795125926613-3hb",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:26.613Z"
+        },
+        {
+          "id": "act-1795125924977-qwn",
+          "meta": {
+            "toStatus": "جاري التنفيذ",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (جاري التنفيذ).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-19T22:05:24.977Z"
+        },
+        {
+          "id": "act-1794943015089-71a2",
+          "meta": {
+            "invoiceNumber": "DE-INV-202611-405"
+          },
+          "text": "تم إصدار فاتورة جديدة برقم DE-INV-202611-405 بقيمة إجمالية 16,000 ج.م (باقة مخصصة — التجزئة والمتاجر (6 منشور • 4 ريلز)) تتضمن رصيد إعلاني 2,500 ج.م.",
+          "type": "invoice",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T19:16:55.089Z"
+        },
+        {
+          "id": "act-1794942571165-pmog",
+          "meta": {
+            "toStatus": "قيد التحصيل",
+            "fromStatus": "مدفوع بالكامل",
+            "fieldChanged": "paymentStatus"
+          },
+          "text": "تحديث حالة السداد المالي من «مدفوع بالكامل» إلى «قيد التحصيل».",
+          "type": "payment",
+          "author": "الإدارة المالية",
+          "createdAt": "2026-11-17T19:09:31.165Z"
+        },
+        {
+          "id": "act-1794941278093-168",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Content Creator"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Content Creator\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T18:47:58.093Z"
+        },
+        {
+          "id": "act-1794941274991-5fe",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Visual Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Visual Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T18:47:54.991Z"
+        },
+        {
+          "id": "act-1794941273107-xc0",
+          "meta": {
+            "toStatus": "قيد الانتظار",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (قيد الانتظار).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T18:47:53.107Z"
+        },
+        {
+          "id": "act-1794941271691-p7r",
+          "meta": {
+            "toStatus": "مكتمل",
+            "stageTitle": "Final Design"
+          },
+          "text": "تحديث مرحلة التنفيذ \"Final Design\" إلى (مكتمل).",
+          "type": "workflow",
+          "author": "فريق التشغيل",
+          "createdAt": "2026-11-17T18:47:51.691Z"
+        },
+        {
+          "id": "act-1794941242675-iv4e",
+          "meta": {
+            "toStatus": "تم التعاقد",
+            "fieldChanged": "created"
+          },
+          "text": "تم تسجيل العميل وتأكيد التعاقد على باقة (باقة مخصصة — التجزئة والمتاجر (6 منشور • 4 ريلز)) وبدء خطة العمل.",
+          "type": "status_change",
+          "author": "إدارة الـ CRM",
+          "createdAt": "2026-11-17T18:47:22.675Z"
+        }
+      ],
+      "cycleHistory": [],
+      "adCreditBalance": 2500,
+      "pendingInvoiceAdCredit": 0,
+      "adCreditFundedTotal": 2500,
+      "adCreditSpentTotal": 0
+    }
+  ],
   "customRates": {
     "b2b": {
       "minPrice": 4000,
@@ -2812,5 +5737,585 @@
       "baseManagement": 2500
     }
   },
-  "invoices": []
+  "invoices": [
+    {
+      "id": "inv-1795357957893-5gc6",
+      "invoiceNumber": "DE-INV-202611-497",
+      "clientId": "834d48a9-422d-4f64-a8ad-c9efc940497a",
+      "clientName": "م / شريف",
+      "clientCompany": "روبو باك",
+      "clientPhone": "01019444221",
+      "sector": "b2b",
+      "issueDate": "2026-11-22",
+      "dueDate": "2027-02-28",
+      "packageName": "باقة مخصصة — الشركات والمصانع (10 منشور • 3 ريلز)",
+      "retainerAmount": 35000,
+      "adCreditAmount": 0,
+      "discountAmount": 0,
+      "grandTotal": 35000,
+      "billingCycle": "quarterly",
+      "paymentStatus": "partially_paid",
+      "paymentMethod": "إنستاباي (InstaPay)",
+      "paidAmount": 17500,
+      "payments": [
+        {
+          "id": "pay-1795358354700-xusd",
+          "date": "2026-11-22",
+          "amount": 17500,
+          "method": "instapay",
+          "createdAt": "2026-11-22T14:39:14.700Z",
+          "methodLabel": "إنستاباي (InstaPay)",
+          "receiptNumber": "DE-RCP-202611-107"
+        }
+      ],
+      "deliverables": {
+        "posts": 30,
+        "reels": 9,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-22T14:32:37.893Z"
+    },
+    {
+      "id": "inv-1795268117227-nokz",
+      "invoiceNumber": "DE-INV-202611-090",
+      "clientId": "2efc809c-1c71-45d6-a5b9-374ce7767090",
+      "clientName": "أ / احمد حسن",
+      "clientCompany": "hamburg",
+      "clientPhone": "01115641115",
+      "sector": "b2c",
+      "issueDate": "2026-11-21",
+      "dueDate": "2026-12-19",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (12 منشور • 1 ريلز)",
+      "retainerAmount": 9000,
+      "adCreditAmount": 0,
+      "discountAmount": 0,
+      "grandTotal": 9000,
+      "billingCycle": "monthly",
+      "paymentStatus": "paid",
+      "paidAt": "2026-11-21",
+      "paymentMethod": "تحويل بنكي",
+      "paidAmount": 9000,
+      "payments": [
+        {
+          "id": "pay-1795268149127-nxd",
+          "date": "2026-11-21",
+          "notes": "سداد كامل الفاتورة",
+          "amount": 9000,
+          "method": "bank_transfer",
+          "createdAt": "2026-11-21T13:35:49.127Z",
+          "methodLabel": "تحويل بنكي",
+          "receiptNumber": "DE-RCP-202611-247"
+        }
+      ],
+      "deliverables": {
+        "posts": 12,
+        "reels": 1,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-21T13:35:17.227Z"
+    },
+    {
+      "id": "inv-1795267642576-3c1w",
+      "invoiceNumber": "DE-INV-202611-442",
+      "clientId": "39b4a277-7485-4b3f-b4c6-b7023c2a44f2",
+      "clientName": "آ / احمد",
+      "clientCompany": "معمار لاشين",
+      "clientPhone": "01061544747",
+      "sector": "b2c",
+      "issueDate": "2026-11-19",
+      "dueDate": "2026-12-19",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (8 منشور • 0 ريلز)",
+      "retainerAmount": 6000,
+      "adCreditAmount": 0,
+      "discountAmount": 0,
+      "grandTotal": 6000,
+      "billingCycle": "monthly",
+      "paymentStatus": "paid",
+      "paidAt": "2026-11-21",
+      "paymentMethod": "تحويل بنكي",
+      "paidAmount": 6000,
+      "payments": [
+        {
+          "id": "pay-1795268236968-0eg",
+          "date": "2026-11-21",
+          "notes": "سداد كامل الفاتورة",
+          "amount": 6000,
+          "method": "bank_transfer",
+          "createdAt": "2026-11-21T13:37:16.968Z",
+          "methodLabel": "تحويل بنكي",
+          "receiptNumber": "DE-RCP-202611-338"
+        }
+      ],
+      "deliverables": {
+        "posts": 8,
+        "reels": 0,
+        "stories": 0
+      },
+      "createdAt": "2026-11-21T13:27:22.576Z"
+    },
+    {
+      "id": "inv-1795267600076-50ht",
+      "invoiceNumber": "DE-INV-202611-044",
+      "clientId": "d836aa94-5940-4802-adde-01eb0aad44dc",
+      "clientName": "آ / احمد حسن",
+      "clientCompany": "Acton",
+      "clientPhone": "01020403362",
+      "sector": "b2c",
+      "issueDate": "2026-11-19",
+      "dueDate": "2026-12-19",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)",
+      "retainerAmount": 3500,
+      "adCreditAmount": 0,
+      "discountAmount": 0,
+      "grandTotal": 3500,
+      "billingCycle": "monthly",
+      "paymentStatus": "pending",
+      "deliverables": {
+        "posts": 4,
+        "reels": 1,
+        "stories": 0
+      },
+      "createdAt": "2026-11-21T13:26:40.076Z"
+    },
+    {
+      "id": "inv-1795267493114-q6d6",
+      "invoiceNumber": "DE-INV-202611-508",
+      "clientId": "5aaa47a0-5d76-44cd-9c82-3c6953e5c08a",
+      "clientName": "د / ايمن البنداري",
+      "clientCompany": "IPT Center",
+      "clientPhone": "01222313437",
+      "sector": "medical",
+      "issueDate": "2026-11-21",
+      "dueDate": "2026-12-19",
+      "packageName": "باقة مخصصة — القطاع الطبي (8 منشور • 8 ريلز)",
+      "retainerAmount": 21000,
+      "adCreditAmount": 0,
+      "discountAmount": 0,
+      "grandTotal": 21000,
+      "billingCycle": "monthly",
+      "paymentStatus": "pending",
+      "deliverables": {
+        "posts": 8,
+        "reels": 8,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-21T13:24:53.114Z"
+    },
+    {
+      "id": "inv-1795267394791-kntj",
+      "invoiceNumber": "DE-INV-202611-882",
+      "clientId": "f3180626-f5f9-4bf7-bed6-97949b0f882e",
+      "clientName": "أ / احمد الطيب",
+      "clientCompany": "Yoken",
+      "clientPhone": "01000908081",
+      "sector": "medical",
+      "issueDate": "2026-11-21",
+      "dueDate": "2026-12-19",
+      "packageName": "باقة مخصصة — القطاع الطبي (10 منشور • 2 ريلز)",
+      "retainerAmount": 10000,
+      "adCreditAmount": 5000,
+      "discountAmount": 0,
+      "grandTotal": 15000,
+      "billingCycle": "monthly",
+      "paymentStatus": "paid",
+      "paidAt": "2026-11-21",
+      "paymentMethod": "تحويل بنكي",
+      "paidAmount": 15000,
+      "payments": [
+        {
+          "id": "pay-1795267454549-1fm",
+          "date": "2026-11-21",
+          "notes": "سداد كامل الفاتورة",
+          "amount": 15000,
+          "method": "bank_transfer",
+          "createdAt": "2026-11-21T13:24:14.549Z",
+          "methodLabel": "تحويل بنكي",
+          "receiptNumber": "DE-RCP-202611-313"
+        }
+      ],
+      "deliverables": {
+        "posts": 10,
+        "reels": 2,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-21T13:23:14.791Z"
+    },
+    {
+      "id": "inv-1795262437493-0mfp",
+      "invoiceNumber": "DE-INV-202611-707",
+      "clientId": "d94483bd-e96b-400c-a5a2-102b437ec07b",
+      "clientName": "أ / طارق",
+      "clientCompany": "Smart Vision",
+      "clientPhone": "010961055864",
+      "sector": "b2b",
+      "issueDate": "2026-11-19",
+      "dueDate": "2026-12-19",
+      "packageName": "باقة مخصصة — الشركات والمصانع (4 منشور • 0 ريلز)",
+      "retainerAmount": 3500,
+      "adCreditAmount": 0,
+      "discountAmount": 0,
+      "grandTotal": 3500,
+      "billingCycle": "monthly",
+      "paymentStatus": "pending",
+      "deliverables": {
+        "posts": 4,
+        "reels": 0,
+        "stories": 0
+      },
+      "createdAt": "2026-11-21T12:00:37.493Z"
+    },
+    {
+      "id": "inv-1795097205842-0yod",
+      "invoiceNumber": "DE-INV-202611-449",
+      "clientId": "0e90983a-39f6-4603-b7dd-dcf4ba9fe449",
+      "clientName": "م / اسلام",
+      "clientCompany": "فريست كوك",
+      "clientPhone": "01029990602",
+      "sector": "b2c",
+      "issueDate": "2026-11-19",
+      "dueDate": "2026-12-19",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (8 منشور • 1 ريلز)",
+      "retainerAmount": 6000,
+      "adCreditAmount": 8000,
+      "discountAmount": 0,
+      "grandTotal": 14000,
+      "billingCycle": "monthly",
+      "paymentStatus": "pending",
+      "deliverables": {
+        "posts": 8,
+        "reels": 1,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-19T14:06:45.842Z"
+    },
+    {
+      "id": "inv-1794948030912-gshk",
+      "invoiceNumber": "DE-INV-202611-145",
+      "clientId": "e81fdd96-ae22-47e0-8872-c11c27bb1c45",
+      "clientName": "د / اشرف محروس",
+      "clientPhone": "01283544999",
+      "sector": "medical",
+      "issueDate": "2026-11-17",
+      "dueDate": "2026-12-17",
+      "packageName": "باقة مخصصة — القطاع الطبي (4 منشور • 4 ريلز)",
+      "retainerAmount": 8000,
+      "adCreditAmount": 4500,
+      "discountAmount": 0,
+      "grandTotal": 12500,
+      "billingCycle": "monthly",
+      "paymentStatus": "pending",
+      "deliverables": {
+        "posts": 4,
+        "reels": 4,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-17T20:40:30.912Z"
+    },
+    {
+      "id": "inv-1794947474462-eg1u",
+      "invoiceNumber": "DE-INV-202611-175",
+      "clientId": "88a16469-21c8-4fd8-a90f-802d6ab76175",
+      "clientName": "م / احمد",
+      "clientCompany": "JM Pack",
+      "clientPhone": "01023404006",
+      "sector": "b2b",
+      "issueDate": "2026-11-17",
+      "dueDate": "2026-12-17",
+      "packageName": "باقة مخصصة — الشركات والمصانع (8 منشور • 4 ريلز)",
+      "retainerAmount": 11500,
+      "adCreditAmount": 0,
+      "discountAmount": 0,
+      "grandTotal": 11500,
+      "billingCycle": "monthly",
+      "paymentStatus": "partially_paid",
+      "paymentMethod": "إنستاباي (InstaPay)",
+      "paidAmount": 10000,
+      "payments": [
+        {
+          "id": "pay-1795267299233-7iiz",
+          "date": "2026-11-21",
+          "amount": 10000,
+          "method": "instapay",
+          "createdAt": "2026-11-21T13:21:39.232Z",
+          "methodLabel": "إنستاباي (InstaPay)",
+          "receiptNumber": "DE-RCP-202611-101"
+        }
+      ],
+      "deliverables": {
+        "posts": 8,
+        "reels": 4,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-17T20:31:14.462Z"
+    },
+    {
+      "id": "inv-1794947459264-rcqr",
+      "invoiceNumber": "DE-INV-202611-022",
+      "clientId": "09029e9e-5c15-4fa5-bb59-a589f0e37022",
+      "clientName": "أ / محمود",
+      "clientCompany": "هانورا للتطوير العقاري",
+      "clientPhone": "01063581555",
+      "sector": "b2c",
+      "issueDate": "2026-11-17",
+      "dueDate": "2026-12-17",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (4 منشور • 1 ريلز)",
+      "retainerAmount": 5000,
+      "adCreditAmount": 6000,
+      "discountAmount": 0,
+      "grandTotal": 11000,
+      "billingCycle": "monthly",
+      "paymentStatus": "paid",
+      "paidAt": "2026-11-21",
+      "paymentMethod": "تحويل بنكي",
+      "paidAmount": 11000,
+      "payments": [
+        {
+          "id": "pay-1795267355910-b8f",
+          "date": "2026-11-21",
+          "notes": "سداد كامل الفاتورة",
+          "amount": 11000,
+          "method": "bank_transfer",
+          "createdAt": "2026-11-21T13:22:35.910Z",
+          "methodLabel": "تحويل بنكي",
+          "receiptNumber": "DE-RCP-202611-315"
+        }
+      ],
+      "deliverables": {
+        "posts": 4,
+        "reels": 1,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-17T20:30:59.264Z"
+    },
+    {
+      "id": "inv-1794943015089-capb",
+      "invoiceNumber": "DE-INV-202611-405",
+      "clientId": "74bf3b9c-4361-4d58-aa99-734bfd05ebfd",
+      "clientName": "هيثم رزق",
+      "clientCompany": "بنجوين",
+      "clientPhone": "01115919529",
+      "sector": "b2c",
+      "issueDate": "2026-11-17",
+      "dueDate": "2026-12-17",
+      "packageName": "باقة مخصصة — التجزئة والمتاجر (6 منشور • 4 ريلز)",
+      "retainerAmount": 13500,
+      "adCreditAmount": 2500,
+      "discountAmount": 0,
+      "grandTotal": 16000,
+      "billingCycle": "monthly",
+      "paymentStatus": "paid",
+      "paidAt": "2026-11-21",
+      "paymentMethod": "تحويل بنكي",
+      "paidAmount": 16000,
+      "payments": [
+        {
+          "id": "pay-1795267368126-o42",
+          "date": "2026-11-21",
+          "notes": "سداد كامل الفاتورة",
+          "amount": 16000,
+          "method": "bank_transfer",
+          "createdAt": "2026-11-21T13:22:48.126Z",
+          "methodLabel": "تحويل بنكي",
+          "receiptNumber": "DE-RCP-202611-263"
+        }
+      ],
+      "deliverables": {
+        "posts": 6,
+        "reels": 4,
+        "stories": 0
+      },
+      "notes": "شكراً لثقتكم بوكالة ديجيتال إفكت. تعتبر هذه الفاتورة بياناً رسمياً معتمداً لخدمات التسويق الرقمي وإدارة الحملات المتفق عليها.",
+      "createdAt": "2026-11-17T19:16:55.089Z"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "exp-1795263773559-dhxw",
+      "date": "2026-11-05",
+      "title": "راتب عبدالوهاب",
+      "amount": 30000,
+      "category": "salaries",
+      "createdAt": "2026-11-21T12:22:53.559Z",
+      "recurring": true,
+      "paymentMethod": "محفظة إلكترونية"
+    },
+    {
+      "id": "exp-1795263730879-bvjz",
+      "date": "2026-11-05",
+      "title": "راتب علياء",
+      "amount": 8000,
+      "category": "salaries",
+      "createdAt": "2026-11-21T12:22:10.879Z",
+      "recurring": false,
+      "paymentMethod": "محفظة إلكترونية"
+    },
+    {
+      "id": "exp-1795263704141-4wgs",
+      "date": "2026-11-05",
+      "title": "راتب اكرم",
+      "amount": 12000,
+      "category": "salaries",
+      "createdAt": "2026-11-21T12:21:44.141Z",
+      "recurring": true,
+      "paymentMethod": "إنستاباي / تحويل بنكي"
+    },
+    {
+      "id": "exp-1795263684443-dhvu",
+      "date": "2026-11-05",
+      "notes": "راتب اساسي",
+      "title": "راتب رضوان",
+      "amount": 12000,
+      "category": "salaries",
+      "createdAt": "2026-11-21T12:21:24.443Z",
+      "recurring": true,
+      "paymentMethod": "إنستاباي / تحويل بنكي"
+    },
+    {
+      "id": "exp-1795263643204-x32d",
+      "date": "2026-11-05",
+      "title": "راتب دعاء",
+      "amount": 12000,
+      "category": "salaries",
+      "createdAt": "2026-11-21T12:20:43.204Z",
+      "recurring": true,
+      "paymentMethod": "إنستاباي / تحويل بنكي"
+    }
+  ],
+  "teamMembers": [
+    {
+      "id": "tm-content",
+      "name": "دعاء",
+      "active": true,
+      "username": "doaaelshwehy9gmail.com",
+      "roleTitle": "صانع محتوى / Content Creator",
+      "rolePreset": "custom",
+      "permissions": {
+        "allowedTabs": [
+          "tasks",
+          "clients",
+          "activity",
+          "inquiries"
+        ],
+        "canManageTeam": false,
+        "canAssignTasks": false,
+        "canEditClients": false,
+        "canDeleteRecords": false,
+        "canManageAdWallet": true,
+        "canViewFinancials": false,
+        "onlyAssignedTasks": false,
+        "canApproveAdWallet": false,
+        "canUpdateReelsTrack": true,
+        "allowedWorkflowStages": [
+          "content_creator",
+          "client_approve",
+          "publish"
+        ]
+      },
+      "passwordHash": "scrypt$03206721edfc1fb19331ab42b030d191$c78d33dd5aef36b92c7e17470a427894cf01f45fcfb3cd4e787559dda145c0b735b44e99e68f623c7577b68704337fe4a4d9af07f27c1cc8bd0a651db6fcf5a4"
+    },
+    {
+      "id": "tm-design",
+      "name": "فريق التصميم (Design)",
+      "active": false,
+      "roleTitle": "Visual Designer"
+    },
+    {
+      "id": "tm-video",
+      "name": "محمد اكرم",
+      "active": true,
+      "username": "akrammohamed613gmail.com",
+      "roleTitle": "Video Editor",
+      "rolePreset": "custom",
+      "permissions": {
+        "allowedTabs": [
+          "tasks",
+          "clients"
+        ],
+        "canManageTeam": false,
+        "canAssignTasks": false,
+        "canEditClients": false,
+        "canDeleteRecords": false,
+        "canViewFinancials": false,
+        "onlyAssignedTasks": true,
+        "canUpdateReelsTrack": true,
+        "allowedWorkflowStages": []
+      },
+      "passwordHash": "scrypt$003fc8e425748c074b96b149ba9ab4c9$e5685b6d4fe6f8bf9784dcb95fdf109a68077c2e5873ed8e6a75c78e456dd5d9aef420d9369c92661f0bc2e0a767a00dda956db6920965ecc8d73e44c8df2144"
+    },
+    {
+      "id": "tm-media",
+      "name": "الميديا باير (Media Buyer)",
+      "active": true,
+      "roleTitle": "Media Buyer"
+    },
+    {
+      "id": "tm-am",
+      "name": "عبدالوهاب",
+      "active": true,
+      "username": "abdo84eggmail.com",
+      "roleTitle": "محاسب",
+      "rolePreset": "custom",
+      "permissions": {
+        "allowedTabs": [
+          "clients",
+          "invoices",
+          "inquiries",
+          "expenses",
+          "analytics"
+        ],
+        "canManageTeam": false,
+        "canAssignTasks": false,
+        "canEditClients": false,
+        "canDeleteRecords": false,
+        "canManageAdWallet": true,
+        "canViewFinancials": true,
+        "onlyAssignedTasks": false,
+        "canApproveAdWallet": true,
+        "canUpdateReelsTrack": false,
+        "allowedWorkflowStages": []
+      },
+      "passwordHash": "scrypt$0bf24ede728aa7215cfaae2a6b916d49$6ff8376d41c71f0e66eaa73ed2bdcedc5eed7fa59243dec766589b2e3c375fa079a11d34c003c9b3557d9a7506b866fb48ba8bbebba128d86ea911e277d9f949"
+    },
+    {
+      "id": "tm-1795261632388-2d1",
+      "name": "محمد رضوان",
+      "active": true,
+      "username": "radwantiger2022gmail.com",
+      "createdAt": "2026-11-21T11:47:12.388Z",
+      "roleTitle": "Art Director",
+      "rolePreset": "custom",
+      "permissions": {
+        "allowedTabs": [
+          "tasks",
+          "activity",
+          "projects",
+          "clients"
+        ],
+        "canManageTeam": false,
+        "canAssignTasks": false,
+        "canEditClients": false,
+        "canDeleteRecords": false,
+        "canManageAdWallet": false,
+        "canViewFinancials": false,
+        "onlyAssignedTasks": true,
+        "canApproveAdWallet": false,
+        "canUpdateReelsTrack": false,
+        "allowedWorkflowStages": [
+          "visual_design",
+          "final_design"
+        ]
+      },
+      "passwordHash": "scrypt$3c25dd63ef0a796fd5efa2219528d3c9$a07a0e55511976de21825e8cd3e92b0f8a36c21d5b1c760b75912ca8613e6cb463835373a651c99959962ad0b50381921c96d61b9ca65e4f2fea169a6eff8323"
+    }
+  ],
+  "opsAccessCode": "DE-OPS-2026",
+  "opsAccountEmails": []
 }

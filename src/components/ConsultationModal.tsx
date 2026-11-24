@@ -549,16 +549,16 @@ Notes: ${notes.trim() || 'Looking forward to reviewing strategic growth options'
                   className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-sky-500 bg-slate-50 focus:bg-white transition-colors"
                 >
                   <option value={isAr ? '15,000 - 25,000 ج.م' : '15,000 - 25,000 EGP'}>
-                    {isAr ? '١٥,٠٠٠ - ٢٥,٠٠٠ ج.م شهرياً' : '15,000 - 25,000 EGP / month'}
+                    {isAr ? '١٥٬٠٠٠ - ٢٥٬٠٠٠ ج.م شهرياً' : '15,000 - 25,000 EGP / month'}
                   </option>
                   <option value={isAr ? '25,000 - 45,000 ج.م' : '25,000 - 45,000 EGP'}>
-                    {isAr ? '٢٥,٠٠٠ - ٤٥,٠٠٠ ج.م شهرياً (الأنسب للباقات المتكاملة)' : '25,000 - 45,000 EGP / month (Recommended)'}
+                    {isAr ? '٢٥٬٠٠٠ - ٤٥٬٠٠٠ ج.م شهرياً (الأنسب للباقات المتكاملة)' : '25,000 - 45,000 EGP / month (Recommended)'}
                   </option>
                   <option value={isAr ? '45,000 - 80,000 ج.م' : '45,000 - 80,000 EGP'}>
-                    {isAr ? '٤٥,٠٠٠ - ٨٠,٠٠٠ ج.م شهرياً (توسع وهيمنة)' : '45,000 - 80,000 EGP / month (Scale & Authority)'}
+                    {isAr ? '٤٥٬٠٠٠ - ٨٠٬٠٠٠ ج.م شهرياً (توسع وهيمنة)' : '45,000 - 80,000 EGP / month (Scale & Authority)'}
                   </option>
                   <option value={isAr ? 'أكثر من 80,000 ج.م' : 'Over 80,000 EGP'}>
-                    {isAr ? 'أكثر من ٨٠,٠٠٠ ج.م (مشاريع كبرى وتصدير)' : 'Over 80,000 EGP / month (Enterprise & Export)'}
+                    {isAr ? 'أكثر من ٨٠٬٠٠٠ ج.م (مشاريع كبرى وتصدير)' : 'Over 80,000 EGP / month (Enterprise & Export)'}
                   </option>
                 </select>
               </div>

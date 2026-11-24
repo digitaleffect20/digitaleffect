@@ -351,17 +351,40 @@ export interface AgencyTeamMember {
   createdAt?: string;
 }
 
-export type ExpenseCategory = 'salaries' | 'freelancers' | 'tools' | 'ads' | 'rent' | 'other';
+export type ExpenseCategory =
+  | 'salaries'
+  | 'freelancers'
+  | 'project_cost'
+  | 'tools'
+  | 'rent'
+  | 'admin_finance'
+  | 'ads'
+  | 'other';
+
+export type ExpenseGroup = 'payroll' | 'direct_cogs' | 'fixed_ops' | 'admin_finance';
 
 export interface AgencyExpense {
   id: string;
   title: string;
   category: ExpenseCategory;
   amount: number;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (legacy / primary date)
+  accrualMonth?: string; // YYYY-MM (شهر الاستحقاق في قائمة الأرباح والخسائر)
+  paymentDate?: string; // YYYY-MM-DD (تاريخ الدفع الفعلي للتدفق النقدي)
+  paymentStatus?: 'paid' | 'accrued_unpaid'; // مدفوع أم مستحق لم يُدفع بعد
+  vendorName?: string; // المورد / المستفيد
+  linkedClientId?: string; // العميل المرتبط (اختياري للتكلفة المباشرة)
+  linkedClientName?: string;
+  attachmentName?: string; // اسم المستند / الإيصال
+  attachmentUrl?: string; // رابط أو مرجع المستند
+  isDirectCost?: boolean; // تكلفة تنفيذ مباشرة (COGS) تُخصم قبل مجمل الربح
   paymentMethod?: string;
   recurring?: boolean;
   notes?: string;
+  voided?: boolean; // إلغاء موثق بدون مسح الأثر التاريخي
+  voidReason?: string;
+  voidedAt?: string;
+  voidedBy?: string;
   createdAt: string;
 }
 
@@ -389,13 +412,18 @@ export interface ClientInvoiceRecord {
   sector?: SectorType;
   issueDate: string; // YYYY-MM-DD
   dueDate?: string; // YYYY-MM-DD
+  serviceStartDate?: string; // YYYY-MM-DD (بداية فترة الخدمة لتوزيع الإيراد المستحق)
+  serviceEndDate?: string; // YYYY-MM-DD (نهاية فترة الخدمة)
   packageName: string;
   retainerAmount: number;
   adCreditAmount?: number;
   discountAmount?: number;
+  taxAmount?: number;
   grandTotal: number;
   billingCycle?: 'monthly' | 'quarterly' | 'annual';
   contractPeriod?: string;
+  adFundsTreatment?: 'client_passthrough' | 'agency_principal';
+  isDraft?: boolean;
   paymentStatus: 'paid' | 'pending' | 'partially_paid' | 'overdue' | 'cancelled';
   paidAt?: string;
   paymentMethod?: string; // e.g. 'تحويل بنكي', 'فودافون كاش', 'إنستاباي'
@@ -408,7 +436,63 @@ export interface ClientInvoiceRecord {
     notes?: string;
   };
   notes?: string;
+  cancellationReason?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
   createdAt: string;
+}
+
+export interface FinancialAuditEntry {
+  id: string;
+  timestamp: string;
+  actorName: string;
+  entityType: 'invoice' | 'payment' | 'expense' | 'ad_wallet' | 'month_close' | 'settings';
+  entityId: string;
+  entityLabel?: string;
+  action:
+    | 'create'
+    | 'update'
+    | 'void'
+    | 'delete_draft'
+    | 'payment_recorded'
+    | 'payment_removed'
+    | 'month_closed'
+    | 'month_reopened'
+    | 'settings_updated';
+  beforeSummary?: string;
+  afterSummary?: string;
+  reason?: string;
+}
+
+export type MonthCloseStepKey =
+  | 'revenue_review'
+  | 'collections_reconcile'
+  | 'ad_funds_reconcile'
+  | 'expenses_accruals'
+  | 'client_profitability'
+  | 'monthly_report'
+  | 'approve_and_lock';
+
+export interface MonthlyCloseRecord {
+  monthKey: string; // YYYY-MM
+  status: 'open' | 'closed';
+  steps: Record<MonthCloseStepKey, boolean>;
+  closedAt?: string;
+  closedBy?: string;
+  reopenedAt?: string;
+  reopenedBy?: string;
+  reopenReason?: string;
+  notes?: string;
+}
+
+export type SharedCostAllocationRule = 'equal' | 'deliverables_weight' | 'revenue_weight';
+
+export interface FinancialSettings {
+  openingCashBalance: number;
+  openingCashDate: string; // YYYY-MM-DD
+  sharedCostAllocationRule: SharedCostAllocationRule;
+  taxRatePercent?: number;
+  adFundsDefaultPolicy?: 'client_passthrough' | 'agency_principal';
 }
 
 export interface AccountLedgerEntry {
@@ -467,6 +551,9 @@ export interface AgencyDataState {
   teamMembers?: AgencyTeamMember[];
   opsAccessCode?: string;
   opsAccountEmails?: string[];
+  financialAuditLog?: FinancialAuditEntry[];
+  closedMonths?: Record<string, MonthlyCloseRecord>;
+  financialSettings?: FinancialSettings;
 }
 
 

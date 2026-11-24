@@ -1,6 +1,8 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { HighlightedPackageCard } from '../components/HighlightedPackageCard';
+import { SectorFaqSection } from '../components/SectorFaqSection';
+import { formatLocalizedMetric } from '../utils/arabicNumbers';
 import { 
   Building2, 
   Briefcase, 
@@ -377,7 +379,7 @@ export const B2BPage: React.FC = () => {
                   {bsiziaStudy.metrics.map((m, idx) => (
                     <div key={idx} className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-1">
                       <div className="text-2xl sm:text-3xl font-black text-sky-400 tabular-nums">
-                        {m.value}
+                        {formatLocalizedMetric(m.value, isAr)}
                       </div>
                       <div className="text-xs font-bold text-slate-200">
                         {isAr ? m.label : m.labelEn}
@@ -442,7 +444,7 @@ export const B2BPage: React.FC = () => {
                     <div className="p-4 bg-sky-50/80 rounded-2xl border border-sky-100 flex items-center justify-between">
                       <div>
                         <div className="text-3xl sm:text-4xl font-black text-sky-600 tabular-nums">
-                          {mainMetric?.value}
+                          {formatLocalizedMetric(mainMetric?.value, isAr)}
                         </div>
                         <div className="text-xs font-bold text-slate-800 mt-0.5">
                           {isAr ? mainMetric?.label : mainMetric?.labelEn}
@@ -451,7 +453,7 @@ export const B2BPage: React.FC = () => {
                       {study.metrics[1] && (
                         <div className="text-end">
                           <div className="text-2xl font-black text-slate-900 tabular-nums">
-                            {study.metrics[1].value}
+                            {formatLocalizedMetric(study.metrics[1].value, isAr)}
                           </div>
                           <div className="text-[11px] text-slate-500">
                             {isAr ? study.metrics[1].label : study.metrics[1].labelEn}
@@ -481,6 +483,9 @@ export const B2BPage: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* B2B Sector FAQ Section */}
+      <SectorFaqSection category="b2b" />
 
       {/* B2B Call To Action Box */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

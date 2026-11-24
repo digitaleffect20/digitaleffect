@@ -12,6 +12,9 @@ import type {
   AgencyExpense,
   AgencyTeamMember,
   InvoicePaymentEntry,
+  FinancialAuditEntry,
+  MonthlyCloseRecord,
+  FinancialSettings,
 } from '../types';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -548,6 +551,18 @@ function mapInvoiceToRow(inv: ClientInvoiceRecord) {
   if (inv.paidAmount !== undefined) {
     packedDeliverables._paidAmount = inv.paidAmount;
   }
+  const meta: Record<string, any> = {};
+  if (inv.serviceStartDate) meta.serviceStartDate = inv.serviceStartDate;
+  if (inv.serviceEndDate) meta.serviceEndDate = inv.serviceEndDate;
+  if (inv.taxAmount !== undefined) meta.taxAmount = inv.taxAmount;
+  if (inv.adFundsTreatment) meta.adFundsTreatment = inv.adFundsTreatment;
+  if (inv.isDraft !== undefined) meta.isDraft = inv.isDraft;
+  if (inv.cancellationReason) meta.cancellationReason = inv.cancellationReason;
+  if (inv.cancelledAt) meta.cancelledAt = inv.cancelledAt;
+  if (inv.cancelledBy) meta.cancelledBy = inv.cancelledBy;
+  if (Object.keys(meta).length > 0) {
+    packedDeliverables._meta = meta;
+  }
 
   return {
     id: inv.id,
@@ -581,10 +596,12 @@ function mapRowToInvoice(row: any): ClientInvoiceRecord {
     rawDel && Array.isArray(rawDel._payments) ? rawDel._payments : undefined;
   const extractedPaidAmount: number | undefined =
     rawDel && rawDel._paidAmount !== undefined ? Number(rawDel._paidAmount) : undefined;
+  const extractedMeta: Record<string, any> =
+    rawDel && rawDel._meta && typeof rawDel._meta === 'object' ? rawDel._meta : {};
 
   let cleanDeliverables: ClientInvoiceRecord['deliverables'] = undefined;
   if (rawDel) {
-    const { _payments: _p, _paidAmount: _pa, ...rest } = rawDel;
+    const { _payments: _p, _paidAmount: _pa, _meta: _m, ...rest } = rawDel;
     if (Object.keys(rest).length > 0) {
       cleanDeliverables = rest;
     }
@@ -600,6 +617,14 @@ function mapRowToInvoice(row: any): ClientInvoiceRecord {
     sector: (row.sector || 'b2c') as SectorType,
     issueDate: row.issue_date,
     dueDate: row.due_date || undefined,
+    serviceStartDate: extractedMeta.serviceStartDate || undefined,
+    serviceEndDate: extractedMeta.serviceEndDate || undefined,
+    taxAmount: extractedMeta.taxAmount !== undefined ? Number(extractedMeta.taxAmount) : undefined,
+    adFundsTreatment: extractedMeta.adFundsTreatment || undefined,
+    isDraft: extractedMeta.isDraft !== undefined ? Boolean(extractedMeta.isDraft) : undefined,
+    cancellationReason: extractedMeta.cancellationReason || undefined,
+    cancelledAt: extractedMeta.cancelledAt || undefined,
+    cancelledBy: extractedMeta.cancelledBy || undefined,
     packageName: row.package_name,
     retainerAmount: Number(row.retainer_amount ?? 0),
     adCreditAmount: Number(row.ad_credit_amount ?? 0),
@@ -623,6 +648,9 @@ export interface AdminFinanceOpsSnapshot {
   teamMembers?: AgencyTeamMember[];
   opsAccessCode?: string;
   opsAccountEmails?: string[];
+  financialAuditLog?: FinancialAuditEntry[];
+  closedMonths?: Record<string, MonthlyCloseRecord>;
+  financialSettings?: FinancialSettings;
 }
 
 export async function saveAdminFinanceOpsToSupabase(
@@ -1117,6 +1145,27 @@ export async function migrateFullLocalDataToSupabase(state: AgencyDataState): Pr
         catalogSynced: false,
         migrationNeeded: catRes.migrationNeeded,
         error: catRes.error,
+      };
+    }
+
+    // Also persist private admin_finance_ops snapshot (team accounts, expenses, audit log, closed months, settings)
+    const finOpsRes = await saveAdminFinanceOpsToSupabase({
+      expenses: state.expenses || [],
+      teamMembers: state.teamMembers || [],
+      opsAccessCode: state.opsAccessCode,
+      opsAccountEmails: state.opsAccountEmails || [],
+      financialAuditLog: state.financialAuditLog || [],
+      closedMonths: state.closedMonths || {},
+      financialSettings: state.financialSettings,
+    });
+    if (!finOpsRes.success && finOpsRes.migrationNeeded) {
+      return {
+        success: false,
+        clientsSynced: clients.length,
+        invoicesSynced: invoices.length,
+        catalogSynced: true,
+        migrationNeeded: true,
+        error: finOpsRes.error,
       };
     }
 

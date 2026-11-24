@@ -116,8 +116,8 @@ import { AdWalletApprovalsBanner } from '../components/ClientAdWalletPanel';
 import {
   FULL_ADMIN_PERMISSIONS,
   getPresetPermissions,
-  normalizeUsername,
   resolveMemberPermissions,
+  usernamesMatch,
   verifyTeamPassword,
 } from '../utils/teamAuth';
 import crmFullMigrationSql from '../../supabase/migrations/20261117000001_crm_full_persistence.sql?raw';
@@ -153,6 +153,8 @@ export const AdminPortalPage: React.FC = () => {
     lastCloudSyncAt,
     syncNowToSupabase,
     refreshFromSupabase,
+    hydrateTeamWorkspace,
+    clearTeamSession,
   } = useAgencyData();
 
   const [isCloudMigrating, setIsCloudMigrating] = useState(false);
@@ -175,6 +177,7 @@ export const AdminPortalPage: React.FC = () => {
   const [teamPasswordInput, setTeamPasswordInput] = useState('');
   const [teamLoginLoading, setTeamLoginLoading] = useState(false);
   const [loggedInTeamMemberId, setLoggedInTeamMemberId] = useState<string | null>(null);
+  const [loggedInTeamMember, setLoggedInTeamMember] = useState<AgencyTeamMember | null>(null);
   const [, setTeamSessionToken] = useState<string | null>(null);
   const [previewTeamMemberId, setPreviewTeamMemberId] = useState<string | null>(null);
   const [isTeamAccountsModalOpen, setIsTeamAccountsModalOpen] = useState(false);
@@ -390,7 +393,7 @@ export const AdminPortalPage: React.FC = () => {
       postsCount: defaultPosts,
       reelsCount: defaultReels,
       storiesCount: defaultStories,
-      frequency: chosenSector === 'b2b' ? 'منشور أسبوعياً' : '٣ منشورات / أسبوع',
+      frequency: chosenSector === 'b2b' ? 'منشور أسبوعي' : '٣ منشورات / أسبوع',
       hasMonthlyPlan: true,
       isPopular: false,
       hasOffer: false,
@@ -729,15 +732,15 @@ export const AdminPortalPage: React.FC = () => {
     }
   };
 
-  // Handle Per-Member Team Login (Username & Salted Password Verification)
+  // Handle Per-Member Team Login (Server-Side Authentication & RBAC Workspace Hydration)
   const handleTeamMemberLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
-    const normalizedUser = normalizeUsername(teamUsernameInput);
+    const rawUsername = teamUsernameInput.trim();
     const rawPass = teamPasswordInput;
 
-    if (!normalizedUser || !rawPass) {
+    if (!rawUsername || !rawPass) {
       setAuthError(
         isAr
           ? 'يرجى إدخال اسم المستخدم وكلمة المرور.'
@@ -748,61 +751,149 @@ export const AdminPortalPage: React.FC = () => {
 
     setTeamLoginLoading(true);
     try {
-      const membersList =
-        Array.isArray(data.teamMembers) && data.teamMembers.length > 0
-          ? data.teamMembers
-          : DEFAULT_AGENCY_TEAM_MEMBERS;
+      let apiHandled = false;
 
-      const matched = membersList.find(
-        (m) => m.username && normalizeUsername(m.username) === normalizedUser
-      );
+      try {
+        const res = await fetch('/api/team/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: rawUsername, password: rawPass }),
+        });
 
-      if (!matched || !matched.passwordHash) {
-        setAuthError(
-          isAr
-            ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى مراجعة مدير الوكالة.'
-            : 'Invalid username or password.'
-        );
-        return;
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          apiHandled = true;
+          const payload = (await res.json()) as {
+            ok?: boolean;
+            member?: AgencyTeamMember;
+            sessionToken?: string;
+            configMissing?: boolean;
+            directoryEmpty?: boolean;
+            suspended?: boolean;
+            invalidCredentials?: boolean;
+            error?: string;
+          };
+
+          if (res.ok && payload.ok && payload.member && payload.sessionToken) {
+            const matchedMember = payload.member;
+            const resolvedPerms = resolveMemberPermissions(matchedMember);
+            const firstAllowedTab: PortalTabKey =
+              resolvedPerms.allowedTabs && resolvedPerms.allowedTabs.length > 0
+                ? resolvedPerms.allowedTabs[0]
+                : 'tasks';
+
+            setLoggedInTeamMember(matchedMember);
+            setLoggedInTeamMemberId(matchedMember.id);
+            setTeamSessionToken(payload.sessionToken);
+            setTeamPasswordInput('');
+            setPreviewTeamMemberId(null);
+            setActiveTab(firstAllowedTab);
+
+            await hydrateTeamWorkspace(payload.sessionToken, matchedMember);
+
+            showNotice(
+              isAr
+                ? `مرحباً ${matchedMember.name} (${matchedMember.roleTitle}) — تم فتح الشاشات المصرح بها لحسابك.`
+                : `Welcome ${matchedMember.name} (${matchedMember.roleTitle}) — Your workspace is ready.`
+            );
+            return;
+          }
+
+          if (payload.configMissing) {
+            setAuthError(
+              isAr
+                ? 'خدمة دخول أعضاء الفريق غير مفعّلة بعد على الاستضافة: يرجى إضافة متغير البيئة SUPABASE_SERVICE_ROLE_KEY في إعدادات الاستضافة ثم إعادة النشر والضغط على «مزامنة سحابية» من حساب الإدارة.'
+                : 'Team login service needs SUPABASE_SERVICE_ROLE_KEY configured in hosting environment variables, followed by a redeploy and one Cloud Sync from Admin.'
+            );
+            return;
+          }
+
+          if (payload.suspended || res.status === 403) {
+            setAuthError(
+              isAr
+                ? 'هذا الحساب موقوف مؤقتاً من قبل الإدارة. يرجى التواصل مع مدير النظام.'
+                : 'This team account is currently suspended by the administrator.'
+            );
+            return;
+          }
+
+          if (payload.directoryEmpty) {
+            setAuthError(
+              isAr
+                ? 'لم يتم مزامنة حسابات الفريق مع السحابة بعد. يرجى دخول مدير الوكالة مرة واحدة والضغط على زر «مزامنة سحابية».'
+                : 'Team accounts have not been synced to the cloud yet. Please sign in as Admin once and click Cloud Sync.'
+            );
+            return;
+          }
+
+          setAuthError(
+            isAr
+              ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى التأكد من البيانات أو مراجعة مدير الوكالة.'
+              : 'Invalid username or password. Please check your credentials or contact the agency admin.'
+          );
+          return;
+        }
+      } catch {
+        // Network/endpoint unreachable — fall back to local directory check below
       }
 
-      if (matched.active === false) {
-        setAuthError(
-          isAr
-            ? 'هذا الحساب موقوف مؤقتاً من قبل الإدارة. يرجى التواصل مع مدير النظام.'
-            : 'This team account is currently suspended by the administrator.'
+      if (!apiHandled) {
+        const membersList =
+          Array.isArray(data.teamMembers) && data.teamMembers.length > 0
+            ? data.teamMembers
+            : DEFAULT_AGENCY_TEAM_MEMBERS;
+
+        const matched = membersList.find(
+          (m) => m.username && usernamesMatch(m.username, rawUsername)
         );
-        return;
-      }
 
-      const verifyRes = await verifyTeamPassword(rawPass, matched.passwordHash);
+        if (!matched || !matched.passwordHash) {
+          setAuthError(
+            isAr
+              ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى مراجعة مدير الوكالة.'
+              : 'Invalid username or password.'
+          );
+          return;
+        }
 
-      if (!verifyRes.valid) {
-        setAuthError(
+        if (matched.active === false) {
+          setAuthError(
+            isAr
+              ? 'هذا الحساب موقوف مؤقتاً من قبل الإدارة. يرجى التواصل مع مدير النظام.'
+              : 'This team account is currently suspended by the administrator.'
+          );
+          return;
+        }
+
+        const verifyRes = await verifyTeamPassword(rawPass, matched.passwordHash);
+
+        if (!verifyRes.valid) {
+          setAuthError(
+            isAr
+              ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.'
+              : 'Invalid username or password.'
+          );
+          return;
+        }
+
+        const resolvedPerms = resolveMemberPermissions(matched);
+        const firstAllowedTab: PortalTabKey =
+          resolvedPerms.allowedTabs && resolvedPerms.allowedTabs.length > 0
+            ? resolvedPerms.allowedTabs[0]
+            : 'tasks';
+
+        setLoggedInTeamMember(matched);
+        setLoggedInTeamMemberId(matched.id);
+        setTeamSessionToken(verifyRes.sessionToken || null);
+        setTeamPasswordInput('');
+        setPreviewTeamMemberId(null);
+        setActiveTab(firstAllowedTab);
+        showNotice(
           isAr
-            ? 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.'
-            : 'Invalid username or password.'
+            ? `مرحباً ${matched.name} (${matched.roleTitle}) — تم فتح الشاشات المصرح بها لحسابك.`
+            : `Welcome ${matched.name} (${matched.roleTitle}) — Your workspace is ready.`
         );
-        return;
       }
-
-      const resolvedPerms =
-        matched.permissions || getPresetPermissions(matched.rolePreset || 'custom');
-      const firstAllowedTab: PortalTabKey =
-        resolvedPerms.allowedTabs && resolvedPerms.allowedTabs.length > 0
-          ? resolvedPerms.allowedTabs[0]
-          : 'tasks';
-
-      setLoggedInTeamMemberId(matched.id);
-      setTeamSessionToken(verifyRes.sessionToken || null);
-      setTeamPasswordInput('');
-      setPreviewTeamMemberId(null);
-      setActiveTab(firstAllowedTab);
-      showNotice(
-        isAr
-          ? `مرحباً ${matched.name} (${matched.roleTitle}) — تم فتح الشاشات المصرح بها لحسابك.`
-          : `Welcome ${matched.name} (${matched.roleTitle}) — Your workspace is ready.`
-      );
     } catch {
       setAuthError(
         isAr
@@ -825,8 +916,10 @@ export const AdminPortalPage: React.FC = () => {
       sessionStorage.removeItem('de_portal_role');
       sessionStorage.removeItem('de_ops_name');
     } catch {}
+    clearTeamSession();
     setSessionUser(null);
     setLocalBypassAuth(false);
+    setLoggedInTeamMember(null);
     setLoggedInTeamMemberId(null);
     setTeamSessionToken(null);
     setPreviewTeamMemberId(null);
@@ -1513,14 +1606,20 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
       return agencyTeamMembers.find((m) => m.id === previewTeamMemberId) || null;
     }
     if (loggedInTeamMemberId) {
-      return agencyTeamMembers.find((m) => m.id === loggedInTeamMemberId) || null;
+      return (
+        agencyTeamMembers.find((m) => m.id === loggedInTeamMemberId) ||
+        loggedInTeamMember ||
+        null
+      );
     }
     return null;
-  }, [realRole, previewTeamMemberId, loggedInTeamMemberId, agencyTeamMembers]);
+  }, [realRole, previewTeamMemberId, loggedInTeamMemberId, loggedInTeamMember, agencyTeamMembers]);
 
   // If a signed-in team member was deleted or suspended by Admin, end their session immediately
   useEffect(() => {
     if (loggedInTeamMemberId && (!activeTeamMember || activeTeamMember.active === false)) {
+      clearTeamSession();
+      setLoggedInTeamMember(null);
       setLoggedInTeamMemberId(null);
       setTeamSessionToken(null);
     }
@@ -2242,7 +2341,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
                 }`}
               >
                 <Receipt className="w-3.5 h-3.5 text-rose-400" />
-                <span>{isAr ? `المصروفات وصافي الربح (${data.expenses?.length || 0})` : `Expenses & Profit (${data.expenses?.length || 0})`}</span>
+                <span>{isAr ? `الإدارة المالية والأرباح والخسائر (${(data.expenses || []).filter((e) => !e.voided).length})` : `Finance & Monthly P&L (${(data.expenses || []).filter((e) => !e.voided).length})`}</span>
               </button>
             )}
 
@@ -3812,7 +3911,10 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
                 }}
               />
             )}
-            <InvoicesArchiveHub isAr={isAr} />
+            <InvoicesArchiveHub
+              isAr={isAr}
+              actorName={activeTeamMember?.name || (isAr ? 'المدير العام (Admin)' : 'General Manager (Admin)')}
+            />
           </div>
         )}
 
@@ -3820,7 +3922,10 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
         {/* TAB: AGENCY EXPENSES & NET PROFIT HUB                              */}
         {/* ================================================================== */}
         {canAccessTab('expenses') && activeTab === 'expenses' && (
-          <ExpensesProfitHub isAr={isAr} />
+          <ExpensesProfitHub
+            isAr={isAr}
+            actorName={activeTeamMember?.name || (isAr ? 'المدير العام (Admin)' : 'General Manager (Admin)')}
+          />
         )}
 
         {/* ================================================================== */}

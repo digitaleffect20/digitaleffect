@@ -21,13 +21,13 @@ export const StatsRibbon: React.FC = () => {
     },
     {
       icon: <TrendingUp className="w-5 h-5 text-sky-600" />,
-      value: isAr ? '٨٥M+ ج.م' : '85M+ EGP',
+      value: isAr ? '٨٥ مليون+ ج.م' : '85M+ EGP',
       label: isAr ? 'مبيعات وصفقات تم تحقيقها للعملاء' : 'Client Revenue & Pipeline Generated',
-      sub: isAr ? 'في قطاعات B2B و B2C والمراكز الطبية' : 'Across B2B, B2C, and Healthcare practices',
+      sub: isAr ? 'في قطاعات B2B وB2C والمراكز الطبية' : 'Across B2B, B2C, and Healthcare practices',
     },
     {
       icon: <CheckCircle2 className="w-5 h-5 text-sky-600" />,
-      value: '٩٤%',
+      value: isAr ? '٩٤٪' : '94%',
       label: isAr ? 'معدل تجديد التعاقدات السنوية' : 'Annual Client Retention Rate',
       sub: isAr ? 'شراكات طويلة الأمد مبنية على النتائج' : 'Enduring relationships rooted in measurable ROI',
     },

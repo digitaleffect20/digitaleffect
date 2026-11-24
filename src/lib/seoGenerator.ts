@@ -312,10 +312,10 @@ export function generatePageSeo(input: PageSeoInput): GeneratedSeoResult {
       break;
 
     case 'about':
-      titleAr = `من نحن — خبرة ٢٠ عاماً في التسويق الرقمي | ديجيتال إفكت`;
-      titleEn = `About Us — 20+ Years of Digital Marketing Mastery | Digital Effect`;
-      descAr = `تعرف على ديجيتال إفكت وفريق القيادات المتخصصة في قطاعات B2B، التجارة، والطب. نمتلك خبرة تراكمية تفوق ٢٠ عاماً في هندسة النمو الرقمي المستدام.`;
-      descEn = `Meet Digital Effect and our dedicated sector directors across B2B, B2C, and Healthcare, bringing over two decades of strategic growth leadership.`;
+      titleAr = `من نحن — تأسست عام ٢٠١٤ بخبرة قيادات تفوق ٢٠ عاماً | ديجيتال إفكت`;
+      titleEn = `About Us — Founded in 2014 with 20+ Years of Leadership Expertise | Digital Effect`;
+      descAr = `تعرف على ديجيتال إفكت — وكالة تسويق رقمي تأسست عام ٢٠١٤ وتضم قيادات متخصصة بخبرة تفوق ٢٠ عاماً في قطاعات B2B والتجارة والقطاع الطبي.`;
+      descEn = `Meet Digital Effect — founded in 2014 with dedicated sector directors across B2B, B2C, and Healthcare bringing over 20 years of leadership expertise.`;
       schemaType = 'AboutPage';
       break;
 

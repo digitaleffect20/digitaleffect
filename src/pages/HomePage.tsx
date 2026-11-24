@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
+import { formatLocalizedMetric } from '../utils/arabicNumbers';
 import { 
   Building2, 
   ShoppingBag, 
@@ -32,7 +33,7 @@ export const HomePage: React.FC = () => {
       icon: <Building2 className="w-6 h-6 text-sky-600" />,
       colorClass: 'border-sky-200 hover:border-sky-400',
       badgeClass: 'bg-sky-50 text-sky-700',
-      kpi: isAr ? '+٣٤٠% نمو الصفقات المؤهلة' : '+340% Deal Growth',
+      kpi: isAr ? '+٣٤٠٪ نمو الصفقات المؤهلة' : '+340% Deal Growth',
       btnLabel: t.home.browseB2B,
     },
     {
@@ -45,7 +46,7 @@ export const HomePage: React.FC = () => {
       icon: <ShoppingBag className="w-6 h-6 text-amber-600" />,
       colorClass: 'border-amber-200 hover:border-amber-400',
       badgeClass: 'bg-amber-50 text-amber-800',
-      kpi: isAr ? '٥.٢X متوسط العائد الإعلاني ROAS' : '5.2X Average ROAS',
+      kpi: isAr ? '٥٫٢× متوسط العائد الإعلاني ROAS' : '5.2X Average ROAS',
       btnLabel: t.home.browseB2C,
     },
     {
@@ -58,7 +59,7 @@ export const HomePage: React.FC = () => {
       icon: <Stethoscope className="w-6 h-6 text-emerald-600" />,
       colorClass: 'border-emerald-200 hover:border-emerald-400',
       badgeClass: 'bg-emerald-50 text-emerald-800',
-      kpi: isAr ? '+٣٨٠% حجوزات كشوفات مؤكدة' : '+380% Patient Bookings',
+      kpi: isAr ? '+٣٨٠٪ حجوزات كشوفات مؤكدة' : '+380% Patient Bookings',
       btnLabel: t.home.browseMedical,
     },
   ];
@@ -151,7 +152,7 @@ export const HomePage: React.FC = () => {
             const client = isAr ? study.client : study.clientEn;
             const industry = isAr ? study.industry : study.industryEn;
             const mainMetric = study.metrics[0];
-            const metricVal = mainMetric?.value;
+            const metricVal = formatLocalizedMetric(mainMetric?.value, isAr);
             const metricLabel = isAr ? mainMetric?.label : mainMetric?.labelEn;
 
             const isIpt = study.id === 'cs-med-ipt';

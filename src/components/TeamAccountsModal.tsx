@@ -40,6 +40,7 @@ import {
   getPresetPermissions,
   resolveMemberPermissions,
   normalizeUsername,
+  usernamesMatch,
   hashTeamPassword,
   generateStrongPassword,
 } from '../utils/teamAuth';
@@ -211,7 +212,8 @@ export const TeamAccountsModal: React.FC<TeamAccountsModalProps> = ({
     const duplicate = teamMembers.find(
       (m) =>
         m.id !== editingId &&
-        (m.username || '').trim().toLowerCase() === cleanUsername
+        m.username &&
+        usernamesMatch(m.username, cleanUsername)
     );
     if (duplicate) {
       setFormError(

@@ -31,15 +31,15 @@ export const SectorHero: React.FC = () => {
     }
   > = {
     all: {
-      kicker: 'ديجيتال إفكت • خبرة تأسيس تتجاوز ١٢ عاماً في السوق العربي',
-      title: 'حلول تسويق رقمي متكاملة تفهم لغة عملائك وتبني',
-      highlight: 'نتائج حقيقية ملموسة بالأرقام',
+      kicker: 'ديجيتال إفكت • تأسست عام ٢٠١٤ بخبرة قيادات تفوق ٢٠ عاماً',
+      title: 'تسويق رقمي متخصص في قطاعك…',
+      highlight: 'بنتائج تُقاس بالأرقام',
       description:
-        'نحن لسنا مجرد وكالة إعلانات؛ نحن شريكك الاستراتيجي في قطاعات B2B، B2C، والقطاع الطبي، بخبرة تراكمية تفوق ٢٠ عاماً لفريق العمل ومئات قصص النجاح الموثقة.',
+        'نحن لسنا مجرد وكالة إعلانات؛ نحن شريكك الاستراتيجي في قطاعات B2B، B2C، والقطاع الطبي، بسجل يمتد لأكثر من ١٢ عاماً منذ ٢٠١٤ وخبرة قيادات تفوق ٢٠ عاماً.',
       badgeText: 'نظرة عامة على كافة القطاعات',
       accentBg: 'from-sky-50 to-blue-50/50',
-      primaryMetric: { value: '+١٢ عاماً', label: 'في السوق الرقمي والتسويق' },
-      secondaryMetric: { value: '٨٥M+ ج.م', label: 'مبيعات وصفقات مدارة سنوياً' },
+      primaryMetric: { value: '+١٢ عاماً', label: 'في السوق الرقمي منذ ٢٠١٤' },
+      secondaryMetric: { value: '٨٥ مليون+ ج.م', label: 'مبيعات وصفقات مدارة سنوياً' },
     },
     b2b: {
       kicker: 'حلول الشركات والمؤسسات • قطاع الـ B2B',
@@ -49,8 +49,8 @@ export const SectorHero: React.FC = () => {
         'نخاطب المديرين التنفيذيين وصناع القرار ومسؤولي المشتريات بلغة الأرقام والجدوى الاستثمارية؛ من خلال التسويق المبني على الحسابات (ABM)، إعلانات لينكد إن، وبناء دراسات الجدوى والصفحات المؤسسية المتخصصة.',
       badgeText: 'موجّه خصيصاً لشركات الـ B2B والمصانع والخدمات المؤسسية',
       accentBg: 'from-slate-100 to-sky-50/80',
-      primaryMetric: { value: '٣٤٠%+', label: 'متوسط نمو الصفقات المؤهلة (SQLs)' },
-      secondaryMetric: { value: '٣٨%', label: 'تقليص متوسط دورة إغلاق العقود' },
+      primaryMetric: { value: '+٣٤٠٪', label: 'متوسط نمو الصفقات المؤهلة (SQLs)' },
+      secondaryMetric: { value: '٣٨٪', label: 'تقليص متوسط دورة إغلاق العقود' },
     },
     b2c: {
       kicker: 'التجارة الإلكترونية والمنتجات الاستهلاكية • قطاع الـ B2C',
@@ -60,8 +60,8 @@ export const SectorHero: React.FC = () => {
         'منظومة مبيعات فورية للمتاجر والعلامات الاستهلاكية: إدارة حملات ميتا وتيك توك الذكية، صناعة محتوى UGC فيروسي، رفع قيمة السلة الشرائية، وحملات إعادة استهداف تمنع فقدان العملاء.',
       badgeText: 'موجّه للمتاجر الإلكترونية، براندات التجزئة، والسلع الاستهلاكية',
       accentBg: 'from-amber-50/50 to-sky-50/60',
-      primaryMetric: { value: '٥.٢X', label: 'متوسط العائد على الإنفاق الإعلاني ROAS' },
-      secondaryMetric: { value: '٥٢,٠٠٠+', label: 'طلب شراء محقق في مواسم الذروة' },
+      primaryMetric: { value: '٥٫٢×', label: 'متوسط العائد على الإنفاق الإعلاني ROAS' },
+      secondaryMetric: { value: '٥٢٬٠٠٠+', label: 'طلب شراء محقق في مواسم الذروة' },
     },
     medical: {
       kicker: 'الرعاية الصحية والمراكز الطبية • القطاع الطبي Medical',
@@ -71,8 +71,8 @@ export const SectorHero: React.FC = () => {
         'التسويق الطبي يحتاج رصانة والتزاماً بالمعايير الأخلاقية: نصنع سمعة الأطباء الاستشاريين، نرفع تصنيف عيادتك للمركز الأول في خرائط جوجل، ونربط الحملات بنظام حجز فوري يحول الاستفسارات لمرضى داخل العيادة.',
       badgeText: 'موجّه للأطباء، العيادات التخصصية، ومجمعات جراحة اليوم الواحد والمستشفيات',
       accentBg: 'from-emerald-50/50 to-sky-50/70',
-      primaryMetric: { value: '٣٨٠%+', label: 'زيادة في حجوزات الكشوفات والجراحات' },
-      secondaryMetric: { value: '#1', label: 'تصدر نتائج خرائط جوجل Google Maps' },
+      primaryMetric: { value: '+٣٨٠٪', label: 'زيادة في حجوزات الكشوفات والجراحات' },
+      secondaryMetric: { value: '#١', label: 'تصدر نتائج خرائط جوجل Google Maps' },
     },
   };
 
@@ -200,12 +200,12 @@ export const SectorHero: React.FC = () => {
             <div className="pt-4 flex items-center gap-6 text-xs text-slate-500 border-t border-slate-200">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span className="font-medium">خبرة وكالة +١٢ سنة</span>
+                <span className="font-medium">تأسست عام ٢٠١٤ (+١٢ عاماً)</span>
               </div>
               <span aria-hidden="true" className="text-slate-300">·</span>
               <div className="flex items-center gap-1.5">
                 <TrendingUp className="w-4 h-4 text-sky-600" />
-                <span className="font-medium">فريق تسويق بخبرة +٢٠ عاماً</span>
+                <span className="font-medium">قيادات بخبرة تفوق ٢٠ عاماً</span>
               </div>
               <span aria-hidden="true" className="text-slate-300">·</span>
               <span className="font-medium">تقارير حية ومتابعة أسبوعية</span>

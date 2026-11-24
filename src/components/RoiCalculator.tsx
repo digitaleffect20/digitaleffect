@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { SectorType } from '../types';
+import { formatLocalizedNumber } from '../utils/arabicNumbers';
 import { Calculator, Sparkles, ArrowLeft, ArrowRight, Building2, ShoppingBag, Stethoscope } from 'lucide-react';
 
 export const RoiCalculator: React.FC = () => {
@@ -15,11 +16,11 @@ export const RoiCalculator: React.FC = () => {
       case 'b2b': {
         const estimatedQualifiedLeads = Math.round(monthlyBudget / 480);
         const estimatedClosedDeals = Math.max(1, Math.round(estimatedQualifiedLeads * 0.12));
-        const estimatedPipelineValue = (estimatedClosedDeals * 180000).toLocaleString(isAr ? 'ar-EG' : 'en-US');
+        const estimatedPipelineValue = formatLocalizedNumber(estimatedClosedDeals * 180000, isAr);
         return {
-          metric1: isAr ? `${estimatedQualifiedLeads} جهة مؤهلة` : `${estimatedQualifiedLeads} Qualified Deals`,
+          metric1: isAr ? `${formatLocalizedNumber(estimatedQualifiedLeads, true)} جهة مؤهلة` : `${estimatedQualifiedLeads} Qualified Deals`,
           label1: isAr ? 'استفسارات وطلبات عروض أسعار متوقعة' : 'Projected Inbound Executive RFPs',
-          metric2: isAr ? `${estimatedClosedDeals} عقود سنوية` : `${estimatedClosedDeals} Closed Contracts`,
+          metric2: isAr ? `${formatLocalizedNumber(estimatedClosedDeals, true)} عقود سنوية` : `${estimatedClosedDeals} Closed Contracts`,
           label2: isAr ? 'عقود وتوريدات متوقعة خلال ربع سنوي' : 'Estimated Quarterly Closed Contracts',
           metric3: isAr ? `${estimatedPipelineValue} ج.م` : `${estimatedPipelineValue} EGP`,
           label3: isAr ? 'قيمة خط التعاقدات التقديري' : 'Estimated Total Pipeline Value',
@@ -32,11 +33,13 @@ export const RoiCalculator: React.FC = () => {
         };
       }
       case 'b2c': {
-        const estimatedRoas = monthlyBudget > 40000 ? '4.8X - 5.5X' : '3.8X - 4.5X';
+        const estimatedRoas = monthlyBudget > 40000
+          ? (isAr ? '٤٫٨× - ٥٫٥×' : '4.8X - 5.5X')
+          : (isAr ? '٣٫٨× - ٤٫٥×' : '3.8X - 4.5X');
         const estimatedOrders = Math.round((monthlyBudget * 3.8) / 650);
-        const estimatedRevenue = (monthlyBudget * 4.2).toLocaleString(isAr ? 'ar-EG' : 'en-US');
+        const estimatedRevenue = formatLocalizedNumber(monthlyBudget * 4.2, isAr);
         return {
-          metric1: isAr ? `${estimatedOrders.toLocaleString('ar-EG')} طلب` : `${estimatedOrders.toLocaleString('en-US')} Orders`,
+          metric1: isAr ? `${formatLocalizedNumber(estimatedOrders, true)} طلب` : `${estimatedOrders.toLocaleString('en-US')} Orders`,
           label1: isAr ? 'طلبات بيع متوقعة شهرياً' : 'Projected Monthly Completed Orders',
           metric2: estimatedRoas,
           label2: isAr ? 'متوسط العائد الإعلاني المستهدف (ROAS)' : 'Target Sustained Blended ROAS',
@@ -54,11 +57,11 @@ export const RoiCalculator: React.FC = () => {
         const estimatedBookings = Math.round(monthlyBudget / 160);
         const surgeryConsultations = Math.round(estimatedBookings * 0.25);
         return {
-          metric1: isAr ? `${estimatedBookings.toLocaleString('ar-EG')} حجز` : `${estimatedBookings.toLocaleString('en-US')} Bookings`,
+          metric1: isAr ? `${formatLocalizedNumber(estimatedBookings, true)} حجز` : `${estimatedBookings.toLocaleString('en-US')} Bookings`,
           label1: isAr ? 'مرضى ومواعيد كشوفات مؤكدة شهرياً' : 'Confirmed In-Clinic Appointments / Month',
-          metric2: isAr ? `${surgeryConsultations} استشارة جراحية` : `${surgeryConsultations} High-Value Surgeries`,
+          metric2: isAr ? `${formatLocalizedNumber(surgeryConsultations, true)} استشارة جراحية` : `${surgeryConsultations} High-Value Surgeries`,
           label2: isAr ? 'حالات علاجية متقدمة (زراعة/جراحة/ليزر)' : 'Specialized Procedures (Implants/Laser/Surgery)',
-          metric3: isAr ? '#1 خرائط جوجل' : '#1 Google Maps',
+          metric3: isAr ? '#١ خرائط جوجل' : '#1 Google Maps',
           label3: isAr ? 'الوصول للمرتبة الأولى جغرافياً في منطقتك' : 'Local Geographic Map Pack Dominance',
           advice: isAr
             ? 'السمعة الطبية وخرائط جوجل تجعل المريض يختار عيادتك دون تردد في الأسعار.'
@@ -160,9 +163,9 @@ export const RoiCalculator: React.FC = () => {
                 />
 
                 <div className="flex justify-between text-[11px] text-slate-400 font-semibold tabular-nums">
-                  <span>١٥,٠٠٠ {isAr ? 'ج.م' : 'EGP'}</span>
-                  <span>٧٥,٠٠٠ {isAr ? 'ج.م' : 'EGP'}</span>
-                  <span>١٥٠,٠٠٠+ {isAr ? 'ج.م' : 'EGP'}</span>
+                  <span>{isAr ? '١٥٬٠٠٠ ج.م' : '15,000 EGP'}</span>
+                  <span>{isAr ? '٧٥٬٠٠٠ ج.م' : '75,000 EGP'}</span>
+                  <span>{isAr ? '١٥٠٬٠٠٠+ ج.م' : '150,000+ EGP'}</span>
                 </div>
               </div>
 

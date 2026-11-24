@@ -5,6 +5,21 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import type { AgencyTeamMember, ClientInvoiceRecord, Inquiry } from './src/types';
+import {
+  usernamesMatch,
+  verifyStoredPasswordHash,
+  signEdgeSessionToken,
+  verifyEdgeSessionToken,
+  sanitizeTeamMember,
+} from './src/utils/teamCryptoEdge';
+import { resolveMemberPermissions } from './src/utils/teamAuth';
+import {
+  mapCrmRowToInquiry,
+  mapInquiryToCrmRow,
+  mapInvoiceToRow,
+  mapRowToInvoice,
+} from './src/utils/supabaseRowMappers';
 
 dotenv.config();
 
@@ -183,6 +198,21 @@ app.post('/api/agency-data', (req, res) => {
         if (existingPenguinWeb && !payload.caseStudies.some((c: any) => c.id === 'cs-b2c-penguin-web')) {
           payload.caseStudies.splice(11, 0, existingPenguinWeb);
         }
+        // Preserve stored passwordHash values if incoming teamMembers payload was sanitized
+        if (Array.isArray(existing.teamMembers) && Array.isArray(payload.teamMembers)) {
+          const hashById = new Map<string, string>();
+          for (const m of existing.teamMembers) {
+            if (m?.id && typeof m.passwordHash === 'string' && m.passwordHash) {
+              hashById.set(m.id, m.passwordHash);
+            }
+          }
+          payload.teamMembers = payload.teamMembers.map((m: any) => {
+            if (m && m.id && !m.passwordHash && hashById.has(m.id)) {
+              return { ...m, passwordHash: hashById.get(m.id) };
+            }
+            return m;
+          });
+        }
       } catch {}
     }
     const { data: cleaned } = offloadDataUrls(payload);
@@ -243,43 +273,122 @@ app.get('/api/geo', (req, res) => {
   });
 });
 
-// Server-side Team Account Password Hashing (scrypt) & Session Token Guard
+// Server-side Team Account Authentication, Password Hashing (scrypt / pbkdf2), & RBAC Workspace Guard
 const TEAM_SESSION_SECRET =
-  process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 16
-    ? process.env.SESSION_SECRET
-    : crypto.randomBytes(32).toString('hex');
+  (process.env.SESSION_SECRET && process.env.SESSION_SECRET.trim().length >= 16
+    ? process.env.SESSION_SECRET.trim()
+    : '') ||
+  (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY.trim().length >= 20
+    ? process.env.SUPABASE_SERVICE_ROLE_KEY.trim()
+    : '') ||
+  crypto.randomBytes(32).toString('hex');
 
-function signTeamSessionToken(payload: { sub: string; iat: number; exp: number }): string {
-  const body = Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
-  const sig = crypto
-    .createHmac('sha256', TEAM_SESSION_SECRET)
-    .update(body)
-    .digest('base64url');
-  return `${body}.${sig}`;
-}
-
-function verifyTeamSessionToken(token: string): { sub: string; exp: number } | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 2) return null;
-    const [body, sig] = parts;
-    const expectedSig = crypto
-      .createHmac('sha256', TEAM_SESSION_SECRET)
-      .update(body)
-      .digest('base64url');
-    const sigBuf = Buffer.from(sig, 'utf-8');
-    const expBuf = Buffer.from(expectedSig, 'utf-8');
-    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-      return null;
-    }
-    const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf-8'));
-    if (!parsed || typeof parsed.exp !== 'number' || Date.now() > parsed.exp) {
-      return null;
-    }
-    return parsed;
-  } catch {
+function getSupabaseAdminConfig(): { supabaseUrl: string; serviceRoleKey: string } | null {
+  const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '')
+    .trim()
+    .replace(/\/$/, '');
+  const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  if (!supabaseUrl.startsWith('https://') || serviceRoleKey.length < 20) {
     return null;
   }
+  return { supabaseUrl, serviceRoleKey };
+}
+
+function readLocalDataStore(): Record<string, any> {
+  try {
+    if (fs.existsSync(DATA_STORE_PATH)) {
+      return JSON.parse(fs.readFileSync(DATA_STORE_PATH, 'utf-8')) || {};
+    }
+  } catch (err) {
+    console.warn('Error reading local data-store.json:', err);
+  }
+  return {};
+}
+
+function writeLocalDataStore(nextState: Record<string, any>): void {
+  fs.writeFileSync(DATA_STORE_PATH, JSON.stringify(nextState, null, 2), 'utf-8');
+}
+
+async function loadTeamDirectory(): Promise<{
+  teamMembers: AgencyTeamMember[];
+  finOpsState: Record<string, any>;
+  source: 'supabase' | 'local';
+}> {
+  const sb = getSupabaseAdminConfig();
+  if (sb) {
+    try {
+      const storeRes = await fetch(
+        `${sb.supabaseUrl}/rest/v1/agency_crm_store?id=eq.admin_finance_ops&select=state_json`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: sb.serviceRoleKey,
+            Authorization: `Bearer ${sb.serviceRoleKey}`,
+            Accept: 'application/json',
+          },
+        }
+      );
+      if (storeRes.ok) {
+        const rows = (await storeRes.json()) as Array<{ state_json?: Record<string, any> }>;
+        const stateJson = rows?.[0]?.state_json || {};
+        if (Array.isArray(stateJson.teamMembers) && stateJson.teamMembers.length > 0) {
+          return {
+            teamMembers: stateJson.teamMembers,
+            finOpsState: stateJson,
+            source: 'supabase',
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Supabase team directory lookup fallback to local store:', err);
+    }
+  }
+
+  const localStore = readLocalDataStore();
+  const localMembers: AgencyTeamMember[] = Array.isArray(localStore.teamMembers)
+    ? localStore.teamMembers
+    : [];
+  return {
+    teamMembers: localMembers,
+    finOpsState: {
+      teamMembers: localMembers,
+      expenses: Array.isArray(localStore.expenses) ? localStore.expenses : [],
+      financialAuditLog: Array.isArray(localStore.financialAuditLog) ? localStore.financialAuditLog : [],
+      closedMonths: localStore.closedMonths || {},
+      financialSettings: localStore.financialSettings || undefined,
+    },
+    source: 'local',
+  };
+}
+
+async function authenticateTeamWorkspaceRequest(req: express.Request): Promise<{
+  member?: AgencyTeamMember;
+  finOpsState?: Record<string, any>;
+  teamMembers?: AgencyTeamMember[];
+  source?: 'supabase' | 'local';
+  status?: number;
+  error?: string;
+}> {
+  const auth = req.headers.authorization || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  if (!token) {
+    return { status: 401, error: 'Unauthorized' };
+  }
+  const verified = await verifyEdgeSessionToken(token, TEAM_SESSION_SECRET);
+  if (!verified) {
+    return { status: 401, error: 'Invalid or expired session' };
+  }
+  const dir = await loadTeamDirectory();
+  const member = dir.teamMembers.find((m) => m && m.id === verified.memberId);
+  if (!member || member.active === false) {
+    return { status: 403, error: 'Account inactive' };
+  }
+  return {
+    member,
+    finOpsState: dir.finOpsState,
+    teamMembers: dir.teamMembers,
+    source: dir.source,
+  };
 }
 
 app.post('/api/team/hash-password', (req, res) => {
@@ -296,46 +405,309 @@ app.post('/api/team/hash-password', (req, res) => {
   });
 });
 
-app.post('/api/team/verify-password', (req, res) => {
+app.post('/api/team/verify-password', async (req, res) => {
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
   const storedHash = typeof req.body?.hash === 'string' ? req.body.hash : '';
-  if (!password || password.length > 128 || !storedHash.startsWith('scrypt$')) {
+  if (!password || password.length > 128 || !storedHash) {
     return res.json({ valid: false });
   }
-  const parts = storedHash.split('$');
-  if (parts.length !== 3 || !/^[a-f0-9]{16,64}$/i.test(parts[1]) || !/^[a-f0-9]{64,256}$/i.test(parts[2])) {
-    return res.json({ valid: false });
-  }
-  const [, salt, expectedHex] = parts;
-  crypto.scrypt(password, salt, 64, (err, derivedKey) => {
-    if (err) {
-      return res.status(500).json({ valid: false });
-    }
-    try {
-      const expectedBuf = Buffer.from(expectedHex, 'hex');
-      const valid =
-        expectedBuf.length === derivedKey.length &&
-        crypto.timingSafeEqual(expectedBuf, derivedKey);
-      if (!valid) {
-        return res.json({ valid: false });
-      }
-      const now = Date.now();
-      const sessionToken = signTeamSessionToken({
-        sub: `team-${salt.slice(0, 8)}`,
-        iat: now,
-        exp: now + 12 * 60 * 60 * 1000,
-      });
-      return res.json({ valid: true, sessionToken });
-    } catch {
+  try {
+    const valid = await verifyStoredPasswordHash(password, storedHash);
+    if (!valid) {
       return res.json({ valid: false });
     }
-  });
+    const now = Date.now();
+    const sessionToken = await signEdgeSessionToken(
+      {
+        memberId: `verify-${storedHash.slice(0, 12)}`,
+        username: 'verified',
+        iat: now,
+        exp: now + 12 * 60 * 60 * 1000,
+      },
+      TEAM_SESSION_SECRET
+    );
+    return res.json({ valid: true, sessionToken });
+  } catch {
+    return res.status(500).json({ valid: false });
+  }
 });
 
-app.get('/api/team/verify-session', (req, res) => {
+app.post('/api/team/login', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const rawUsername = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const rawPassword = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!rawUsername || !rawPassword || rawPassword.length > 128) {
+      return res.status(400).json({ ok: false, invalidCredentials: true });
+    }
+
+    const { teamMembers } = await loadTeamDirectory();
+    if (teamMembers.length === 0) {
+      return res.status(401).json({ ok: false, directoryEmpty: true, invalidCredentials: true });
+    }
+
+    const matched = teamMembers.find(
+      (m) => m && m.username && usernamesMatch(m.username, rawUsername)
+    );
+
+    if (!matched || !matched.passwordHash) {
+      return res.status(401).json({ ok: false, invalidCredentials: true });
+    }
+
+    if (matched.active === false) {
+      return res.status(403).json({ ok: false, suspended: true });
+    }
+
+    const valid = await verifyStoredPasswordHash(rawPassword, matched.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ ok: false, invalidCredentials: true });
+    }
+
+    const now = Date.now();
+    const sessionToken = await signEdgeSessionToken(
+      {
+        memberId: matched.id,
+        username: matched.username || rawUsername,
+        iat: now,
+        exp: now + 12 * 60 * 60 * 1000,
+      },
+      TEAM_SESSION_SECRET
+    );
+
+    return res.json({
+      ok: true,
+      member: sanitizeTeamMember(matched),
+      sessionToken,
+    });
+  } catch (err) {
+    console.error('Team login error:', err);
+    return res.status(500).json({ ok: false, error: 'Authentication service error' });
+  }
+});
+
+app.get('/api/team/workspace', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const auth = await authenticateTeamWorkspaceRequest(req);
+    if (!auth.member) {
+      return res.status(auth.status || 401).json({ ok: false, error: auth.error || 'Unauthorized' });
+    }
+
+    const perms = resolveMemberPermissions(auth.member);
+    const sb = getSupabaseAdminConfig();
+    let clients: Inquiry[] = [];
+    let invoices: ClientInvoiceRecord[] = [];
+
+    if (sb && auth.source === 'supabase') {
+      const sbHeaders = {
+        apikey: sb.serviceRoleKey,
+        Authorization: `Bearer ${sb.serviceRoleKey}`,
+        Accept: 'application/json',
+      };
+      const [clientsRes, invoicesRes] = await Promise.all([
+        fetch(`${sb.supabaseUrl}/rest/v1/crm_client_accounts?select=*&order=client_created_at.desc`, {
+          method: 'GET',
+          headers: sbHeaders,
+        }),
+        perms.canViewFinancials
+          ? fetch(`${sb.supabaseUrl}/rest/v1/client_invoices?select=*&order=invoice_created_at.desc`, {
+              method: 'GET',
+              headers: sbHeaders,
+            })
+          : Promise.resolve(null),
+      ]);
+      if (clientsRes.ok) {
+        const rawClients = (await clientsRes.json()) as any[];
+        clients = Array.isArray(rawClients) ? rawClients.map(mapCrmRowToInquiry) : [];
+      }
+      if (invoicesRes && invoicesRes.ok) {
+        const rawInv = (await invoicesRes.json()) as any[];
+        invoices = Array.isArray(rawInv) ? rawInv.map(mapRowToInvoice) : [];
+      }
+    } else {
+      const localStore = readLocalDataStore();
+      clients = Array.isArray(localStore.inquiries) ? localStore.inquiries : [];
+      invoices = perms.canViewFinancials && Array.isArray(localStore.invoices) ? localStore.invoices : [];
+    }
+
+    const safeTeamMembers = (auth.teamMembers || []).map(sanitizeTeamMember);
+
+    return res.json({
+      ok: true,
+      member: sanitizeTeamMember(auth.member),
+      teamMembers: safeTeamMembers,
+      clients,
+      ...(perms.canViewFinancials
+        ? {
+            invoices,
+            expenses: Array.isArray(auth.finOpsState?.expenses) ? auth.finOpsState?.expenses : [],
+            financialAuditLog: Array.isArray(auth.finOpsState?.financialAuditLog)
+              ? auth.finOpsState?.financialAuditLog
+              : [],
+            closedMonths: auth.finOpsState?.closedMonths || {},
+            financialSettings: auth.finOpsState?.financialSettings || undefined,
+          }
+        : {}),
+    });
+  } catch (err) {
+    console.error('Team workspace load error:', err);
+    return res.status(500).json({ ok: false, error: 'Failed to load team workspace' });
+  }
+});
+
+app.post('/api/team/workspace', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const auth = await authenticateTeamWorkspaceRequest(req);
+    if (!auth.member) {
+      return res.status(auth.status || 401).json({ ok: false, error: auth.error || 'Unauthorized' });
+    }
+
+    const perms = resolveMemberPermissions(auth.member);
+    const body = req.body as {
+      action?: string;
+      client?: Inquiry;
+      invoice?: ClientInvoiceRecord;
+      invoiceId?: string;
+      financeOps?: Record<string, any>;
+    } | null;
+
+    if (!body || typeof body.action !== 'string') {
+      return res.status(400).json({ ok: false, error: 'Invalid action' });
+    }
+
+    const sb = getSupabaseAdminConfig();
+    const sbHeaders = sb
+      ? {
+          apikey: sb.serviceRoleKey,
+          Authorization: `Bearer ${sb.serviceRoleKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates',
+        }
+      : null;
+
+    if (body.action === 'upsert_client' && body.client && body.client.id) {
+      const localStore = readLocalDataStore();
+      const existingList: Inquiry[] = Array.isArray(localStore.inquiries) ? localStore.inquiries : [];
+      const existsIdx = existingList.findIndex((c) => c.id === body.client!.id);
+      if (existsIdx >= 0) {
+        existingList[existsIdx] = body.client;
+      } else {
+        existingList.unshift(body.client);
+      }
+      localStore.inquiries = existingList;
+      writeLocalDataStore(localStore);
+
+      if (sb && sbHeaders) {
+        await fetch(`${sb.supabaseUrl}/rest/v1/crm_client_accounts?on_conflict=id`, {
+          method: 'POST',
+          headers: sbHeaders,
+          body: JSON.stringify(mapInquiryToCrmRow(body.client)),
+        });
+      }
+      return res.json({ ok: true });
+    }
+
+    if (body.action === 'upsert_invoice' && body.invoice && body.invoice.id) {
+      if (!perms.canViewFinancials && !perms.canApproveAdWallet) {
+        return res.status(403).json({ ok: false, error: 'Forbidden' });
+      }
+      const localStore = readLocalDataStore();
+      const existingList: ClientInvoiceRecord[] = Array.isArray(localStore.invoices) ? localStore.invoices : [];
+      const existsIdx = existingList.findIndex((i) => i.id === body.invoice!.id);
+      if (existsIdx >= 0) {
+        existingList[existsIdx] = body.invoice;
+      } else {
+        existingList.unshift(body.invoice);
+      }
+      localStore.invoices = existingList;
+      writeLocalDataStore(localStore);
+
+      if (sb && sbHeaders) {
+        await fetch(`${sb.supabaseUrl}/rest/v1/client_invoices?on_conflict=id`, {
+          method: 'POST',
+          headers: sbHeaders,
+          body: JSON.stringify(mapInvoiceToRow(body.invoice)),
+        });
+      }
+      return res.json({ ok: true });
+    }
+
+    if (body.action === 'delete_invoice' && typeof body.invoiceId === 'string' && body.invoiceId) {
+      if (!perms.canViewFinancials || !perms.canDeleteRecords) {
+        return res.status(403).json({ ok: false, error: 'Forbidden' });
+      }
+      const localStore = readLocalDataStore();
+      localStore.invoices = (Array.isArray(localStore.invoices) ? localStore.invoices : []).filter(
+        (i: any) => i?.id !== body.invoiceId
+      );
+      writeLocalDataStore(localStore);
+
+      if (sb) {
+        await fetch(
+          `${sb.supabaseUrl}/rest/v1/client_invoices?id=eq.${encodeURIComponent(body.invoiceId)}`,
+          {
+            method: 'DELETE',
+            headers: {
+              apikey: sb.serviceRoleKey,
+              Authorization: `Bearer ${sb.serviceRoleKey}`,
+            },
+          }
+        );
+      }
+      return res.json({ ok: true });
+    }
+
+    if (body.action === 'save_finance_ops' && body.financeOps && typeof body.financeOps === 'object') {
+      if (!perms.canViewFinancials && !perms.canApproveAdWallet) {
+        return res.status(403).json({ ok: false, error: 'Forbidden' });
+      }
+      const localStore = readLocalDataStore();
+      if (Array.isArray(body.financeOps.expenses)) localStore.expenses = body.financeOps.expenses;
+      if (Array.isArray(body.financeOps.financialAuditLog)) {
+        localStore.financialAuditLog = body.financeOps.financialAuditLog;
+      }
+      if (body.financeOps.closedMonths) localStore.closedMonths = body.financeOps.closedMonths;
+      if (body.financeOps.financialSettings) localStore.financialSettings = body.financeOps.financialSettings;
+      writeLocalDataStore(localStore);
+
+      if (sb && sbHeaders) {
+        const mergedSnapshot = {
+          ...(auth.finOpsState || {}),
+          ...(Array.isArray(body.financeOps.expenses) ? { expenses: body.financeOps.expenses } : {}),
+          ...(Array.isArray(body.financeOps.financialAuditLog)
+            ? { financialAuditLog: body.financeOps.financialAuditLog }
+            : {}),
+          ...(body.financeOps.closedMonths ? { closedMonths: body.financeOps.closedMonths } : {}),
+          ...(body.financeOps.financialSettings
+            ? { financialSettings: body.financeOps.financialSettings }
+            : {}),
+          teamMembers: auth.teamMembers,
+        };
+        await fetch(`${sb.supabaseUrl}/rest/v1/agency_crm_store?on_conflict=id`, {
+          method: 'POST',
+          headers: sbHeaders,
+          body: JSON.stringify({
+            id: 'admin_finance_ops',
+            state_json: mergedSnapshot,
+          }),
+        });
+      }
+      return res.json({ ok: true });
+    }
+
+    return res.status(400).json({ ok: false, error: 'Unsupported action' });
+  } catch (err) {
+    console.error('Team workspace update error:', err);
+    return res.status(500).json({ ok: false, error: 'Failed to save team update' });
+  }
+});
+
+app.get('/api/team/verify-session', async (req, res) => {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-  const verified = token ? verifyTeamSessionToken(token) : null;
+  const verified = token ? await verifyEdgeSessionToken(token, TEAM_SESSION_SECRET) : null;
   if (!verified) {
     return res.status(401).json({ valid: false });
   }

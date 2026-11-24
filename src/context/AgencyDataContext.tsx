@@ -1,11 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry, ClientAccountNote, ActivityLogType, ClientMonthlyCycleRecord, AgencyExpense, AgencyTeamMember, InvoicePaymentEntry, PaymentChannel, AdWalletRequest } from '../types';
+import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry, ClientAccountNote, ActivityLogType, ClientMonthlyCycleRecord, AgencyExpense, AgencyTeamMember, InvoicePaymentEntry, PaymentChannel, AdWalletRequest, FinancialAuditEntry, MonthlyCloseRecord, MonthCloseStepKey, FinancialSettings } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
 import { DEFAULT_CUSTOM_PACKAGE_RATES } from '../utils/pricingCalculator';
 import { parseInvoiceAmount, generateUniqueInvoiceNumber } from '../utils/invoicePdfGenerator';
 import { getClientDeliverableTargets } from '../utils/workflowUtils';
 import { formatInvoicePeriodLabel, formatOperationCycleBadge } from '../utils/billingPeriodUtils';
+import { normalizeArabicCopy } from '../utils/arabicNumbers';
+import {
+  createEmptyMonthCloseRecord,
+  DEFAULT_FINANCIAL_SETTINGS,
+  extractMonthKey,
+  findDuplicatePaymentReference,
+  getExpenseAccrualMonth,
+} from '../utils/accountingEngine';
 import {
   supabase,
   isSupabaseConfigured,
@@ -105,10 +113,11 @@ interface AgencyContextType {
   clearAllCrmData: () => Promise<{ success: boolean; rlsBlocked?: boolean; remainingCount?: number; error?: string }>;
 
   // Invoices Archive & Account Statements
-  addInvoice: (invoice: Omit<ClientInvoiceRecord, 'id' | 'createdAt'>) => ClientInvoiceRecord;
-  updateInvoice: (id: string, updates: Partial<ClientInvoiceRecord>) => void;
-  deleteInvoice: (id: string) => void;
-  markInvoiceAsPaid: (id: string, paymentMethod?: string) => void;
+  addInvoice: (invoice: Omit<ClientInvoiceRecord, 'id' | 'createdAt'>, actorName?: string) => ClientInvoiceRecord;
+  updateInvoice: (id: string, updates: Partial<ClientInvoiceRecord>, actorName?: string) => void;
+  deleteInvoice: (id: string, actorName?: string) => void;
+  voidInvoiceWithReversal: (id: string, reason: string, actorName?: string) => boolean;
+  markInvoiceAsPaid: (id: string, paymentMethod?: string, actorName?: string) => void;
   recordInvoicePayment: (
     invoiceId: string,
     payment: {
@@ -118,13 +127,26 @@ interface AgencyContextType {
       methodLabel: string;
       reference?: string;
       notes?: string;
-    }
+    },
+    actorName?: string
   ) => InvoicePaymentEntry | null;
-  deleteInvoicePayment: (invoiceId: string, paymentId: string) => void;
-  // Agency Expenses & Net Profit
-  addExpense: (expense: Omit<AgencyExpense, 'id' | 'createdAt'>) => AgencyExpense;
-  updateExpense: (id: string, updates: Partial<AgencyExpense>) => void;
-  deleteExpense: (id: string) => void;
+  deleteInvoicePayment: (
+    invoiceId: string,
+    paymentId: string,
+    reason?: string,
+    actorName?: string
+  ) => boolean;
+  // Agency Expenses & Financial Governance
+  addExpense: (expense: Omit<AgencyExpense, 'id' | 'createdAt'>, actorName?: string) => AgencyExpense;
+  updateExpense: (id: string, updates: Partial<AgencyExpense>, actorName?: string) => void;
+  deleteExpense: (id: string, actorName?: string) => void;
+  voidExpense: (id: string, reason: string, actorName?: string) => boolean;
+  postRecurringExpensesForMonth: (targetMonthKey: string, actorName?: string) => number;
+  isMonthClosed: (monthKey?: string | null) => boolean;
+  toggleMonthCloseStep: (monthKey: string, stepKey: MonthCloseStepKey, actorName?: string) => void;
+  closeFinancialMonth: (monthKey: string, actorName: string, notes?: string) => void;
+  reopenFinancialMonth: (monthKey: string, reason: string, actorName: string) => void;
+  updateFinancialSettings: (updates: Partial<FinancialSettings>, actorName?: string) => void;
   // Team Members & Portal Role Settings
   addTeamMember: (member: Omit<AgencyTeamMember, 'id'>) => AgencyTeamMember;
   updateTeamMember: (id: string, updates: Partial<AgencyTeamMember>) => void;
@@ -140,6 +162,7 @@ interface AgencyContextType {
       invoiceTargetCycle?: 'closed' | 'new';
       invoiceContractPeriod?: string;
       cycleNotes?: string;
+      actorName?: string;
     }
   ) => { updatedClient: Inquiry | null; createdInvoice: ClientInvoiceRecord | null };
   getClientLedger: (clientId: string, fromDate?: string, toDate?: string) => {
@@ -201,6 +224,11 @@ interface AgencyContextType {
     error?: string;
   }>;
   refreshFromSupabase: () => Promise<void>;
+  hydrateTeamWorkspace: (
+    sessionToken: string,
+    member: AgencyTeamMember
+  ) => Promise<{ ok: boolean; error?: string }>;
+  clearTeamSession: () => void;
 }
 
 const STORAGE_KEY = 'digital_effect_agency_state_v15';
@@ -328,6 +356,104 @@ function ensureCanonicalStudies(studies: CaseStudy[]): CaseStudy[] {
     }
   }
   return list;
+}
+
+/**
+ * Normalizes hydrated public catalog state (from localStorage, data-store.json, or Supabase)
+ * so legacy cached records immediately adopt updated email casing, Arabic thousands separators,
+ * refined Arabic phrasing, unified case study durations, and authentic IPT metrics.
+ */
+function normalizePublicCatalogState(state: AgencyDataState): AgencyDataState {
+  const canonicalIpt = INITIAL_AGENCY_DATA.caseStudies.find((c) => c.id === 'cs-med-ipt');
+  const fixArabicText = (text?: string) =>
+    text
+      ? normalizeArabicCopy(text)
+          .replace(/منشور أسبوعياً/g, 'منشور أسبوعي')
+          .replace(/B2C و B2B/g, 'B2C وB2B')
+      : text;
+
+  const agencyInfo = state.agencyInfo
+    ? {
+        ...state.agencyInfo,
+        email:
+          state.agencyInfo.email?.toLowerCase() === 'sales@digitaleffect.net'
+            ? 'sales@digitaleffect.net'
+            : state.agencyInfo.email,
+      }
+    : state.agencyInfo;
+
+  const banner = state.banner
+    ? {
+        ...state.banner,
+        text: fixArabicText(state.banner.text) || state.banner.text,
+      }
+    : state.banner;
+
+  const caseStudies = Array.isArray(state.caseStudies)
+    ? state.caseStudies.map((cs) => {
+        if (cs.id === 'cs-med-ipt' && canonicalIpt) {
+          const hasLegacyPercent = (cs.metrics || []).some(
+            (m) =>
+              String(m.value || '').includes('43,576') ||
+              String(m.hint || '').includes('120,522') ||
+              String(m.hintEn || '').includes('120,522')
+          );
+          if (hasLegacyPercent) {
+            return {
+              ...cs,
+              metrics: canonicalIpt.metrics,
+            };
+          }
+        }
+        if (cs.id === 'cs-b2b-siltal-identity') {
+          return {
+            ...cs,
+            duration:
+              cs.duration === '3 أشهر (الهوية، تغليف 7 خطوط، والكتالوج)'
+                ? '٣ أشهر (الهوية، تغليف ٧ خطوط، والكتالوج)'
+                : cs.duration,
+            subtitle: cs.subtitle?.replace('لـ 7 خطوط', 'لـ ٧ خطوط'),
+            industry: cs.industry?.replace('(6 أكتوبر)', '(٦ أكتوبر)'),
+            solution: cs.solution?.replace('على 7 موديلات', 'على ٧ موديلات'),
+            metrics: Array.isArray(cs.metrics)
+              ? cs.metrics.map((m) => ({
+                  ...m,
+                  hint: m.hint?.replace('شعار + 7 عبوات', 'شعار + ٧ عبوات'),
+                }))
+              : cs.metrics,
+          };
+        }
+        return cs;
+      })
+    : state.caseStudies;
+
+  const packages = Array.isArray(state.packages)
+    ? state.packages.map((pkg) => ({
+        ...pkg,
+        offerNote: fixArabicText(pkg.offerNote),
+        tagline: fixArabicText(pkg.tagline) || pkg.tagline,
+        frequency: fixArabicText(pkg.frequency),
+        features: Array.isArray(pkg.features)
+          ? pkg.features.map((f) => fixArabicText(f) || f)
+          : pkg.features,
+      }))
+    : state.packages;
+
+  const promoCodes = Array.isArray(state.promoCodes)
+    ? state.promoCodes.map((p) => ({
+        ...p,
+        title: fixArabicText(p.title) || p.title,
+      }))
+    : state.promoCodes;
+
+  return {
+    ...state,
+    agencyInfo,
+    banner,
+    caseStudies,
+    packages,
+    promoCodes,
+  };
 }
 
 export const PAGE_TO_PATH: Record<PageRoute, string> = {
@@ -490,7 +616,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         try {
           const parsedV14 = JSON.parse(v14Raw);
           if (parsedV14 && parsedV14.caseStudies && parsedV14.packages) {
-            const migratedClean: AgencyDataState = {
+            const migratedClean = normalizePublicCatalogState({
               ...INITIAL_AGENCY_DATA,
               ...parsedV14,
               caseStudies: ensureCanonicalStudies(
@@ -502,7 +628,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               customRates: parsedV14.customRates || DEFAULT_CUSTOM_PACKAGE_RATES,
               inquiries: [],
               invoices: [],
-            };
+            });
             localStorage.removeItem('digital_effect_agency_state_v14');
             localStorage.setItem(STORAGE_KEY, JSON.stringify(migratedClean));
             return migratedClean;
@@ -532,15 +658,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (!parsed.customRates) {
             parsed.customRates = DEFAULT_CUSTOM_PACKAGE_RATES;
           }
-          return parsed;
+          return normalizePublicCatalogState(parsed);
         }
       }
     } catch {}
-    return {
+    return normalizePublicCatalogState({
       ...INITIAL_AGENCY_DATA,
       caseStudies: ensureCanonicalStudies(INITIAL_AGENCY_DATA.caseStudies),
-      customRates: DEFAULT_CUSTOM_PACKAGE_RATES,
-    };
+      customRates: DEFAULT_CUSTOM_PACKAGE_RATES as unknown as CustomPackagePricingRates,
+    });
   });
 
   const [activeSector, setActiveSector] = useState<SectorType>('all');
@@ -564,6 +690,8 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const catalogDirtyRef = useRef(false);
   const isClearingCrmRef = useRef(false);
   const pendingSyncTimerRef = useRef<number | null>(null);
+  // Team Bearer token held strictly in memory (never written to localStorage/sessionStorage)
+  const teamSessionTokenRef = useRef<string | null>(null);
 
   // Language setter with HTML document update
   const setLanguage = (lang: Language) => {
@@ -725,6 +853,18 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (Array.isArray(finOpsRes.snapshot.opsAccountEmails)) {
             next.opsAccountEmails = finOpsRes.snapshot.opsAccountEmails;
           }
+          if (Array.isArray(finOpsRes.snapshot.financialAuditLog)) {
+            next.financialAuditLog = finOpsRes.snapshot.financialAuditLog;
+          }
+          if (finOpsRes.snapshot.closedMonths && typeof finOpsRes.snapshot.closedMonths === 'object') {
+            next.closedMonths = finOpsRes.snapshot.closedMonths;
+          }
+          if (finOpsRes.snapshot.financialSettings) {
+            next.financialSettings = {
+              ...DEFAULT_FINANCIAL_SETTINGS,
+              ...finOpsRes.snapshot.financialSettings,
+            };
+          }
         }
 
         // Hydrate public catalog if present in Supabase
@@ -780,7 +920,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           );
         }
 
-        return next;
+        return normalizePublicCatalogState(next);
       });
 
       setLastCloudSyncAt(new Date().toISOString());
@@ -808,6 +948,107 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return res;
   };
 
+  const postTeamWorkspaceAction = (payload: Record<string, any>) => {
+    const token = teamSessionTokenRef.current;
+    if (!token) return;
+    fetch('/api/team/workspace', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (res.ok) {
+          setLastCloudSyncAt(new Date().toISOString());
+          setCloudSyncStatus('synced');
+        }
+      })
+      .catch(() => {});
+  };
+
+  const hydrateTeamWorkspace = async (
+    sessionToken: string,
+    member: AgencyTeamMember
+  ): Promise<{ ok: boolean; error?: string }> => {
+    teamSessionTokenRef.current = sessionToken;
+    try {
+      setCloudSyncStatus('syncing');
+      const res = await fetch('/api/team/workspace', {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${sessionToken}`,
+        },
+      });
+      if (!res.ok) {
+        setCloudSyncStatus('error');
+        return { ok: false, error: `HTTP ${res.status}` };
+      }
+      const payload = (await res.json()) as {
+        ok?: boolean;
+        member?: AgencyTeamMember;
+        teamMembers?: AgencyTeamMember[];
+        clients?: Inquiry[];
+        invoices?: ClientInvoiceRecord[];
+        expenses?: AgencyExpense[];
+        financialAuditLog?: FinancialAuditEntry[];
+        closedMonths?: Record<string, MonthlyCloseRecord>;
+        financialSettings?: FinancialSettings;
+      };
+      if (!payload?.ok) {
+        setCloudSyncStatus('error');
+        return { ok: false };
+      }
+
+      setData((prev) => {
+        const next: AgencyDataState = { ...prev };
+        if (Array.isArray(payload.teamMembers) && payload.teamMembers.length > 0) {
+          next.teamMembers = payload.teamMembers;
+        } else if (member?.id) {
+          const exists = (prev.teamMembers || []).some((m) => m.id === member.id);
+          next.teamMembers = exists
+            ? (prev.teamMembers || []).map((m) => (m.id === member.id ? { ...m, ...member } : m))
+            : [...(prev.teamMembers || []), member];
+        }
+        if (Array.isArray(payload.clients)) {
+          next.inquiries = payload.clients;
+        }
+        if (Array.isArray(payload.invoices)) {
+          next.invoices = payload.invoices;
+        }
+        if (Array.isArray(payload.expenses)) {
+          next.expenses = payload.expenses;
+        }
+        if (Array.isArray(payload.financialAuditLog)) {
+          next.financialAuditLog = payload.financialAuditLog;
+        }
+        if (payload.closedMonths && typeof payload.closedMonths === 'object') {
+          next.closedMonths = payload.closedMonths;
+        }
+        if (payload.financialSettings) {
+          next.financialSettings = {
+            ...DEFAULT_FINANCIAL_SETTINGS,
+            ...payload.financialSettings,
+          };
+        }
+        return normalizePublicCatalogState(next);
+      });
+
+      setLastCloudSyncAt(new Date().toISOString());
+      setCloudSyncStatus('synced');
+      return { ok: true };
+    } catch (err: any) {
+      setCloudSyncStatus('error');
+      return { ok: false, error: err?.message || 'Workspace hydration failed' };
+    }
+  };
+
+  const clearTeamSession = () => {
+    teamSessionTokenRef.current = null;
+  };
+
   // Fetch persisted data from server AND Supabase on mount
   useEffect(() => {
     fetch('/api/agency-data')
@@ -828,10 +1069,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const serverExtras = Array.isArray(serverData.inquiries)
               ? serverData.inquiries.filter((c: any) => c?.id && !prevIds.has(c.id) && !sampleIds.has(c.id))
               : [];
-            return {
+            return normalizePublicCatalogState({
               ...sanitizedData,
               inquiries: [...serverExtras, ...prevInq],
-            };
+            });
           });
         }
       })
@@ -843,21 +1084,23 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (catRes.migrationNeeded) {
               setSupabaseMigrationNeeded(true);
             } else if (catRes.catalog) {
-              setData((prev) => ({
-                ...prev,
-                caseStudies: Array.isArray(catRes.catalog?.caseStudies) && catRes.catalog.caseStudies.length > 0
-                  ? ensureCanonicalStudies(catRes.catalog.caseStudies)
-                  : prev.caseStudies,
-                packages: Array.isArray(catRes.catalog?.packages) && catRes.catalog.packages.length > 0
-                  ? catRes.catalog.packages
-                  : prev.packages,
-                promoCodes: Array.isArray(catRes.catalog?.promoCodes)
-                  ? catRes.catalog.promoCodes
-                  : prev.promoCodes,
-                customRates: catRes.catalog?.customRates || prev.customRates,
-                banner: catRes.catalog?.banner || prev.banner,
-                agencyInfo: catRes.catalog?.agencyInfo || prev.agencyInfo,
-              }));
+              setData((prev) =>
+                normalizePublicCatalogState({
+                  ...prev,
+                  caseStudies: Array.isArray(catRes.catalog?.caseStudies) && catRes.catalog.caseStudies.length > 0
+                    ? ensureCanonicalStudies(catRes.catalog.caseStudies)
+                    : prev.caseStudies,
+                  packages: Array.isArray(catRes.catalog?.packages) && catRes.catalog.packages.length > 0
+                    ? catRes.catalog.packages
+                    : prev.packages,
+                  promoCodes: Array.isArray(catRes.catalog?.promoCodes)
+                    ? catRes.catalog.promoCodes
+                    : prev.promoCodes,
+                  customRates: catRes.catalog?.customRates || prev.customRates,
+                  banner: catRes.catalog?.banner || prev.banner,
+                  agencyInfo: catRes.catalog?.agencyInfo || prev.agencyInfo,
+                })
+              );
             }
           });
         }
@@ -889,13 +1132,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     pendingSyncTimerRef.current = window.setTimeout(() => {
       pendingSyncTimerRef.current = null;
       if (isClearingCrmRef.current) return;
-      fetch('/api/agency-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      }).catch((err) => {
-        console.warn('Server sync notice:', err);
-      });
+      // Team member sessions persist strictly through /api/team/workspace with RBAC checks
+      if (!teamSessionTokenRef.current) {
+        fetch('/api/agency-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        }).catch((err) => {
+          console.warn('Server sync notice:', err);
+        });
+      }
 
       if (catalogDirtyRef.current && isSupabaseConfigured && supabase) {
         catalogDirtyRef.current = false;
@@ -1416,7 +1662,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       inquiries: [newInquiry, ...(prev.inquiries || [])],
     }));
 
-    if (isSupabaseConfigured && supabase) {
+    if (teamSessionTokenRef.current) {
+      postTeamWorkspaceAction({ action: 'upsert_client', client: newInquiry });
+    } else if (isSupabaseConfigured && supabase) {
       upsertCrmClientToSupabase(newInquiry).then((res) => {
         if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
         else if (res.success) setLastCloudSyncAt(new Date().toISOString());
@@ -1437,7 +1685,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ),
     }));
 
-    if (mergedForSync && isSupabaseConfigured && supabase) {
+    if (mergedForSync && teamSessionTokenRef.current) {
+      postTeamWorkspaceAction({ action: 'upsert_client', client: mergedForSync });
+    } else if (mergedForSync && isSupabaseConfigured && supabase) {
       upsertCrmClientToSupabase(mergedForSync).then((res) => {
         if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
         else if (res.success) setLastCloudSyncAt(new Date().toISOString());
@@ -1476,7 +1726,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           item.id === id ? { ...item, clientNotes: [newEntry, ...(item.clientNotes || [])] } : item
         ),
       }));
-      if (isSupabaseConfigured && supabase) {
+      if (teamSessionTokenRef.current) {
+        postTeamWorkspaceAction({ action: 'upsert_client', client: merged });
+      } else if (isSupabaseConfigured && supabase) {
         upsertCrmClientToSupabase(merged).then((res) => {
           if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
           else if (res.success) setLastCloudSyncAt(new Date().toISOString());
@@ -1497,7 +1749,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         ...prev,
         inquiries: [created, ...(prev.inquiries || [])],
       }));
-      if (isSupabaseConfigured && supabase) {
+      if (teamSessionTokenRef.current) {
+        postTeamWorkspaceAction({ action: 'upsert_client', client: created });
+      } else if (isSupabaseConfigured && supabase) {
         upsertCrmClientToSupabase(created).then((res) => {
           if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
           else if (res.success) setLastCloudSyncAt(new Date().toISOString());
@@ -1574,12 +1828,70 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  // Sync helper for private admin finance & ops settings
+  const syncAdminFinanceOpsSnapshot = (nextState: AgencyDataState) => {
+    if (teamSessionTokenRef.current) {
+      postTeamWorkspaceAction({
+        action: 'save_finance_ops',
+        financeOps: {
+          expenses: nextState.expenses || [],
+          financialAuditLog: nextState.financialAuditLog || [],
+          closedMonths: nextState.closedMonths || {},
+          financialSettings: nextState.financialSettings || DEFAULT_FINANCIAL_SETTINGS,
+        },
+      });
+      return;
+    }
+    if (isSupabaseConfigured && supabase) {
+      saveAdminFinanceOpsToSupabase({
+        expenses: nextState.expenses || [],
+        teamMembers: nextState.teamMembers || DEFAULT_AGENCY_TEAM_MEMBERS,
+        opsAccessCode: nextState.opsAccessCode || DEFAULT_OPS_ACCESS_CODE,
+        opsAccountEmails: nextState.opsAccountEmails || [],
+        financialAuditLog: nextState.financialAuditLog || [],
+        closedMonths: nextState.closedMonths || {},
+        financialSettings: nextState.financialSettings || DEFAULT_FINANCIAL_SETTINGS,
+      }).then((res) => {
+        if (res.success) setLastCloudSyncAt(new Date().toISOString());
+      });
+    }
+  };
+
+  const appendFinancialAudit = (
+    entry: Omit<FinancialAuditEntry, 'id' | 'timestamp'>
+  ) => {
+    const newAudit: FinancialAuditEntry = {
+      ...entry,
+      id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: new Date().toISOString(),
+    };
+    setData((prev) => {
+      const next: AgencyDataState = {
+        ...prev,
+        financialAuditLog: [newAudit, ...(prev.financialAuditLog || [])].slice(0, 500),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  const isMonthClosed = (monthKey?: string | null): boolean => {
+    if (!monthKey) return false;
+    const normalized = extractMonthKey(monthKey) || monthKey;
+    return dataRef.current.closedMonths?.[normalized]?.status === 'closed';
+  };
+
   // Invoices Archive Actions
-  const addInvoice = (invoiceData: Omit<ClientInvoiceRecord, 'id' | 'createdAt'>): ClientInvoiceRecord => {
+  const addInvoice = (
+    invoiceData: Omit<ClientInvoiceRecord, 'id' | 'createdAt'>,
+    actorName = 'الإدارة المالية'
+  ): ClientInvoiceRecord => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
     const id = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const invoiceNumber = invoiceData.invoiceNumber || `DE-INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String((dataRef.current.invoices?.length || 0) + 101).slice(-3)}`;
     const newInvoice: ClientInvoiceRecord = {
       ...invoiceData,
+      adFundsTreatment: invoiceData.adFundsTreatment || dataRef.current.financialSettings?.adFundsDefaultPolicy || 'client_passthrough',
       paymentStatus: invoiceData.paymentStatus || 'pending',
       id,
       invoiceNumber,
@@ -1591,20 +1903,31 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       invoices: [newInvoice, ...(prev.invoices || [])],
     }));
 
-    if (isSupabaseConfigured && supabase) {
+    appendFinancialAudit({
+      actorName: resolvedActor,
+      entityType: 'invoice',
+      entityId: newInvoice.id,
+      entityLabel: `${newInvoice.invoiceNumber} — ${newInvoice.clientCompany || newInvoice.clientName}`,
+      action: 'create',
+      afterSummary: `أتعاب: ${newInvoice.retainerAmount.toLocaleString()} ج.م | رصيد إعلاني: ${(newInvoice.adCreditAmount || 0).toLocaleString()} ج.م${newInvoice.taxAmount ? ` | ضرائب: ${newInvoice.taxAmount.toLocaleString()} ج.م` : ''} | الإجمالي: ${newInvoice.grandTotal.toLocaleString()} ج.م${newInvoice.isDraft ? ' (مسودة)' : ''}`,
+    });
+
+    if (teamSessionTokenRef.current) {
+      postTeamWorkspaceAction({ action: 'upsert_invoice', invoice: newInvoice });
+    } else if (isSupabaseConfigured && supabase) {
       upsertInvoiceToSupabase(newInvoice).then((res) => {
         if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
         else if (res.success) setLastCloudSyncAt(new Date().toISOString());
       });
     }
 
-    // If client exists, append tracking note to client profile
-    if (newInvoice.clientId) {
+    // If client exists and invoice is not a draft, append tracking note to client profile
+    if (newInvoice.clientId && !newInvoice.isDraft) {
       const client = (dataRef.current.inquiries || []).find((c) => c.id === newInvoice.clientId);
       if (client) {
         const noteText = `تم إصدار فاتورة جديدة برقم ${newInvoice.invoiceNumber} بقيمة إجمالية ${newInvoice.grandTotal.toLocaleString()} ج.م (${newInvoice.packageName})${newInvoice.adCreditAmount ? ` تتضمن رصيد إعلاني ${newInvoice.adCreditAmount.toLocaleString()} ج.م` : ''}.`;
         const updatedNotes: ClientAccountNote[] = [
-          makeActivityNote(noteText, 'invoice', 'الإدارة المالية', {
+          makeActivityNote(noteText, 'invoice', resolvedActor, {
             invoiceNumber: newInvoice.invoiceNumber,
           }),
           ...(client.clientNotes || []),
@@ -1620,7 +1943,12 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newInvoice;
   };
 
-  const updateInvoice = (id: string, updates: Partial<ClientInvoiceRecord>) => {
+  const updateInvoice = (
+    id: string,
+    updates: Partial<ClientInvoiceRecord>,
+    actorName = 'الإدارة المالية'
+  ) => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
     const existingInv = (dataRef.current.invoices || []).find((inv) => inv.id === id);
     const updatedInv = existingInv ? { ...existingInv, ...updates } : null;
 
@@ -1628,6 +1956,23 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ...prev,
       invoices: (prev.invoices || []).map((inv) => (inv.id === id ? { ...inv, ...updates } : inv)),
     }));
+
+    if (existingInv && updatedInv) {
+      const changedKeys = Object.keys(updates).filter(
+        (k) => (existingInv as any)[k] !== (updatedInv as any)[k]
+      );
+      if (changedKeys.length > 0 && updates.paymentStatus !== 'cancelled') {
+        appendFinancialAudit({
+          actorName: resolvedActor,
+          entityType: 'invoice',
+          entityId: existingInv.id,
+          entityLabel: `${existingInv.invoiceNumber} — ${existingInv.clientCompany || existingInv.clientName}`,
+          action: 'update',
+          beforeSummary: `الحالة: ${existingInv.paymentStatus} | المدفوع: ${(existingInv.paidAmount || 0).toLocaleString()} ج.م`,
+          afterSummary: `الحالة: ${updatedInv.paymentStatus} | المدفوع: ${(updatedInv.paidAmount || 0).toLocaleString()} ج.م`,
+        });
+      }
+    }
 
     if (
       updatedInv &&
@@ -1645,7 +1990,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
 
-    if (updatedInv && isSupabaseConfigured && supabase) {
+    if (updatedInv && teamSessionTokenRef.current) {
+      postTeamWorkspaceAction({ action: 'upsert_invoice', invoice: updatedInv });
+    } else if (updatedInv && isSupabaseConfigured && supabase) {
       upsertInvoiceToSupabase(updatedInv).then((res) => {
         if (res.migrationNeeded) setSupabaseMigrationNeeded(true);
         else if (res.success) setLastCloudSyncAt(new Date().toISOString());
@@ -1653,17 +2000,89 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const deleteInvoice = (id: string) => {
+  const deleteInvoice = (id: string, actorName = 'الإدارة المالية') => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
+    const existingInv = (dataRef.current.invoices || []).find((inv) => inv.id === id);
     setData((prev) => ({
       ...prev,
       invoices: (prev.invoices || []).filter((inv) => inv.id !== id),
     }));
-    if (isSupabaseConfigured && supabase) {
+    if (existingInv) {
+      appendFinancialAudit({
+        actorName: resolvedActor,
+        entityType: 'invoice',
+        entityId: existingInv.id,
+        entityLabel: `${existingInv.invoiceNumber} — ${existingInv.clientCompany || existingInv.clientName}`,
+        action: 'delete_draft',
+        beforeSummary: `حذف مسودة فاتورة بقيمة ${existingInv.grandTotal.toLocaleString()} ج.م`,
+      });
+    }
+    if (teamSessionTokenRef.current) {
+      postTeamWorkspaceAction({ action: 'delete_invoice', invoiceId: id });
+    } else if (isSupabaseConfigured && supabase) {
       deleteInvoiceFromSupabase(id).catch(() => {});
     }
   };
 
-  const markInvoiceAsPaid = (id: string, paymentMethod = 'إنستاباي / محفظة إلكترونية') => {
+  // Accounting Control: Void/Cancel issued invoice with reversal trail (never erases historical audit)
+  const voidInvoiceWithReversal = (
+    id: string,
+    reason: string,
+    actorName = 'الإدارة المالية'
+  ): boolean => {
+    const existingInv = (dataRef.current.invoices || []).find((inv) => inv.id === id);
+    if (!existingInv) return false;
+    const cleanReason = reason.trim();
+    if (!cleanReason) return false;
+
+    const nowIso = new Date().toISOString();
+    updateInvoice(id, {
+      paymentStatus: 'cancelled',
+      cancellationReason: cleanReason,
+      cancelledAt: nowIso,
+      cancelledBy: actorName,
+      notes: [existingInv.notes, `[مستند إلغاء عكسي — ${nowIso.split('T')[0]} — ${actorName}]: ${cleanReason}`]
+        .filter(Boolean)
+        .join('\n'),
+    });
+
+    appendFinancialAudit({
+      actorName,
+      entityType: 'invoice',
+      entityId: existingInv.id,
+      entityLabel: `${existingInv.invoiceNumber} — ${existingInv.clientCompany || existingInv.clientName}`,
+      action: 'void',
+      beforeSummary: `فاتورة فعالة (${existingInv.paymentStatus}) بقيمة ${existingInv.grandTotal.toLocaleString()} ج.م`,
+      afterSummary: `ملغاة بمستند عكسي موثق (0 ج.م إيراد محتسب)`,
+      reason: cleanReason,
+    });
+
+    if (existingInv.clientId) {
+      const client = (dataRef.current.inquiries || []).find((c) => c.id === existingInv.clientId);
+      if (client) {
+        updateInquiry(client.id, {
+          clientNotes: [
+            makeActivityNote(
+              `تم إلغاء الفاتورة ${existingInv.invoiceNumber} بمستند عكسي موثق (${actorName}) — السبب: ${cleanReason}`,
+              'invoice',
+              actorName,
+              { invoiceNumber: existingInv.invoiceNumber }
+            ),
+            ...(client.clientNotes || []),
+          ],
+        });
+      }
+    }
+
+    return true;
+  };
+
+  const markInvoiceAsPaid = (
+    id: string,
+    paymentMethod = 'إنستاباي / محفظة إلكترونية',
+    actorName = 'الإدارة المالية'
+  ) => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
     const today = new Date().toISOString().split('T')[0];
     const invoice = (dataRef.current.invoices || []).find((inv) => inv.id === id);
     if (!invoice) return;
@@ -1696,13 +2115,17 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ];
     }
 
-    updateInvoice(id, {
-      paymentStatus: 'paid',
-      paidAt: today,
-      paymentMethod,
-      paidAmount: invoice.grandTotal,
-      payments: nextPayments,
-    });
+    updateInvoice(
+      id,
+      {
+        paymentStatus: 'paid',
+        paidAt: today,
+        paymentMethod,
+        paidAmount: invoice.grandTotal,
+        payments: nextPayments,
+      },
+      resolvedActor
+    );
 
     // If invoice had an ad credit amount and wasn't already paid, credit it to client's adCreditBalance
     if (invoice.clientId && invoice.paymentStatus !== 'paid') {
@@ -1714,12 +2137,12 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const pendingRemainder = Math.max(0, (client.pendingInvoiceAdCredit || 0) - adAmt);
 
         const updatedNotes = [
-          {
-            id: `note-${Date.now()}`,
-            text: `تم تحصيل الفاتورة ${invoice.invoiceNumber} بقيمة ${invoice.grandTotal.toLocaleString()} ج.م${adAmt > 0 ? ` وتم إيداع ${adAmt.toLocaleString()} ج.م في محفظة الإعلانات الممولة (الرصيد المتاح: ${newBalance.toLocaleString()} ج.م).` : '.'}`,
-            createdAt: new Date().toISOString(),
-            type: 'payment' as const,
-          },
+          makeActivityNote(
+            `تم تحصيل الفاتورة ${invoice.invoiceNumber} بقيمة ${invoice.grandTotal.toLocaleString()} ج.م${adAmt > 0 ? ` وتم إيداع ${adAmt.toLocaleString()} ج.م في محفظة الإعلانات الممولة (الرصيد المتاح: ${newBalance.toLocaleString()} ج.م).` : '.'}`,
+            'payment',
+            resolvedActor,
+            { invoiceNumber: invoice.invoiceNumber }
+          ),
           ...(client.clientNotes || []),
         ];
 
@@ -1744,11 +2167,21 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       methodLabel: string;
       reference?: string;
       notes?: string;
-    }
+    },
+    actorName = 'الإدارة المالية'
   ): InvoicePaymentEntry | null => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
     const invoice = (dataRef.current.invoices || []).find((inv) => inv.id === invoiceId);
     const cleanAmount = Math.max(0, Number(paymentInput.amount) || 0);
     if (!invoice || cleanAmount <= 0) return null;
+
+    const duplicateRef = findDuplicatePaymentReference(
+      dataRef.current.invoices || [],
+      paymentInput.reference
+    );
+    if (duplicateRef) {
+      return null;
+    }
 
     const now = new Date();
     const existingPayments = invoice.payments || [];
@@ -1782,12 +2215,25 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ? 'partially_paid'
       : 'pending';
 
-    updateInvoice(invoice.id, {
-      payments: nextPayments,
-      paidAmount: Math.min(invoice.grandTotal, nextPaidAmount),
-      paymentStatus: nextStatus,
-      paymentMethod: newEntry.methodLabel,
-      paidAt: isNowFullyPaid ? newEntry.date : invoice.paidAt,
+    updateInvoice(
+      invoice.id,
+      {
+        payments: nextPayments,
+        paidAmount: Math.min(invoice.grandTotal, nextPaidAmount),
+        paymentStatus: nextStatus,
+        paymentMethod: newEntry.methodLabel,
+        paidAt: isNowFullyPaid ? newEntry.date : invoice.paidAt,
+      },
+      resolvedActor
+    );
+
+    appendFinancialAudit({
+      actorName: resolvedActor,
+      entityType: 'payment',
+      entityId: newEntry.id,
+      entityLabel: `${receiptNumber} (${invoice.invoiceNumber})`,
+      action: 'payment_recorded',
+      afterSummary: `دفعة ${cleanAmount.toLocaleString()} ج.م عبر ${newEntry.methodLabel}${newEntry.reference ? ` — مرجع: ${newEntry.reference}` : ''}`,
     });
 
     if (invoice.clientId) {
@@ -1816,7 +2262,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               }
             : {}),
           clientNotes: [
-            makeActivityNote(noteText, 'payment', 'الإدارة المالية', {
+            makeActivityNote(noteText, 'payment', resolvedActor, {
               invoiceNumber: invoice.invoiceNumber,
             }),
             ...(client.clientNotes || []),
@@ -1828,9 +2274,23 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newEntry;
   };
 
-  const deleteInvoicePayment = (invoiceId: string, paymentId: string) => {
+  const deleteInvoicePayment = (
+    invoiceId: string,
+    paymentId: string,
+    reason?: string,
+    actorName = 'الإدارة المالية'
+  ): boolean => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
     const invoice = (dataRef.current.invoices || []).find((inv) => inv.id === invoiceId);
-    if (!invoice) return;
+    if (!invoice) return false;
+    const removedEntry = (invoice.payments || []).find((p) => p.id === paymentId);
+    if (!removedEntry) return false;
+
+    // Governance: Prevent reversing a payment belonging to a locked financial month
+    if (isMonthClosed(removedEntry.date || invoice.issueDate) || isMonthClosed(invoice.issueDate)) {
+      return false;
+    }
+
     const nextPayments = (invoice.payments || []).filter((p) => p.id !== paymentId);
     const nextPaidAmount = nextPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const nextStatus: ClientInvoiceRecord['paymentStatus'] =
@@ -1840,40 +2300,68 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         ? 'partially_paid'
         : 'pending';
 
-    updateInvoice(invoice.id, {
-      payments: nextPayments,
-      paidAmount: nextPaidAmount,
-      paymentStatus: nextStatus,
-      paidAt: nextStatus === 'paid' ? invoice.paidAt : undefined,
+    updateInvoice(
+      invoice.id,
+      {
+        payments: nextPayments,
+        paidAmount: nextPaidAmount,
+        paymentStatus: nextStatus,
+        paidAt: nextStatus === 'paid' ? invoice.paidAt : undefined,
+      },
+      resolvedActor
+    );
+
+    appendFinancialAudit({
+      actorName: resolvedActor,
+      entityType: 'payment',
+      entityId: removedEntry.id,
+      entityLabel: `${removedEntry.receiptNumber} (${invoice.invoiceNumber})`,
+      action: 'payment_removed',
+      beforeSummary: `دفعة ${removedEntry.amount.toLocaleString()} ج.م بتاريخ ${removedEntry.date}`,
+      afterSummary: `تم عكس الدفعة — المدفوع المتبقي: ${nextPaidAmount.toLocaleString()} ج.م`,
+      reason: reason?.trim() || undefined,
     });
+    return true;
   };
 
-  // Sync helper for private admin finance & ops settings
-  const syncAdminFinanceOpsSnapshot = (nextState: AgencyDataState) => {
-    if (isSupabaseConfigured && supabase) {
-      saveAdminFinanceOpsToSupabase({
-        expenses: nextState.expenses || [],
-        teamMembers: nextState.teamMembers || DEFAULT_AGENCY_TEAM_MEMBERS,
-        opsAccessCode: nextState.opsAccessCode || DEFAULT_OPS_ACCESS_CODE,
-        opsAccountEmails: nextState.opsAccountEmails || [],
-      }).then((res) => {
-        if (res.success) setLastCloudSyncAt(new Date().toISOString());
-      });
-    }
-  };
+  // Agency Expenses CRUD & Governance
+  const addExpense = (
+    expenseData: Omit<AgencyExpense, 'id' | 'createdAt'>,
+    actorName = 'الإدارة المالية'
+  ): AgencyExpense => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
+    const accrualMonth =
+      expenseData.accrualMonth ||
+      extractMonthKey(expenseData.date) ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const paymentStatus = expenseData.paymentStatus || 'paid';
+    const paymentDate =
+      paymentStatus === 'paid' ? expenseData.paymentDate || expenseData.date : undefined;
 
-  // Agency Expenses CRUD
-  const addExpense = (expenseData: Omit<AgencyExpense, 'id' | 'createdAt'>): AgencyExpense => {
     const newExpense: AgencyExpense = {
       ...expenseData,
       id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       amount: Math.max(0, Number(expenseData.amount) || 0),
+      accrualMonth,
+      paymentStatus,
+      paymentDate,
       createdAt: new Date().toISOString(),
     };
     setData((prev) => {
+      const audit: FinancialAuditEntry = {
+        id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        actorName: resolvedActor,
+        entityType: 'expense',
+        entityId: newExpense.id,
+        entityLabel: newExpense.title,
+        action: 'create',
+        afterSummary: `${newExpense.amount.toLocaleString()} ج.م | شهر الاستحقاق: ${accrualMonth} | الحالة: ${paymentStatus === 'paid' ? 'مدفوع' : 'مستحق غير مدفوع'}`,
+      };
       const next: AgencyDataState = {
         ...prev,
         expenses: [newExpense, ...(prev.expenses || [])],
+        financialAuditLog: [audit, ...(prev.financialAuditLog || [])].slice(0, 500),
       };
       syncAdminFinanceOpsSnapshot(next);
       return next;
@@ -1881,22 +2369,322 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newExpense;
   };
 
-  const updateExpense = (id: string, updates: Partial<AgencyExpense>) => {
+  const updateExpense = (
+    id: string,
+    updates: Partial<AgencyExpense>,
+    actorName = 'الإدارة المالية'
+  ) => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
+    const prevExp = (dataRef.current.expenses || []).find((e) => e.id === id);
     setData((prev) => {
+      const nextExpenses = (prev.expenses || []).map((e) => (e.id === id ? { ...e, ...updates } : e));
+      const updatedExp = nextExpenses.find((e) => e.id === id);
+      const auditEntries = prev.financialAuditLog || [];
+      const nextAudit: FinancialAuditEntry[] =
+        prevExp && updatedExp
+          ? [
+              {
+                id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                timestamp: new Date().toISOString(),
+                actorName: resolvedActor,
+                entityType: 'expense' as const,
+                entityId: id,
+                entityLabel: updatedExp.title,
+                action: 'update' as const,
+                beforeSummary: `${prevExp.amount.toLocaleString()} ج.م (${prevExp.paymentStatus || 'paid'})`,
+                afterSummary: `${updatedExp.amount.toLocaleString()} ج.م (${updatedExp.paymentStatus || 'paid'})`,
+              },
+              ...auditEntries,
+            ].slice(0, 500)
+          : auditEntries;
       const next: AgencyDataState = {
         ...prev,
-        expenses: (prev.expenses || []).map((e) => (e.id === id ? { ...e, ...updates } : e)),
+        expenses: nextExpenses,
+        financialAuditLog: nextAudit,
       };
       syncAdminFinanceOpsSnapshot(next);
       return next;
     });
   };
 
-  const deleteExpense = (id: string) => {
+  const voidExpense = (id: string, reason: string, actorName = 'الإدارة المالية'): boolean => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
+    const prevExp = (dataRef.current.expenses || []).find((e) => e.id === id);
+    if (!prevExp || !reason.trim()) return false;
+    const nowIso = new Date().toISOString();
+    setData((prev) => {
+      const nextExpenses = (prev.expenses || []).map((e) =>
+        e.id === id
+          ? {
+              ...e,
+              voided: true,
+              voidReason: reason.trim(),
+              voidedAt: nowIso,
+              voidedBy: resolvedActor,
+            }
+          : e
+      );
+      const audit: FinancialAuditEntry = {
+        id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: nowIso,
+        actorName: resolvedActor,
+        entityType: 'expense',
+        entityId: id,
+        entityLabel: prevExp.title,
+        action: 'void',
+        beforeSummary: `مصروف فعّال بقيمة ${prevExp.amount.toLocaleString()} ج.م`,
+        afterSummary: `ملغى بقيد موثق (لا يُحتسب في P&L أو التدفق النقدي)`,
+        reason: reason.trim(),
+      };
+      const next: AgencyDataState = {
+        ...prev,
+        expenses: nextExpenses,
+        financialAuditLog: [audit, ...(prev.financialAuditLog || [])].slice(0, 500),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+    return true;
+  };
+
+  const deleteExpense = (id: string, actorName = 'الإدارة المالية') => {
+    const resolvedActor = actorName?.trim() || 'الإدارة المالية';
+    const prevExp = (dataRef.current.expenses || []).find((e) => e.id === id);
     setData((prev) => {
       const next: AgencyDataState = {
         ...prev,
         expenses: (prev.expenses || []).filter((e) => e.id !== id),
+        financialAuditLog: prevExp
+          ? [
+              {
+                id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                timestamp: new Date().toISOString(),
+                actorName: resolvedActor,
+                entityType: 'expense' as const,
+                entityId: id,
+                entityLabel: prevExp.title,
+                action: 'delete_draft' as const,
+                beforeSummary: `حذف مصروف ${prevExp.amount.toLocaleString()} ج.م`,
+              },
+              ...(prev.financialAuditLog || []),
+            ].slice(0, 500)
+          : prev.financialAuditLog,
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  // Post recurring salaries & fixed expenses into a target month without duplicating existing items
+  const postRecurringExpensesForMonth = (
+    targetMonthKey: string,
+    actorName = 'الإدارة المالية'
+  ): number => {
+    if (isMonthClosed(targetMonthKey)) return 0;
+    const allExpenses = (dataRef.current.expenses || []).filter((e) => !e.voided);
+    const existingKeysInTarget = new Set(
+      allExpenses
+        .filter((e) => getExpenseAccrualMonth(e) === targetMonthKey)
+        .map((e) => `${e.category}::${e.title.trim().toLowerCase()}`)
+    );
+
+    // Deduplicate recurring templates by (category + normalized title), keeping latest amount
+    const templateMap = new Map<string, AgencyExpense>();
+    allExpenses
+      .filter((e) => e.recurring)
+      .forEach((e) => {
+        const key = `${e.category}::${e.title.trim().toLowerCase()}`;
+        if (!templateMap.has(key)) {
+          templateMap.set(key, e);
+        }
+      });
+
+    const toCreate: AgencyExpense[] = [];
+    const nowIso = new Date().toISOString();
+    const defaultDate = `${targetMonthKey}-01`;
+
+    templateMap.forEach((tpl, key) => {
+      if (existingKeysInTarget.has(key)) return;
+      toCreate.push({
+        ...tpl,
+        id: `exp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        date: defaultDate,
+        accrualMonth: targetMonthKey,
+        paymentStatus: 'accrued_unpaid',
+        paymentDate: undefined,
+        voided: undefined,
+        voidReason: undefined,
+        voidedAt: undefined,
+        voidedBy: undefined,
+        createdAt: nowIso,
+      });
+    });
+
+    if (toCreate.length === 0) return 0;
+
+    setData((prev) => {
+      const audit: FinancialAuditEntry = {
+        id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: nowIso,
+        actorName,
+        entityType: 'expense',
+        entityId: `recurring-${targetMonthKey}`,
+        entityLabel: `ترحيل البنود الثابتة — ${targetMonthKey}`,
+        action: 'create',
+        afterSummary: `تم ترحيل ${toCreate.length} بند ثابت/رواتب بقيمة إجمالية ${toCreate
+          .reduce((s, e) => s + e.amount, 0)
+          .toLocaleString()} ج.م كمستحقات لشهر ${targetMonthKey}`,
+      };
+      const next: AgencyDataState = {
+        ...prev,
+        expenses: [...toCreate, ...(prev.expenses || [])],
+        financialAuditLog: [audit, ...(prev.financialAuditLog || [])].slice(0, 500),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+
+    return toCreate.length;
+  };
+
+  // Month-End Close Checklist & Locking Controls
+  const toggleMonthCloseStep = (
+    monthKey: string,
+    stepKey: MonthCloseStepKey,
+    actorName = 'الإدارة المالية'
+  ) => {
+    setData((prev) => {
+      const existing = prev.closedMonths?.[monthKey] || createEmptyMonthCloseRecord(monthKey);
+      if (existing.status === 'closed') return prev;
+      const updatedRecord: MonthlyCloseRecord = {
+        ...existing,
+        steps: {
+          ...existing.steps,
+          [stepKey]: !existing.steps[stepKey],
+        },
+      };
+      const next: AgencyDataState = {
+        ...prev,
+        closedMonths: {
+          ...(prev.closedMonths || {}),
+          [monthKey]: updatedRecord,
+        },
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+    void actorName;
+  };
+
+  const closeFinancialMonth = (monthKey: string, actorName: string, notes?: string) => {
+    const nowIso = new Date().toISOString();
+    setData((prev) => {
+      const existing = prev.closedMonths?.[monthKey] || createEmptyMonthCloseRecord(monthKey);
+      const closedRecord: MonthlyCloseRecord = {
+        ...existing,
+        monthKey,
+        status: 'closed',
+        steps: {
+          ...existing.steps,
+          approve_and_lock: true,
+        },
+        closedAt: nowIso,
+        closedBy: actorName,
+        notes: notes?.trim() || existing.notes,
+      };
+      const audit: FinancialAuditEntry = {
+        id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: nowIso,
+        actorName,
+        entityType: 'month_close',
+        entityId: monthKey,
+        entityLabel: `إقفال شهر ${monthKey}`,
+        action: 'month_closed',
+        afterSummary: 'تم اعتماد وإقفال الشهر المالي ومنع التعديل المباشر بأثر رجعي.',
+        reason: notes?.trim() || undefined,
+      };
+      const next: AgencyDataState = {
+        ...prev,
+        closedMonths: {
+          ...(prev.closedMonths || {}),
+          [monthKey]: closedRecord,
+        },
+        financialAuditLog: [audit, ...(prev.financialAuditLog || [])].slice(0, 500),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  const reopenFinancialMonth = (monthKey: string, reason: string, actorName: string) => {
+    const cleanReason = reason.trim();
+    if (!cleanReason) return;
+    const nowIso = new Date().toISOString();
+    setData((prev) => {
+      const existing = prev.closedMonths?.[monthKey] || createEmptyMonthCloseRecord(monthKey);
+      const reopenedRecord: MonthlyCloseRecord = {
+        ...existing,
+        monthKey,
+        status: 'open',
+        steps: {
+          ...existing.steps,
+          approve_and_lock: false,
+        },
+        reopenedAt: nowIso,
+        reopenedBy: actorName,
+        reopenReason: cleanReason,
+      };
+      const audit: FinancialAuditEntry = {
+        id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: nowIso,
+        actorName,
+        entityType: 'month_close',
+        entityId: monthKey,
+        entityLabel: `إعادة فتح شهر ${monthKey}`,
+        action: 'month_reopened',
+        beforeSummary: 'شهر مقفول',
+        afterSummary: 'تمت إعادة فتح الشهر لتسجيل قيد تسوية موثق',
+        reason: cleanReason,
+      };
+      const next: AgencyDataState = {
+        ...prev,
+        closedMonths: {
+          ...(prev.closedMonths || {}),
+          [monthKey]: reopenedRecord,
+        },
+        financialAuditLog: [audit, ...(prev.financialAuditLog || [])].slice(0, 500),
+      };
+      syncAdminFinanceOpsSnapshot(next);
+      return next;
+    });
+  };
+
+  const updateFinancialSettings = (
+    updates: Partial<FinancialSettings>,
+    actorName = 'الإدارة المالية'
+  ) => {
+    const nowIso = new Date().toISOString();
+    setData((prev) => {
+      const prevSettings = prev.financialSettings || DEFAULT_FINANCIAL_SETTINGS;
+      const nextSettings: FinancialSettings = {
+        ...prevSettings,
+        ...updates,
+      };
+      const audit: FinancialAuditEntry = {
+        id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: nowIso,
+        actorName,
+        entityType: 'settings',
+        entityId: 'financial_settings',
+        entityLabel: 'إعدادات السياسة المالية والرصيد الافتتاحي',
+        action: 'settings_updated',
+        beforeSummary: `رصيد افتتاحي: ${prevSettings.openingCashBalance.toLocaleString()} ج.م | قاعدة التوزيع: ${prevSettings.sharedCostAllocationRule}`,
+        afterSummary: `رصيد افتتاحي: ${nextSettings.openingCashBalance.toLocaleString()} ج.م | قاعدة التوزيع: ${nextSettings.sharedCostAllocationRule}`,
+      };
+      const next: AgencyDataState = {
+        ...prev,
+        financialSettings: nextSettings,
+        financialAuditLog: [audit, ...(prev.financialAuditLog || [])].slice(0, 500),
       };
       syncAdminFinanceOpsSnapshot(next);
       return next;
@@ -1977,6 +2765,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       invoiceTargetCycle?: 'closed' | 'new';
       invoiceContractPeriod?: string;
       cycleNotes?: string;
+      actorName?: string;
     }
   ): { updatedClient: Inquiry | null; createdInvoice: ClientInvoiceRecord | null } => {
     const client = (dataRef.current.inquiries || []).find((c) => c.id === clientId);
@@ -2087,36 +2876,43 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const invNumber = generateUniqueInvoiceNumber(client.id, dataRef.current.invoices || []);
       const grandTotal = retainerAmount + nextPendingAdCredit;
       const targetCycle = options.invoiceTargetCycle || 'closed';
+      const resolvedServiceStart = targetCycle === 'closed' ? closedStartDate : options.newStartDate;
+      const resolvedServiceEnd = targetCycle === 'closed' ? closedEndDate : options.newRenewalDate;
       const resolvedInvoicePeriod =
         (options.invoiceContractPeriod || '').trim() ||
         formatInvoicePeriodLabel(
-          targetCycle === 'closed' ? closedStartDate : options.newStartDate,
+          resolvedServiceStart,
           client.billingCycle || 'monthly',
           true
         );
-      createdInvoice = addInvoice({
-        invoiceNumber: invNumber,
-        clientId: client.id,
-        clientName: client.name,
-        clientCompany: client.company,
-        clientPhone: client.phone,
-        sector: client.sector,
-        issueDate: todayStr,
-        dueDate: options.newRenewalDate,
-        packageName: client.packageName || 'باقة تسويق رقمي',
-        retainerAmount,
-        adCreditAmount: nextPendingAdCredit,
-        grandTotal,
-        billingCycle: client.billingCycle || 'monthly',
-        contractPeriod: resolvedInvoicePeriod,
-        paymentStatus: 'pending',
-        notes: options.cycleNotes?.trim() || undefined,
-        deliverables: {
-          posts: targets.postsTarget,
-          reels: targets.reelsTarget,
-          stories: targets.storiesTarget,
+      createdInvoice = addInvoice(
+        {
+          invoiceNumber: invNumber,
+          clientId: client.id,
+          clientName: client.name,
+          clientCompany: client.company,
+          clientPhone: client.phone,
+          sector: client.sector,
+          issueDate: todayStr,
+          dueDate: options.newRenewalDate,
+          serviceStartDate: resolvedServiceStart,
+          serviceEndDate: resolvedServiceEnd,
+          packageName: client.packageName || 'باقة تسويق رقمي',
+          retainerAmount,
+          adCreditAmount: nextPendingAdCredit,
+          grandTotal,
+          billingCycle: client.billingCycle || 'monthly',
+          contractPeriod: resolvedInvoicePeriod,
+          paymentStatus: 'pending',
+          notes: options.cycleNotes?.trim() || undefined,
+          deliverables: {
+            posts: targets.postsTarget,
+            reels: targets.reelsTarget,
+            stories: targets.storiesTarget,
+          },
         },
-      });
+        options.actorName
+      );
     }
 
     const updatedClient: Inquiry = {
@@ -2342,6 +3138,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             ...(client.clientNotes || []),
           ],
         });
+        appendFinancialAudit({
+          actorName: actor,
+          entityType: 'ad_wallet',
+          entityId: newReq.id,
+          entityLabel: `شحن محفظة إعلانات — ${client.company || client.name}`,
+          action: 'create',
+          afterSummary: `اعتماد مباشر لإضافة ${cleanAmount.toLocaleString()} ج.م${linkedInvoiceNumber ? ` (فاتورة ${linkedInvoiceNumber})` : ''}`,
+          reason: cleanNotes,
+        });
       } else {
         const newBalance = Math.max(0, currentBalance - cleanAmount);
         const newSpentTotal = (client.adCreditSpentTotal || 0) + cleanAmount;
@@ -2354,6 +3159,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             makeActivityNote(noteText, 'update', actor),
             ...(client.clientNotes || []),
           ],
+        });
+        appendFinancialAudit({
+          actorName: actor,
+          entityType: 'ad_wallet',
+          entityId: newReq.id,
+          entityLabel: `صرف إعلاني (${platformLabel}) — ${client.company || client.name}`,
+          action: 'update',
+          beforeSummary: `الرصيد قبل الصرف: ${currentBalance.toLocaleString()} ج.م`,
+          afterSummary: `خصم ${cleanAmount.toLocaleString()} ج.م — الرصيد المتبقي: ${newBalance.toLocaleString()} ج.م`,
+          reason: cleanNotes,
         });
       }
     } else {
@@ -2424,6 +3239,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           ...(client.clientNotes || []),
         ],
       });
+      appendFinancialAudit({
+        actorName: reviewer,
+        entityType: 'ad_wallet',
+        entityId: targetReq.id,
+        entityLabel: `${targetReq.type === 'topup' ? 'رفض شحن إعلانات' : 'رفض صرف إعلاني'} — ${client.company || client.name}`,
+        action: 'void',
+        beforeSummary: `طلب معلق بقيمة ${targetReq.amount.toLocaleString()} ج.م (مقدم من ${targetReq.requestedBy})`,
+        afterSummary: `مرفوض بدون أثر مالي على المحفظة`,
+        reason: cleanReason,
+      });
       return { ok: true, request: updatedReq };
     }
 
@@ -2437,10 +3262,14 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       );
       if (openInv) {
         linkedInvoiceNumber = openInv.invoiceNumber;
-        updateInvoice(openInv.id, {
-          adCreditAmount: (openInv.adCreditAmount || 0) + targetReq.amount,
-          grandTotal: (openInv.grandTotal || 0) + targetReq.amount,
-        });
+        updateInvoice(
+          openInv.id,
+          {
+            adCreditAmount: (openInv.adCreditAmount || 0) + targetReq.amount,
+            grandTotal: (openInv.grandTotal || 0) + targetReq.amount,
+          },
+          reviewer
+        );
       }
 
       const updatedReq: AdWalletRequest = {
@@ -2466,6 +3295,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }),
           ...(client.clientNotes || []),
         ],
+      });
+
+      appendFinancialAudit({
+        actorName: reviewer,
+        entityType: 'ad_wallet',
+        entityId: targetReq.id,
+        entityLabel: `اعتماد شحن إعلانات — ${client.company || client.name}`,
+        action: 'update',
+        beforeSummary: `طلب معلق من ${targetReq.requestedBy} بقيمة ${targetReq.amount.toLocaleString()} ج.م`,
+        afterSummary: `معتمد ومدرج بالفوترة${linkedInvoiceNumber ? ` (فاتورة ${linkedInvoiceNumber})` : ''}`,
       });
 
       return { ok: true, request: updatedReq, linkedInvoiceNumber };
@@ -2502,6 +3341,16 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         makeActivityNote(approveSpendNote, 'update', reviewer),
         ...(client.clientNotes || []),
       ],
+    });
+
+    appendFinancialAudit({
+      actorName: reviewer,
+      entityType: 'ad_wallet',
+      entityId: targetReq.id,
+      entityLabel: `اعتماد صرف إعلاني (${platformLabel}) — ${client.company || client.name}`,
+      action: 'update',
+      beforeSummary: `رصيد المحفظة قبل الخصم: ${currentBalance.toLocaleString()} ج.م`,
+      afterSummary: `خصم ${targetReq.amount.toLocaleString()} ج.م (مقدم من ${targetReq.requestedBy}) — المتبقي: ${newBalance.toLocaleString()} ج.م`,
     });
 
     return { ok: true, request: updatedReq };
@@ -2556,12 +3405,20 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addInvoice,
         updateInvoice,
         deleteInvoice,
+        voidInvoiceWithReversal,
         markInvoiceAsPaid,
         recordInvoicePayment,
         deleteInvoicePayment,
         addExpense,
         updateExpense,
         deleteExpense,
+        voidExpense,
+        postRecurringExpensesForMonth,
+        isMonthClosed,
+        toggleMonthCloseStep,
+        closeFinancialMonth,
+        reopenFinancialMonth,
+        updateFinancialSettings,
         addTeamMember,
         updateTeamMember,
         deleteTeamMember,
@@ -2579,6 +3436,8 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         lastCloudSyncAt,
         syncNowToSupabase,
         refreshFromSupabase,
+        hydrateTeamWorkspace,
+        clearTeamSession,
       }}
     >
       {children}

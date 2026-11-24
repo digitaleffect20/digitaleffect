@@ -24,6 +24,7 @@ import {
 
 import { getCaseStudyCreatives, getCaseStudyVideos } from '../utils/caseStudyMedia';
 import { CaseStudyVideoSection } from '../components/CaseStudyVideoSection';
+import { formatLocalizedNumber } from '../utils/arabicNumbers';
 
 export const IptCaseStudyPage: React.FC = () => {
   const { data, language, setCurrentPage, setIsConsultationOpen } = useAgencyData();
@@ -41,8 +42,8 @@ export const IptCaseStudyPage: React.FC = () => {
     : 'IPT Physiotherapy Center Case Study | Digital Effect Healthcare Marketing';
 
   const pageDescription = isAr
-    ? 'تعرف على قصة نجاح مركز IPT للعلاج الطبيعي والتأهيل الحركي مع ديجيتال إفكت: أكثر من 2.4 مليون مشاهدة، قفزة في التفاعل بنسبة +43,576% وتحويل المشاهدات إلى حجوزات عيادة حقيقية.'
-    : 'Discover the IPT Physiotherapy & Movement Rehab success story with Digital Effect: 2.4M+ patient impressions, +43,576% engagement surge, and full clinic appointment funnels.';
+    ? 'تعرف على قصة نجاح مركز IPT للعلاج الطبيعي والتأهيل الحركي مع ديجيتال إفكت: من حضور شبه معدوم إلى أكثر من ٧٣ ألف تفاعل حقيقي وأكثر من ٦٥٤ ألف مشاهدة فيديو خلال ٦ أشهر، وتحويل المشاهدات إلى حجوزات عيادة حقيقية.'
+    : 'Discover the IPT Physiotherapy & Movement Rehab success story with Digital Effect: from near-zero reach to 73,000+ genuine engagements and 654,000+ video views in 6 months.';
 
   const handleShare = async () => {
     const shareData = {
@@ -69,40 +70,40 @@ export const IptCaseStudyPage: React.FC = () => {
 
   const auditedMetrics = [
     {
-      label: isAr ? 'مشاهدات الحملات التوعوية' : 'Targeted Campaign Impressions',
-      value: '2,400,000+',
-      growth: '+120,522%',
-      hint: isAr ? 'وصول دقيق لمرضى التأهيل الحركي' : 'Hyper-targeted prospective patients',
-      icon: <Eye className="w-5 h-5 text-emerald-400" />,
-    },
-    {
-      label: isAr ? 'نمو معدل التفاعل الإجمالي' : 'Overall Engagement Growth',
-      value: '+43,576%',
-      growth: 'Surge',
-      hint: isAr ? 'قفزة تاريخية في تفاعل المتابعين' : 'Explosive patient resonance across channels',
+      label: isAr ? 'التفاعل الحقيقي خلال ٦ أشهر' : 'Genuine Engagements (6 Months)',
+      value: isAr ? '+٧٣ ألف' : '73,100+',
+      growth: isAr ? 'خلال ٦ أشهر' : 'In 6 Months',
+      hint: isAr ? 'من حضور شبه معدوم إلى أكثر من ٧٣ ألف تفاعل حقيقي خلال ٦ أشهر' : 'From near-zero presence to over 73,000 genuine engagements in 6 months',
       icon: <TrendingUp className="w-5 h-5 text-emerald-400" />,
     },
     {
-      label: isAr ? 'مشاهدات فيديو لأكثر من ٣ ثوانٍ' : '3-Second Video Views',
-      value: '654,500+',
-      growth: '+120,522%',
-      hint: isAr ? 'معدل انتباه واستماع استثنائي' : 'High retention on educational clinical reels',
+      label: isAr ? 'مشاهدات الفيديو التوعوي' : 'Educational Video Views',
+      value: isAr ? '+٦٥٤ ألف' : '654,500+',
+      growth: isAr ? 'فيديو وريلز' : 'Video Reels',
+      hint: isAr ? 'أكثر من ٦٥٤ ألف مشاهدة فيديو، منها ١٢٫٧ ألف إعجاب و٢٫٧ ألف تعليق' : 'Over 654K video views, including 12.7K reactions and 2.7K comments',
       icon: <Video className="w-5 h-5 text-emerald-400" />,
     },
     {
-      label: isAr ? 'مشاهدات فيديو كاملة > ١ دقيقة' : '1-Minute Full Video Views',
-      value: '12,200+',
-      growth: '+204,600%',
-      hint: isAr ? 'مرضى استمعوا للشرح الطبي بالكامل' : 'Patients watching comprehensive medical advice',
+      label: isAr ? 'وصول الحملات التوعوية' : 'Targeted Campaign Reach',
+      value: isAr ? '٢٫٤ مليون+' : '2.4M+',
+      growth: isAr ? 'وصول موثق' : 'Verified Reach',
+      hint: isAr ? 'وصول دقيق لمرضى التأهيل الحركي في النطاق الجغرافي المستهدف' : 'Hyper-targeted prospective patients within clinic radius',
+      icon: <Eye className="w-5 h-5 text-emerald-400" />,
+    },
+    {
+      label: isAr ? 'مشاهدات كاملة تفوق دقيقة' : '1-Minute Full Video Views',
+      value: isAr ? '+١٢٫٢ ألف' : '12,200+',
+      growth: isAr ? 'مشاهدة كاملة' : 'High Retention',
+      hint: isAr ? 'مرضى استمعوا للشرح الطبي الكامل للأخصائيين' : 'Patients watching comprehensive medical explanations to completion',
       icon: <Sparkles className="w-5 h-5 text-emerald-400" />,
     },
   ];
 
   const interactionStats = [
-    { label: isAr ? 'إجمالي التفاعل الحقيقي' : 'Total Engagements', value: '73,100+' },
-    { label: isAr ? 'إعجاب وتفاعل مباشر' : 'Reactions', value: '12,700+' },
-    { label: isAr ? 'استفسار وتعليق لحجز جلسات' : 'Patient Inquiries & Comments', value: '2,700+' },
-    { label: isAr ? 'مشاركة للمحتوى التوعوي' : 'Shares', value: '484+' },
+    { label: isAr ? 'إجمالي التفاعل الحقيقي' : 'Total Engagements', value: isAr ? '٧٣٬١٠٠+' : '73,100+' },
+    { label: isAr ? 'إعجاب وتفاعل مباشر' : 'Reactions', value: isAr ? '١٢٬٧٠٠+' : '12,700+' },
+    { label: isAr ? 'استفسار وتعليق لحجز جلسات' : 'Patient Inquiries & Comments', value: isAr ? '٢٬٧٠٠+' : '2,700+' },
+    { label: isAr ? 'مشاركة للمحتوى التوعوي' : 'Shares', value: isAr ? '٤٨٤+' : '484+' },
   ];
 
   return (
@@ -340,10 +341,10 @@ export const IptCaseStudyPage: React.FC = () => {
           {/* Quick KPI Highlights inside Hero Banner */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 max-w-4xl">
             {[
-              { val: '+43,576%', label: isAr ? 'نمو التفاعل الإجمالي' : 'Total Engagement' },
-              { val: '2.4M+', label: isAr ? 'وصول حقيقي للمرضى' : 'Patient Reach' },
-              { val: '1,800+', label: isAr ? 'استفسار حجز عيادات' : 'Bookings Inquiries' },
-              { val: '4.8X', label: isAr ? 'عائد إنفاق إعلاني ROAS' : 'Campaign ROAS' },
+              { val: isAr ? '+٧٣ ألف' : '73K+', label: isAr ? 'تفاعل حقيقي خلال ٦ أشهر' : 'Genuine Engagements (6 Mo)' },
+              { val: isAr ? '+٦٥٤ ألف' : '654K+', label: isAr ? 'مشاهدة فيديو توعوي' : 'Educational Video Views' },
+              { val: isAr ? '٢٫٤ مليون+' : '2.4M+', label: isAr ? 'وصول حقيقي للمرضى' : 'Patient Reach' },
+              { val: isAr ? '١٬٨٠٠+' : '1,800+', label: isAr ? 'استفسار حجز عيادات' : 'Booking Inquiries' },
             ].map((kpi, idx) => (
               <div key={idx} className="p-3 rounded-xl bg-slate-900/80 backdrop-blur-md border border-slate-700/70">
                 <div className="text-xl sm:text-2xl font-black text-emerald-400 tabular-nums">
@@ -438,7 +439,7 @@ export const IptCaseStudyPage: React.FC = () => {
                 <div className="p-6 space-y-2 text-start bg-slate-900/90 border-t border-slate-800">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-emerald-400">
-                      {isAr ? `نموذج الحملة #${idx + 1}` : `Creative Asset #${idx + 1}`}
+                      {isAr ? `نموذج الحملة #${formatLocalizedNumber(idx + 1, true)}` : `Creative Asset #${idx + 1}`}
                     </span>
                     {itemTag && (
                       <span className="bg-emerald-950 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-800 font-semibold text-[11px]">
@@ -540,8 +541,8 @@ export const IptCaseStudyPage: React.FC = () => {
           </h2>
           <p className="text-xs sm:text-sm text-slate-400">
             {isAr 
-              ? 'صورة الشيت التحليلي الكامل المأخوذ من الصفحة مباشرة، يوضح قفزة المشاهدات وتفاعل الفيديوهات بأبعادها الواضحة.' 
-              : 'Full analytical chart showing explosive video retention, 3-sec views (+120,522%), and 1-min views (+204,600%).'}
+              ? 'صورة الشيت التحليلي الكامل المأخوذ من الصفحة مباشرة، يوضح أكثر من ٦٥٤ ألف مشاهدة فيديو و٧٣ ألف تفاعل حقيقي خلال ٦ أشهر.' 
+              : 'Full analytical chart directly from Meta Business Suite showing 654K+ video views, 12.7K+ reactions, and 73K+ genuine engagements over 6 months.'}
           </p>
         </div>
 

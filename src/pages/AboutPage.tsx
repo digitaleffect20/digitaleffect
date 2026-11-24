@@ -14,8 +14,8 @@ export const AboutPage: React.FC = () => {
     <div className="space-y-16 sm:space-y-24 pb-20">
       {/* Dynamic OpenGraph, Twitter Cards & Structured Data */}
       <SeoHead
-        title={isAr ? 'من نحن — خبرة ٢٠ عاماً في التسويق والحلول الرقمية | ديجيتال إفكت' : 'About Us — 20+ Years of Digital Marketing Excellence | Digital Effect'}
-        description={isAr ? 'تعرف على قصة ديجيتال إفكت وفريق العمل والقيادات المتخصصة التي تقود قطاعات B2B، B2C، والقطاع الطبي بخبرة تراكمية تفوق ٢٠ عاماً.' : 'Discover the Digital Effect story, our specialized sector leadership, and how we engineer long-term growth across B2B, B2C, and Healthcare.'}
+        title={isAr ? 'من نحن — تأسست عام ٢٠١٤ بخبرة قيادات تفوق ٢٠ عاماً | ديجيتال إفكت' : 'About Us — Founded in 2014 with 20+ Years of Leadership Expertise | Digital Effect'}
+        description={isAr ? 'تعرف على قصة ديجيتال إفكت التي تأسست عام ٢٠١٤ وفريق القيادات المتخصصة التي تقود قطاعات B2B، B2C، والقطاع الطبي بخبرة تراكمية تفوق ٢٠ عاماً.' : 'Discover the Digital Effect story since 2014, our specialized sector leadership with 20+ years of experience, and how we engineer long-term growth across B2B, B2C, and Healthcare.'}
         image="/assets/team/team_ceo.jpg"
         imageAlt={isAr ? 'فريق قيادات ديجيتال إفكت' : 'Digital Effect Leadership Team'}
         urlPath="#about"

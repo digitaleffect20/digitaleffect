@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { PortfolioCategoryFilter, CaseStudy } from '../types';
+import { formatLocalizedMetric, formatLocalizedNumber } from '../utils/arabicNumbers';
 import { 
   Building2, 
   ShoppingBag, 
@@ -216,7 +217,7 @@ export const CaseStudiesPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-4 pt-2 text-xs text-slate-400">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>{isAr ? `${data.caseStudies.length} دراسة حالة موثقة` : `${data.caseStudies.length} Verified Case Studies`}</span>
+              <span>{isAr ? `${formatLocalizedNumber(data.caseStudies.length, true)} دراسة حالة موثقة` : `${data.caseStudies.length} Verified Case Studies`}</span>
             </div>
             <span>•</span>
             <div className="flex items-center gap-1.5">
@@ -317,7 +318,7 @@ export const CaseStudiesPage: React.FC = () => {
         <div className="mt-3 px-2 flex items-center justify-between text-xs text-slate-500 font-medium">
           <span>
             {isAr
-              ? `عرض ${filteredStudies.length} من أصل ${data.caseStudies.length} مشروع`
+              ? `عرض ${formatLocalizedNumber(filteredStudies.length, true)} من أصل ${formatLocalizedNumber(data.caseStudies.length, true)} مشروع`
               : `Showing ${filteredStudies.length} of ${data.caseStudies.length} projects`}
           </span>
           <span className="text-[11px] text-slate-400">
@@ -430,7 +431,7 @@ export const CaseStudiesPage: React.FC = () => {
                         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-slate-950/85 text-white border border-white/15 shadow-xl backdrop-blur-md">
                           <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                           <span className="text-sm font-black text-emerald-400 tabular-nums">
-                            {mainMetric.value}
+                            {formatLocalizedMetric(mainMetric.value, isAr)}
                           </span>
                           <span className="text-[11px] font-medium text-slate-300 border-s border-white/20 ps-2">
                             {isAr ? mainMetric.label : mainMetric.labelEn}
@@ -619,7 +620,7 @@ export const CaseStudiesPage: React.FC = () => {
                     <div className="absolute bottom-3 start-4 end-4 flex items-end justify-between text-white">
                       <div>
                         <div className="text-2xl font-black text-emerald-400 tabular-nums">
-                          {mainMetric?.value}
+                          {formatLocalizedMetric(mainMetric?.value, isAr)}
                         </div>
                         <div className="text-[11px] font-medium text-slate-300">
                           {isAr ? mainMetric?.label : mainMetric?.labelEn}
@@ -702,7 +703,7 @@ export const CaseStudiesPage: React.FC = () => {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {previewStudy.metrics.map((m, idx) => (
                   <div key={idx} className="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60 text-center">
-                    <div className="text-lg font-black text-sky-400 tabular-nums">{m.value}</div>
+                    <div className="text-lg font-black text-sky-400 tabular-nums">{formatLocalizedMetric(m.value, isAr)}</div>
                     <div className="text-[11px] text-slate-300 mt-0.5 line-clamp-1">
                       {isAr ? m.label : m.labelEn}
                     </div>

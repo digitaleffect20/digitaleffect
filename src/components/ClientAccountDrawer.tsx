@@ -863,6 +863,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
       invoiceTargetCycle: closeInvoiceTargetCycle,
       invoiceContractPeriod: invoicePeriodLabel,
       cycleNotes: closeCycleNotes,
+      actorName: currentMemberName || (isAr ? 'المدير العام (Admin)' : 'General Manager (Admin)'),
     });
 
     if (updatedClient) {

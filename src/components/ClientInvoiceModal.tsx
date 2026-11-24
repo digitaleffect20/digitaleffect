@@ -44,6 +44,7 @@ interface ClientInvoiceModalProps {
   packageName: string;
   budget: string;
   adCreditAmount?: number;
+  taxAmount?: number;
   billingCycle?: Inquiry['billingCycle'];
   contractStartDate?: string;
   contractPeriod?: string;
@@ -64,6 +65,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   packageName,
   budget,
   adCreditAmount = 0,
+  taxAmount = 0,
   billingCycle = 'quarterly',
   contractStartDate,
   contractPeriod: initialContractPeriod,
@@ -121,7 +123,8 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const formattedBudget = numericBudget > 0
     ? `${numericBudget.toLocaleString()} ${isAr ? 'ج.م' : 'EGP'}`
     : budget;
-  const numericGrandTotal = numericBudget + (adCredit || 0);
+  const effectiveTaxAmount = Math.max(0, Number(taxAmount) || 0);
+  const numericGrandTotal = numericBudget + (adCredit || 0) + effectiveTaxAmount;
   const cycleTextAr =
     billingCycle === 'annual'
       ? 'سنوي'
@@ -776,7 +779,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                 <div className="text-[11px] text-slate-500 mt-2 space-y-0.5">
                   <p>📍 {isAr ? 'العاشر من رمضان — محافظة الشرقية — مصر' : '10th of Ramadan City, Egypt'}</p>
                   <p>📞 {isAr ? 'خدمة العملاء والمبيعات:' : 'Tel:'} <span dir="ltr">01505000349</span></p>
-                  <p>✉️ Sales@digitaleffect.net | www.digitaleffect.net</p>
+                  <p>✉️ sales@digitaleffect.net | www.digitaleffect.net</p>
                 </div>
               </div>
 
@@ -1108,6 +1111,13 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                       <span>{isAr ? 'الرصيد الإعلاني الممول المضاف:' : 'Added Ad Spend Credit:'}</span>
                     </span>
                     <span className="tabular-nums font-black">+{adCredit.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}</span>
+                  </div>
+                )}
+
+                {effectiveTaxAmount > 0 && (
+                  <div className="flex justify-between text-xs text-amber-800 font-bold">
+                    <span>{isAr ? 'الضرائب المضافة (بند منفصل):' : 'Taxes (Separate Line):'}</span>
+                    <span className="tabular-nums font-black">+{effectiveTaxAmount.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}</span>
                   </div>
                 )}
 

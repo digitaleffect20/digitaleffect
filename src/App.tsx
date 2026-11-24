@@ -63,7 +63,7 @@ const AppContent: React.FC = () => {
     } else if (currentPage === 'case-studies') {
       document.title = isAr ? 'سابقة الأعمال ودراسات الحالة وقصص النجاح | ديجيتال إفكت' : 'Case Studies & Success Stories Portfolio | Digital Effect';
     } else if (currentPage === 'about') {
-      document.title = isAr ? 'من نحن — خبرة ٢٠ عاماً في التسويق والحلول الرقمية | ديجيتال إفكت' : 'About Us — 20+ Years of Digital Marketing Excellence | Digital Effect';
+      document.title = isAr ? 'من نحن — تأسست عام ٢٠١٤ بخبرة قيادات تفوق ٢٠ عاماً | ديجيتال إفكت' : 'About Us — Founded in 2014 with 20+ Years of Leadership Expertise | Digital Effect';
     } else if (currentPage === 'custom-package') {
       document.title = isAr ? 'صمم باقتك المخصصة واحسب تكلفتها فوراً | ديجيتال إفكت' : 'Custom Package Calculator & Scope Builder | Digital Effect';
     } else if (currentPage === 'agu-case-study') {
@@ -197,7 +197,7 @@ const AppContent: React.FC = () => {
       {/* Floating Bottom Quick Page Switcher & WhatsApp Trigger */}
       <div className="fixed bottom-5 start-5 z-40 flex items-center gap-2">
         <a
-          href={`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(isAr ? 'مرحباً ديجيتال إفكت، أود استفساراً حول خدماتكم' : 'Hello Digital Effect, I would like to inquire about your services')}`}
+          href={`https://wa.me/${data.agencyInfo.whatsapp}?text=${encodeURIComponent(isAr ? 'مرحباً ديجيتال إفكت، أود الاستفسار عن خدماتكم' : 'Hello Digital Effect, I would like to inquire about your services')}`}
           target="_blank"
           rel="noreferrer"
           aria-label="WhatsApp Direct"

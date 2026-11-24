@@ -23,8 +23,8 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { AgencyExpense, ClientInvoiceRecord, Inquiry, ServicePackage } from '../types';
-import { parseInvoiceAmount } from '../utils/invoicePdfGenerator';
 import { getClientDeliverableTargets } from '../utils/workflowUtils';
+import { computeMonthlyCashFlow, computeMonthlyPnL } from '../utils/accountingEngine';
 
 export type AnalyticsInquiry = Omit<
   Inquiry,
@@ -170,77 +170,35 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
     [inquiries]
   );
 
-  // 1. Monthly Revenue Series (Retainer + Ad Credit + Total Billed)
+  // 1. Monthly Accrual Earned Agency Revenue (Separated from Client Passthrough Ad Funds)
   const monthlyRevenueData = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const activeInvoices = invoices.filter((inv) => inv.paymentStatus !== 'cancelled');
-
-    const map = new Map<
-      string,
-      { retainer: number; adCredit: number; total: number; invoiceCount: number }
-    >();
-    monthBuckets.forEach((key) => {
-      map.set(key, { retainer: 0, adCredit: 0, total: 0, invoiceCount: 0 });
-    });
-
-    const invoicedClientMonths = new Set<string>();
-
-    activeInvoices.forEach((inv) => {
-      const mKey = extractMonthKey(inv.issueDate);
-      if (!mKey) return;
-      if (inv.clientId) {
-        invoicedClientMonths.add(`${inv.clientId}__${mKey}`);
-      }
-      const bucket = map.get(mKey);
-      if (bucket) {
-        const ret = Number(inv.retainerAmount) || 0;
-        const ad = Number(inv.adCreditAmount) || 0;
-        const tot = Number(inv.grandTotal) || ret + ad;
-        bucket.retainer += ret;
-        bucket.adCredit += ad;
-        bucket.total += tot;
-        bucket.invoiceCount += 1;
-      }
-    });
-
-    // Include contracted clients without an invoice in their active start month
-    contractedClients.forEach((client) => {
-      const mKey = extractMonthKey(client.contractStartDate || client.createdAt || todayStr);
-      if (!mKey) return;
-      if (invoicedClientMonths.has(`${client.id}__${mKey}`)) return;
-      const bucket = map.get(mKey);
-      if (!bucket) return;
-
-      const parsedRet = client.retainerAmount || parseInvoiceAmount(client.budget);
-      const pendingAd = Number(client.pendingInvoiceAdCredit) || 0;
-      if (parsedRet > 0 || pendingAd > 0) {
-        bucket.retainer += parsedRet;
-        bucket.adCredit += pendingAd;
-        bucket.total += parsedRet + pendingAd;
-      }
-    });
+    const activeInvoices = invoices.filter((inv) => inv.paymentStatus !== 'cancelled' && !inv.isDraft);
 
     return monthBuckets.map((key) => {
-      const vals = map.get(key) || { retainer: 0, adCredit: 0, total: 0, invoiceCount: 0 };
+      const pnl = computeMonthlyPnL(key, activeInvoices, expenses);
+      const adFundsInMonth = activeInvoices
+        .filter((inv) => extractMonthKey(inv.issueDate) === key && inv.adFundsTreatment !== 'agency_principal')
+        .reduce((s, inv) => s + Math.max(0, Number(inv.adCreditAmount) || 0), 0);
       return {
         monthKey: key,
         monthLabel: getMonthLabel(key, isAr),
-        retainer: vals.retainer,
-        adCredit: vals.adCredit,
-        total: vals.total,
-        invoiceCount: vals.invoiceCount,
+        retainer: pnl.earnedServiceRevenue,
+        adCredit: adFundsInMonth,
+        total: pnl.earnedServiceRevenue,
+        invoiceCount: pnl.revenueItems.length,
       };
     });
-  }, [monthBuckets, invoices, contractedClients, isAr]);
+  }, [monthBuckets, invoices, expenses, isAr]);
 
   const revenueSummary = useMemo(() => {
-    const totalWindowRevenue = monthlyRevenueData.reduce((sum, m) => sum + m.total, 0);
     const totalWindowRetainer = monthlyRevenueData.reduce((sum, m) => sum + m.retainer, 0);
+    const totalWindowAdFunds = monthlyRevenueData.reduce((sum, m) => sum + m.adCredit, 0);
     const currentMonth = monthlyRevenueData[monthlyRevenueData.length - 1];
     return {
-      totalWindowRevenue,
+      totalWindowRevenue: totalWindowRetainer,
       totalWindowRetainer,
-      currentMonthTotal: currentMonth?.total || 0,
+      totalWindowAdFunds,
+      currentMonthTotal: currentMonth?.retainer || 0,
       currentMonthRetainer: currentMonth?.retainer || 0,
     };
   }, [monthlyRevenueData]);
@@ -297,112 +255,39 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
     };
   }, [projectCompletionData]);
 
-  // 3. Cash Flow & Net Profit Trends (Collected vs Expenses vs Net Profit vs Pending/Overdue)
+  // 3. Separate Cash Flow (الفرق النقدي) vs Accrual Net Profit (صافي الربح المحاسبي)
   const cashFlowData = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const activeInvoices = invoices.filter((inv) => inv.paymentStatus !== 'cancelled');
-
-    const map = new Map<
-      string,
-      { collected: number; pending: number; overdue: number; expenses: number }
-    >();
-    monthBuckets.forEach((key) => {
-      map.set(key, { collected: 0, pending: 0, overdue: 0, expenses: 0 });
-    });
-
-    activeInvoices.forEach((inv) => {
-      const grandTotal = Number(inv.grandTotal) || 0;
-      const payments = Array.isArray(inv.payments) ? inv.payments : [];
-
-      if (payments.length > 0) {
-        let paidTotal = 0;
-        payments.forEach((p) => {
-          const amt = Number(p.amount) || 0;
-          paidTotal += amt;
-          const pmKey = extractMonthKey(p.date || inv.issueDate);
-          const pBucket = pmKey ? map.get(pmKey) : undefined;
-          if (pBucket) pBucket.collected += amt;
-        });
-
-        const remaining = Math.max(0, grandTotal - paidTotal);
-        if (remaining > 0) {
-          const imKey = extractMonthKey(inv.issueDate);
-          const iBucket = imKey ? map.get(imKey) : undefined;
-          if (iBucket) {
-            const isPastDue =
-              inv.paymentStatus === 'overdue' || Boolean(inv.dueDate && inv.dueDate < todayStr);
-            if (isPastDue) iBucket.overdue += remaining;
-            else iBucket.pending += remaining;
-          }
-        }
-      } else {
-        const isPaid = inv.paymentStatus === 'paid';
-        const dateSource = isPaid ? inv.paidAt || inv.issueDate : inv.issueDate;
-        const mKey = extractMonthKey(dateSource);
-        if (!mKey) return;
-        const bucket = map.get(mKey);
-        if (!bucket) return;
-
-        if (isPaid) {
-          bucket.collected += grandTotal;
-        } else {
-          const isPastDue =
-            inv.paymentStatus === 'overdue' || Boolean(inv.dueDate && inv.dueDate < todayStr);
-          if (isPastDue) {
-            bucket.overdue += grandTotal;
-          } else {
-            bucket.pending += grandTotal;
-          }
-        }
-      }
-    });
-
-    // Aggregate operating expenses per month
-    expenses.forEach((exp) => {
-      const mKey = extractMonthKey(exp.date);
-      if (!mKey) return;
-      const bucket = map.get(mKey);
-      if (bucket) {
-        bucket.expenses += Number(exp.amount) || 0;
-      }
-    });
-
+    const castClients = inquiries as unknown as Inquiry[];
     return monthBuckets.map((key) => {
-      const vals = map.get(key) || { collected: 0, pending: 0, overdue: 0, expenses: 0 };
+      const pnl = computeMonthlyPnL(key, invoices, expenses);
+      const cf = computeMonthlyCashFlow(key, invoices, expenses, castClients);
       return {
         monthKey: key,
         monthLabel: getMonthLabel(key, isAr),
-        collected: vals.collected,
-        pending: vals.pending,
-        overdue: vals.overdue,
-        expenses: vals.expenses,
-        netProfit: vals.collected - vals.expenses,
+        collected: cf.agencyCashInflows,
+        expenses: pnl.totalAccruedExpenses,
+        netCashFlow: cf.agencyNetCashFlow,
+        accrualNetProfit: pnl.netProfitBeforeTax,
       };
     });
-  }, [monthBuckets, invoices, expenses, isAr]);
+  }, [monthBuckets, invoices, expenses, inquiries, isAr]);
 
   const cashFlowSummary = useMemo(() => {
     const totalCollected = cashFlowData.reduce((s, m) => s + m.collected, 0);
-    const totalPending = cashFlowData.reduce((s, m) => s + m.pending, 0);
-    const totalOverdue = cashFlowData.reduce((s, m) => s + m.overdue, 0);
     const totalExpenses = cashFlowData.reduce((s, m) => s + m.expenses, 0);
-    const totalNetProfit = totalCollected - totalExpenses;
-    const totalAll = totalCollected + totalPending + totalOverdue;
-    const collectionRate = totalAll > 0 ? Math.round((totalCollected / totalAll) * 100) : 0;
+    const totalNetCashFlow = cashFlowData.reduce((s, m) => s + m.netCashFlow, 0);
+    const totalAccrualNetProfit = cashFlowData.reduce((s, m) => s + m.accrualNetProfit, 0);
     return {
       totalCollected,
-      totalPending,
-      totalOverdue,
       totalExpenses,
-      totalNetProfit,
-      outstanding: totalPending + totalOverdue,
-      collectionRate,
+      totalNetCashFlow,
+      totalAccrualNetProfit,
     };
   }, [cashFlowData]);
 
-  const hasAnyRevenue = monthlyRevenueData.some((d) => d.total > 0);
+  const hasAnyRevenue = monthlyRevenueData.some((d) => d.retainer > 0 || d.adCredit > 0);
   const hasAnyCashFlow = cashFlowData.some(
-    (d) => d.collected > 0 || d.pending > 0 || d.overdue > 0 || d.expenses > 0
+    (d) => d.collected > 0 || d.expenses > 0 || d.accrualNetProfit !== 0
   );
 
   return (
@@ -452,20 +337,20 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
         <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-blue-600" />
-                <span>{isAr ? 'الإيرادات الشهرية المفوترة' : 'Monthly Revenue'}</span>
+                <span>{isAr ? 'إيرادات الوكالة المكتسبة (مفصولة عن أموال الإعلانات)' : 'Earned Agency Revenue (Ad Funds Separated)'}</span>
               </h4>
               <p className="text-[11px] text-slate-500 mt-0.5">
                 {isAr
-                  ? 'توزيع أتعاب الباقات والرصيد الإعلاني وإجمالي الفوترة شهرياً'
-                  : 'Monthly management retainers, ad spend billed, and total revenue'}
+                  ? 'أتعاب الإدارة الموزعة على أشهر الخدمة (الاستحقاق) مقابل ميزانيات إعلانات العملاء كعمود منفصل'
+                  : 'Prorated agency fees vs isolated client ad budgets'}
               </p>
             </div>
 
             <div className="text-end bg-blue-50/80 border border-blue-100 px-3 py-1.5 rounded-xl">
               <span className="text-[10px] font-bold text-blue-700 block">
-                {isAr ? 'إجمالي الفترة المحددة' : `Total (${monthsWindow}M)`}
+                {isAr ? 'إجمالي إيراد الوكالة المكتسب' : `Earned Agency Fees (${monthsWindow}M)`}
               </span>
               <span className="text-sm font-black text-blue-950 tabular-nums">
                 {revenueSummary.totalWindowRevenue.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
@@ -477,19 +362,19 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
           <div className="grid grid-cols-2 gap-2.5 text-xs">
             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
               <span className="text-[10px] text-slate-500 font-bold block">
-                {isAr ? 'أتعاب الباقات (الشهر الحالي)' : 'Current Month Retainers'}
+                {isAr ? 'إيراد الوكالة المكتسب (الشهر الحالي)' : 'Current Month Earned Fees'}
               </span>
               <span className="text-sm font-black text-slate-900 tabular-nums">
                 {revenueSummary.currentMonthRetainer.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
                 {isAr ? 'ج.م' : 'EGP'}
               </span>
             </div>
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70">
-              <span className="text-[10px] text-slate-500 font-bold block">
-                {isAr ? 'إجمالي أتعاب الفترة' : 'Window Retainer Fees'}
+            <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/70">
+              <span className="text-[10px] text-purple-700 font-bold block">
+                {isAr ? 'أموال إعلانات العملاء (خارج إيراد الوكالة)' : 'Client Ad Budgets (Passthrough)'}
               </span>
-              <span className="text-sm font-black text-blue-700 tabular-nums">
-                {revenueSummary.totalWindowRetainer.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
+              <span className="text-sm font-black text-purple-900 tabular-nums">
+                {revenueSummary.totalWindowAdFunds.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
                 {isAr ? 'ج.م' : 'EGP'}
               </span>
             </div>
@@ -501,8 +386,8 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
                 <DollarSign className="w-8 h-8 text-slate-300" />
                 <p className="text-xs font-bold text-slate-500">
                   {isAr
-                    ? 'لا توجد فواتير أو تعاقدات مسجلة خلال هذه الفترة لعرض الرسم البياني.'
-                    : 'No invoiced or contracted revenue recorded in this window yet.'}
+                    ? 'لا توجد فواتير صادرة خلال هذه الفترة لعرض الرسم البياني.'
+                    : 'No invoiced revenue recorded in this window yet.'}
                 </p>
               </div>
             ) : (
@@ -532,28 +417,17 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
                   />
                   <Bar
                     dataKey="retainer"
-                    name={isAr ? 'أتعاب الإدارة' : 'Retainer Fees'}
-                    stackId="rev"
+                    name={isAr ? 'إيراد الوكالة المكتسب (أتعاب)' : 'Earned Agency Fees'}
                     fill="#2563eb"
-                    radius={[0, 0, 0, 0]}
-                    maxBarSize={38}
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={28}
                   />
                   <Bar
                     dataKey="adCredit"
-                    name={isAr ? 'رصيد إعلاني' : 'Ad Credit'}
-                    stackId="rev"
+                    name={isAr ? 'ميزانيات إعلانات عملاء (منفصلة)' : 'Client Ad Funds (Isolated)'}
                     fill="#8b5cf6"
                     radius={[6, 6, 0, 0]}
-                    maxBarSize={38}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    name={isAr ? 'إجمالي الإيراد' : 'Total Billed'}
-                    stroke="#0f172a"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#ffffff' }}
-                    activeDot={{ r: 6 }}
+                    maxBarSize={28}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -660,25 +534,25 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
         </div>
       </div>
 
-      {/* Bottom Row: Chart 3 (Cash Flow, Expenses & Net Profit Trends - Full Width) */}
+      {/* Bottom Row: Chart 3 (Separate Accrual Net Profit vs Cash Flow — Never Conflated) */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h4 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
               <Wallet className="w-4 h-4 text-emerald-600" />
-              <span>{isAr ? 'التدفق النقدي، المصروفات، وصافي الربح الشهري' : 'Cash Flow, Expenses & Net Profit Trends'}</span>
+              <span>{isAr ? 'مقارنة صافي الربح المحاسبي (الاستحقاق) مقابل الفرق النقدي (التدفق)' : 'Accrual Net Profit vs Operating Cash Flow'}</span>
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
               {isAr
-                ? 'مقارنة التحصيل الفعلي مقابل مصروفات الوكالة وصافي الربح والمستحقات قيد التحصيل'
-                : 'Realized collections vs agency expenses, net profit, and pending receivables'}
+                ? 'فصل واضح بين صافي الربح المحاسبي (إيرادات مكتسبة − مصروفات مستحقة) والفرق النقدي (تحصيلات أتعاب − مدفوعات فعلية)'
+                : 'Strict distinction between Accrual Net Profit and Cash Basis Net Cash Flow'}
             </p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
             <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200/80">
               <span className="text-[10px] font-bold text-emerald-700 block">
-                {isAr ? 'إجمالي المحصل' : 'Collected'}
+                {isAr ? 'تحصيل أتعاب نقدي' : 'Agency Cash In'}
               </span>
               <span className="text-sm font-black text-emerald-900 tabular-nums">
                 {cashFlowSummary.totalCollected.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
@@ -688,7 +562,7 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
 
             <div className="px-3 py-2 rounded-xl bg-rose-50 border border-rose-200/80">
               <span className="text-[10px] font-bold text-rose-700 block">
-                {isAr ? 'إجمالي المصروفات' : 'Expenses'}
+                {isAr ? 'المصروفات المستحقة' : 'Accrued Expenses'}
               </span>
               <span className="text-sm font-black text-rose-900 tabular-nums">
                 {cashFlowSummary.totalExpenses.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
@@ -697,25 +571,25 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
             </div>
 
             <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200/80">
-              <span className="text-[10px] font-bold text-amber-700 block">
-                {isAr ? 'قيد التحصيل' : 'Outstanding'}
+              <span className="text-[10px] font-bold text-amber-800 block">
+                {isAr ? 'الفرق النقدي (سيولة)' : 'Net Cash Flow'}
               </span>
-              <span className="text-sm font-black text-amber-900 tabular-nums">
-                {cashFlowSummary.outstanding.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
+              <span className="text-sm font-black text-amber-950 tabular-nums">
+                {cashFlowSummary.totalNetCashFlow.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
                 {isAr ? 'ج.م' : 'EGP'}
               </span>
             </div>
 
             <div className="px-3 py-2 rounded-xl bg-slate-900 text-white border border-slate-800">
               <span className="text-[10px] font-bold text-slate-300 block">
-                {isAr ? 'صافي الربح' : 'Net Profit'}
+                {isAr ? 'صافي الربح (P&L)' : 'Accrual Net Profit'}
               </span>
               <span
                 className={`text-sm font-black tabular-nums ${
-                  cashFlowSummary.totalNetProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  cashFlowSummary.totalAccrualNetProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
-                {cashFlowSummary.totalNetProfit.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
+                {cashFlowSummary.totalAccrualNetProfit.toLocaleString(isAr ? 'ar-EG' : 'en-US')}{' '}
                 {isAr ? 'ج.م' : 'EGP'}
               </span>
             </div>
@@ -728,8 +602,8 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
               <AlertTriangle className="w-8 h-8 text-slate-300" />
               <p className="text-xs font-bold text-slate-500">
                 {isAr
-                  ? 'أصدر أو حصّل فواتير العملاء أو سجّل مصروفات لعرض منحنى التدفق النقدي وصافي الربح.'
-                  : 'Issue/collect invoices or record expenses to visualize cash flow and net profit.'}
+                  ? 'أصدر فواتير العملاء وسجّل المصروفات والرواتب لعرض منحنى صافي الربح والتدفق النقدي.'
+                  : 'Issue invoices and log expenses to visualize profit vs cash flow.'}
               </p>
             </div>
           ) : (
@@ -740,12 +614,8 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
               >
                 <defs>
                   <linearGradient id="cfCollected" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.32} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="cfPending" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
@@ -770,36 +640,36 @@ export const FinancialChartsDashboard: React.FC<FinancialChartsDashboardProps> =
                 <Area
                   type="monotone"
                   dataKey="collected"
-                  name={isAr ? 'التحصيل الفعلي' : 'Collected Inflow'}
+                  name={isAr ? 'تحصيل أتعاب نقدي' : 'Agency Cash In'}
                   stroke="#10b981"
-                  strokeWidth={2.5}
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#cfCollected)"
                 />
-                <Area
-                  type="monotone"
-                  dataKey="pending"
-                  name={isAr ? 'قيد التحصيل' : 'Pending Receivables'}
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#cfPending)"
-                />
                 <Bar
                   dataKey="expenses"
-                  name={isAr ? 'المصروفات' : 'Expenses'}
+                  name={isAr ? 'المصروفات المستحقة' : 'Accrued Expenses'}
                   fill="#f43f5e"
                   radius={[6, 6, 0, 0]}
                   maxBarSize={28}
                 />
                 <Line
                   type="monotone"
-                  dataKey="netProfit"
-                  name={isAr ? 'صافي الربح' : 'Net Profit'}
+                  dataKey="accrualNetProfit"
+                  name={isAr ? 'صافي الربح المحاسبي (P&L)' : 'Accrual Net Profit'}
                   stroke="#0f172a"
-                  strokeWidth={2.5}
+                  strokeWidth={2.6}
                   dot={{ r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#ffffff' }}
                   activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="netCashFlow"
+                  name={isAr ? 'الفرق النقدي (Cash Flow)' : 'Net Cash Flow'}
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={{ r: 3.5, fill: '#f59e0b' }}
                 />
               </ComposedChart>
             </ResponsiveContainer>

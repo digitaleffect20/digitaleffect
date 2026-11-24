@@ -5,6 +5,14 @@ import {
   TeamRolePreset,
   WorkflowStageKey,
 } from '../types';
+import {
+  normalizeUsername,
+  usernamesMatch,
+  hashPasswordPbkdf2,
+  verifyStoredPasswordHash,
+} from './teamCryptoEdge';
+
+export { normalizeUsername, usernamesMatch };
 
 export interface WorkflowStageDescriptor {
   key: WorkflowStageKey;
@@ -363,68 +371,10 @@ export function resolveMemberPermissions(member?: AgencyTeamMember | null): Team
   };
 }
 
-export function normalizeUsername(raw: string): string {
-  return raw
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '.')
-    .replace(/[^a-z0-9._-]/g, '');
-}
-
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  const clean = hex.trim();
-  const out = new Uint8Array(Math.floor(clean.length / 2));
-  for (let i = 0; i < out.length; i++) {
-    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16) || 0;
-  }
-  return out;
-}
-
-function timingSafeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-async function hashWithBrowserPbkdf2(password: string, existingSaltHex?: string): Promise<string> {
-  const saltBytes = existingSaltHex
-    ? hexToBytes(existingSaltHex)
-    : crypto.getRandomValues(new Uint8Array(16));
-  const saltHex = existingSaltHex || bytesToHex(saltBytes);
-  const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw',
-    enc.encode(password),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits']
-  );
-  const derived = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: saltBytes as BufferSource,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    keyMaterial,
-    256
-  );
-  return `pbkdf2$${saltHex}$${bytesToHex(new Uint8Array(derived))}`;
-}
-
 /**
  * Hashes a team member password securely.
- * Prefers server-side Node `crypto.scrypt` via `/api/team/hash-password`,
- * with salted Web Crypto PBKDF2-SHA256 fallback for static deployments.
+ * Prefers server-side hashing via `/api/team/hash-password`,
+ * with salted Web Crypto PBKDF2-SHA256 fallback.
  */
 export async function hashTeamPassword(password: string): Promise<string> {
   try {
@@ -435,14 +385,18 @@ export async function hashTeamPassword(password: string): Promise<string> {
     });
     if (res.ok) {
       const json = await res.json();
-      if (json && typeof json.hash === 'string' && json.hash.startsWith('scrypt$')) {
+      if (
+        json &&
+        typeof json.hash === 'string' &&
+        (json.hash.startsWith('scrypt$') || json.hash.startsWith('pbkdf2$'))
+      ) {
         return json.hash;
       }
     }
   } catch {
-    // Fallback to browser PBKDF2 when running on static hosting
+    // Fallback to browser Web Crypto PBKDF2
   }
-  return hashWithBrowserPbkdf2(password);
+  return hashPasswordPbkdf2(password);
 }
 
 /**
@@ -454,40 +408,28 @@ export async function verifyTeamPassword(
 ): Promise<{ valid: boolean; sessionToken?: string }> {
   if (!password || !storedHash) return { valid: false };
 
-  if (storedHash.startsWith('scrypt$')) {
-    try {
-      const res = await fetch('/api/team/verify-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, hash: storedHash }),
-      });
-      if (res.ok) {
+  try {
+    const res = await fetch('/api/team/verify-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, hash: storedHash }),
+    });
+    if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
         const json = await res.json();
         return {
           valid: Boolean(json?.valid),
           sessionToken: typeof json?.sessionToken === 'string' ? json.sessionToken : undefined,
         };
       }
-    } catch {
-      return { valid: false };
     }
-    return { valid: false };
+  } catch {
+    // Fall back to runtime-agnostic local verification (supports both scrypt$ and pbkdf2$)
   }
 
-  if (storedHash.startsWith('pbkdf2$')) {
-    const parts = storedHash.split('$');
-    if (parts.length !== 3) return { valid: false };
-    const [, saltHex, expectedHex] = parts;
-    try {
-      const recomputed = await hashWithBrowserPbkdf2(password, saltHex);
-      const recomputedHex = recomputed.split('$')[2] || '';
-      return { valid: timingSafeEqualHex(recomputedHex, expectedHex) };
-    } catch {
-      return { valid: false };
-    }
-  }
-
-  return { valid: false };
+  const valid = await verifyStoredPasswordHash(password, storedHash);
+  return { valid };
 }
 
 export function generateStrongPassword(length = 10): string {

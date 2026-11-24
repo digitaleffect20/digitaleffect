@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAgencyData } from '../context/AgencyDataContext';
 import { SectorType, CaseStudy } from '../types';
+import { formatLocalizedMetric } from '../utils/arabicNumbers';
 import { 
   Building2, 
   ShoppingBag, 
@@ -212,7 +213,7 @@ export const CaseStudiesSection: React.FC = () => {
                   {/* Prominent Primary Metric Result in Hero of Card */}
                   <div className="z-10">
                     <div className="text-3xl sm:text-4xl font-black text-sky-400 tabular-nums">
-                      {mainMetric?.value}
+                      {formatLocalizedMetric(mainMetric?.value, true)}
                     </div>
                     <div className="text-xs font-semibold text-slate-200 mt-0.5">
                       {mainMetric?.label}
@@ -244,7 +245,7 @@ export const CaseStudiesSection: React.FC = () => {
                     {study.metrics.slice(1, 3).map((m, idx) => (
                       <div key={idx} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100/80">
                         <div className="text-sm font-extrabold text-slate-900 tabular-nums">
-                          {m.value}
+                          {formatLocalizedMetric(m.value, true)}
                         </div>
                         <div className="text-[11px] text-slate-500 truncate" title={m.label}>
                           {m.label}
