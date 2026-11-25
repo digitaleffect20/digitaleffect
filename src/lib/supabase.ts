@@ -455,6 +455,11 @@ function mapInquiryToCrmRow(inq: Inquiry) {
     workflow_stages: [
       ...(inq.workflowStages || []),
       ...(inq.reelStages || []).map((r) => ({ ...r, track: 'reel' as const })),
+      ...(inq.carriedOverReels || []).map((r) => ({
+        ...r,
+        track: 'carryover_reel' as const,
+        _kind: 'carryover_reel' as const,
+      })),
       ...(inq.adWalletRequests || []).map((req) => ({ ...req, _kind: 'ad_wallet_request' as const })),
     ],
     client_notes: inq.clientNotes || [],
@@ -506,8 +511,11 @@ function mapCrmRowToInquiry(row: any): Inquiry {
         (s: any) =>
           s &&
           s._kind !== 'ad_wallet_request' &&
+          s._kind !== 'carryover_reel' &&
+          s.track !== 'carryover_reel' &&
           s.track !== 'reel' &&
-          !String(s.id || '').startsWith('reel_')
+          !String(s.id || '').startsWith('reel_') &&
+          !String(s.id || '').startsWith('carryover_')
       );
       return mainStages.length > 0 ? mainStages : undefined;
     })(),
@@ -517,9 +525,29 @@ function mapCrmRowToInquiry(row: any): Inquiry {
         (s: any) =>
           s &&
           s._kind !== 'ad_wallet_request' &&
+          s._kind !== 'carryover_reel' &&
+          s.track !== 'carryover_reel' &&
+          !String(s.id || '').startsWith('carryover_') &&
           (s.track === 'reel' || String(s.id || '').startsWith('reel_'))
       );
       return reels.length > 0 ? reels : undefined;
+    })(),
+    carriedOverReels: (() => {
+      if (!Array.isArray(row.workflow_stages)) return undefined;
+      const carried = row.workflow_stages
+        .filter(
+          (s: any) =>
+            s &&
+            s._kind !== 'ad_wallet_request' &&
+            (s._kind === 'carryover_reel' ||
+              s.track === 'carryover_reel' ||
+              String(s.id || '').startsWith('carryover_'))
+        )
+        .map(({ _kind, ...rest }: any) => {
+          void _kind;
+          return { ...rest, track: 'carryover_reel' as const };
+        });
+      return carried.length > 0 ? carried : undefined;
     })(),
     adWalletRequests: (() => {
       if (!Array.isArray(row.workflow_stages)) return undefined;

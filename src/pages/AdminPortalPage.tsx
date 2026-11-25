@@ -94,6 +94,7 @@ import {
   buildReelWorkflowStages,
   checkSequentialStageToggle,
   formatSequentialBlockMessage,
+  formatStageDisplayTitle,
 } from '../components/ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from '../components/ClientPackageDeliverablesCard';
 import { ActivityTimelinePanel, getActivityTypeMeta } from '../components/ActivityTimelinePanel';
@@ -115,6 +116,7 @@ import { TeamAccountsModal } from '../components/TeamAccountsModal';
 import { AdWalletApprovalsBanner } from '../components/ClientAdWalletPanel';
 import {
   FULL_ADMIN_PERMISSIONS,
+  canMemberStartNewCycle,
   getPresetPermissions,
   resolveMemberPermissions,
   usernamesMatch,
@@ -199,6 +201,7 @@ export const AdminPortalPage: React.FC = () => {
   const [selectedClientForAccount, setSelectedClientForAccount] = useState<Inquiry | null>(null);
   const [isClientAccountOpen, setIsClientAccountOpen] = useState(false);
   const [clientDrawerInitialTab, setClientDrawerInitialTab] = useState<ClientDrawerTab>('overview');
+  const [autoOpenCloseCycle, setAutoOpenCloseCycle] = useState(false);
   const [selectedEntityForActivityLogId, setSelectedEntityForActivityLogId] = useState<string | null>(null);
   const [activitySearch, setActivitySearch] = useState('');
   const [activityBucketFilter, setActivityBucketFilter] = useState<'all' | 'status' | 'interactions' | 'notes' | 'billing' | 'workflow'>('all');
@@ -1647,6 +1650,11 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
 
   const effectiveRole: PortalRole =
     canViewFinancials && canManageTeam ? 'admin' : 'operations';
+  const canStartNewCycle = canMemberStartNewCycle(
+    effectivePermissions,
+    activeTeamMember?.rolePreset,
+    effectiveRole
+  );
 
   useEffect(() => {
     if (!effectivePermissions.allowedTabs.includes(activeTab)) {
@@ -1809,6 +1817,72 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
       isAr
         ? `تم تحديث حالة ${reelLabel} وتسجيل الوقت بنجاح!`
         : `${reelLabel} updated with timestamp!`
+    );
+  };
+
+  const handleToggleClientCarriedOverReel = (client: Inquiry, carryOverId: string) => {
+    if (effectivePermissions.canUpdateReelsTrack === false) {
+      return;
+    }
+
+    const currentList = client.carriedOverReels || [];
+    let targetLabel = '';
+    let nextStatusLabel = '';
+    const memberStamp = activeTeamMember?.name?.trim();
+    const canAssign = effectivePermissions.canAssignTasks !== false;
+    const actorName = memberStamp || (isAr ? 'فريق التشغيل' : 'Operations Team');
+
+    const updatedCarriedOver = currentList.map((stage) => {
+      if (stage.id === carryOverId) {
+        const nextStatus: 'completed' | 'in_progress' | 'pending' =
+          stage.status === 'pending'
+            ? 'in_progress'
+            : stage.status === 'in_progress'
+            ? 'completed'
+            : 'pending';
+        const completedAt = nextStatus === 'pending' ? undefined : new Date().toISOString();
+        targetLabel = formatStageDisplayTitle(stage.title, isAr);
+        nextStatusLabel =
+          nextStatus === 'completed'
+            ? (isAr ? 'مكتمل' : 'Completed')
+            : nextStatus === 'in_progress'
+            ? (isAr ? 'قيد التنفيذ' : 'In Progress')
+            : (isAr ? 'مرحّل بالانتظار' : 'Pending');
+
+        let resolvedAssignee = stage.assignee;
+        if (memberStamp) {
+          if (nextStatus === 'pending') {
+            resolvedAssignee = !canAssign ? undefined : stage.assignee;
+          } else if (!canAssign || !stage.assignee) {
+            resolvedAssignee = memberStamp;
+          }
+        }
+
+        return { ...stage, status: nextStatus, completedAt, assignee: resolvedAssignee };
+      }
+      return stage;
+    });
+
+    const completedCarried = updatedCarriedOver.filter((r) => r.status === 'completed').length;
+    const carryLog: ClientAccountNote = {
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      text: isAr
+        ? `تحديث فيديو مرحّل من الشهر السابق (${targetLabel}) إلى «${nextStatusLabel}» (${completedCarried}/${updatedCarriedOver.length}).`
+        : `Updated carried-over video (${targetLabel}) to ${nextStatusLabel} (${completedCarried}/${updatedCarriedOver.length}).`,
+      createdAt: new Date().toISOString(),
+      author: actorName,
+      type: 'workflow',
+      meta: { stageTitle: targetLabel, toStatus: nextStatusLabel },
+    };
+
+    updateInquiry(client.id, {
+      carriedOverReels: updatedCarriedOver,
+      clientNotes: [carryLog, ...(client.clientNotes || [])],
+    });
+    showNotice(
+      isAr
+        ? `تم تحديث حالة الفيديو المرحّل (${targetLabel}) بنجاح!`
+        : `Carried-over video (${targetLabel}) updated!`
     );
   };
 
@@ -2253,12 +2327,12 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
         )}
 
         {/* Tab Navigation (Dynamically filtered by effectivePermissions.allowedTabs) */}
-        <div className="bg-slate-800/80 px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto border-t border-slate-800">
-          <div className="max-w-7xl mx-auto w-full flex items-center gap-2">
+        <div className="bg-slate-800/80 px-4 sm:px-6 lg:px-8 border-t border-slate-800">
+          <div className="max-w-7xl mx-auto w-full flex flex-wrap items-center gap-x-1.5 gap-y-0.5 py-1">
             {canAccessTab('inquiries') && (
               <button
                 onClick={() => setActiveTab('inquiries')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'inquiries'
                     ? 'border-sky-400 text-sky-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2277,7 +2351,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('clients') && (
               <button
                 onClick={() => setActiveTab('clients')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'clients'
                     ? 'border-emerald-400 text-emerald-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2296,7 +2370,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('tasks') && (
               <button
                 onClick={() => setActiveTab('tasks')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'tasks'
                     ? 'border-indigo-400 text-indigo-300'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2315,7 +2389,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('invoices') && (
               <button
                 onClick={() => setActiveTab('invoices')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'invoices'
                     ? 'border-blue-400 text-blue-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2334,10 +2408,10 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('expenses') && (
               <button
                 onClick={() => setActiveTab('expenses')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'expenses'
                     ? 'border-rose-400 text-rose-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                    : 'border-transparent text-slate-300 hover:text-white'
                 }`}
               >
                 <Receipt className="w-3.5 h-3.5 text-rose-400" />
@@ -2348,7 +2422,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('activity') && (
               <button
                 onClick={() => setActiveTab('activity')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'activity'
                     ? 'border-amber-400 text-amber-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2367,7 +2441,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('analytics') && (
               <button
                 onClick={() => setActiveTab('analytics')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'analytics'
                     ? 'border-emerald-400 text-emerald-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2381,7 +2455,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('packages') && (
               <button
                 onClick={() => setActiveTab('packages')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'packages'
                     ? 'border-sky-400 text-sky-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2395,7 +2469,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('projects') && (
               <button
                 onClick={() => setActiveTab('projects')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'projects'
                     ? 'border-sky-400 text-sky-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2409,7 +2483,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('banner') && (
               <button
                 onClick={() => setActiveTab('banner')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'banner'
                     ? 'border-sky-400 text-sky-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -2423,7 +2497,7 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
             {canAccessTab('backup') && (
               <button
                 onClick={() => setActiveTab('backup')}
-                className={`py-3 px-3.5 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`py-2 px-3 text-xs font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'backup'
                     ? 'border-sky-400 text-sky-400'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -3709,6 +3783,13 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
                             reelStages={client.reelStages}
                             reelsDelivered={deliveredR}
                             onToggleReelStage={(reelId) => handleToggleClientReelStage(client, reelId)}
+                            carriedOverReels={client.carriedOverReels}
+                            onToggleCarriedOverReel={(carryId) => handleToggleClientCarriedOverReel(client, carryId)}
+                            currentCycleLabel={formatOperationCycleBadge(
+                              client.contractStartDate || client.createdAt,
+                              client.billingCycle || 'monthly',
+                              isAr
+                            )}
                             teamMembers={agencyTeamMembers}
                             allowedStageIds={effectivePermissions.allowedWorkflowStages}
                             canToggleReels={effectivePermissions.canUpdateReelsTrack !== false}
@@ -3786,38 +3867,69 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
 
                           {/* Dedicated Download Invoice Button (Financial Access Only) */}
                           {canViewFinancials && (
-                            <>
-                              <button
-                                type="button"
-                                disabled={downloadingInvoiceClientId === client.id}
-                                onClick={() => handleDownloadClientInvoice(client)}
-                                className="px-2.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                title={isAr ? 'تحميل الفاتورة وبيان الحساب بصيغة PDF' : 'Download Invoice PDF'}
-                              >
-                                {downloadingInvoiceClientId === client.id ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
-                                ) : (
-                                  <Download className="w-3.5 h-3.5 text-blue-600" />
-                                )}
-                                <span>{isAr ? 'تحميل الفاتورة' : 'Download Invoice'}</span>
-                              </button>
+                            <button
+                              type="button"
+                              disabled={downloadingInvoiceClientId === client.id}
+                              onClick={() => handleDownloadClientInvoice(client)}
+                              className="px-2.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              title={isAr ? 'تحميل الفاتورة وبيان الحساب بصيغة PDF' : 'Download Invoice PDF'}
+                            >
+                              {downloadingInvoiceClientId === client.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                              ) : (
+                                <Download className="w-3.5 h-3.5 text-blue-600" />
+                              )}
+                              <span>{isAr ? 'تحميل الفاتورة' : 'Download Invoice'}</span>
+                            </button>
+                          )}
 
-                              {/* Close Month / Start New Cycle Shortcut Button */}
+                          {/* Close Month / Start New Cycle Shortcut Button (Admin, Finance, AM, and Content Creator when monthly tasks complete) */}
+                          {canStartNewCycle && (() => {
+                            const stages =
+                              client.workflowStages && client.workflowStages.length === 5
+                                ? client.workflowStages
+                                : DEFAULT_WORKFLOW_STAGES;
+                            const doneStagesCount = stages.filter((s) => s.status === 'completed').length;
+                            const allDone = doneStagesCount === stages.length;
+                            const canClickNow = canViewFinancials || canEditClients || allDone;
+                            return (
                               <button
                                 type="button"
+                                disabled={!canClickNow}
                                 onClick={() => {
-                                  setClientDrawerInitialTab('billing');
+                                  setClientDrawerInitialTab(canViewFinancials ? 'billing' : 'overview');
+                                  setAutoOpenCloseCycle(true);
                                   setSelectedClientForAccount(client);
                                   setIsClientAccountOpen(true);
                                 }}
-                                className="px-2.5 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 cursor-pointer"
-                                title={isAr ? 'إغلاق الشهر الحالي وبدء دورة جديدة أو إدارة المالية' : 'Close Month / Billing Cycle'}
+                                className={`px-2.5 py-1.5 text-xs font-bold border rounded-xl transition-all shadow-2xs inline-flex items-center gap-1 ${
+                                  canClickNow
+                                    ? 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200/90 cursor-pointer'
+                                    : 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed'
+                                }`}
+                                title={
+                                  canClickNow
+                                    ? isAr
+                                      ? 'إغلاق الشهر الحالي وبدء دورة جديدة'
+                                      : 'Close Month & Start New Cycle'
+                                    : isAr
+                                    ? `متاح فور اكتمال مهام الشهر الأساسية (${doneStagesCount}/${stages.length})`
+                                    : `Available once monthly tasks complete (${doneStagesCount}/${stages.length})`
+                                }
                               >
-                                <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>{isAr ? 'دورة جديدة' : 'New Cycle'}</span>
+                                <RotateCcw className={`w-3.5 h-3.5 ${canClickNow ? 'text-emerald-600' : 'text-slate-400'}`} />
+                                <span>
+                                  {isAr
+                                    ? canClickNow
+                                      ? 'دورة جديدة'
+                                      : `دورة جديدة (${doneStagesCount}/5)`
+                                    : canClickNow
+                                    ? 'New Cycle'
+                                    : `New Cycle (${doneStagesCount}/5)`}
+                                </span>
                               </button>
-                            </>
-                          )}
+                            );
+                          })()}
 
                           {/* Edit Client & Package Button */}
                           {canEditClients && (
@@ -5894,13 +6006,16 @@ Please confirm renewal so we can smoothly kick off next month's content & campai
         }
         isOpen={isClientAccountOpen}
         initialTab={clientDrawerInitialTab}
+        autoOpenCloseCycle={autoOpenCloseCycle}
         userRole={effectiveRole}
+        rolePreset={activeTeamMember?.rolePreset}
         permissions={effectivePermissions}
         currentMemberName={activeTeamMember?.name}
         onClose={() => {
           setIsClientAccountOpen(false);
           setSelectedClientForAccount(null);
           setClientDrawerInitialTab('overview');
+          setAutoOpenCloseCycle(false);
         }}
         onClientUpdated={(updated) => {
           setSelectedClientForAccount(updated);

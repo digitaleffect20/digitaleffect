@@ -1028,6 +1028,27 @@ export const TeamAccountsModal: React.FC<TeamAccountsModalProps> = ({
                   <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:border-emerald-300">
                     <input
                       type="checkbox"
+                      checked={Boolean(permissions.canStartNewCycle)}
+                      onChange={() => togglePermissionFlag('canStartNewCycle')}
+                      className="mt-0.5 w-4 h-4 accent-emerald-600 cursor-pointer"
+                    />
+                    <div>
+                      <span className="font-black text-slate-900 block">
+                        {isAr
+                          ? 'إغلاق الشهر وبدء دورة جديدة (بعد اكتمال مهام الشهر)'
+                          : 'Close Month & Start New Cycle (Once Tasks Complete)'}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {isAr
+                          ? 'يتيح لصانع المحتوى أو المسؤول بدء دورة الشهر التالي بمجرد اكتمال مهام الشهر الخمس، مع خيار ترحيل الفيديوهات المتبقية لقسم منفصل.'
+                          : 'Allows Content Creator or manager to start the next monthly cycle once monthly tasks complete, with unfinished video carry-over.'}
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:border-emerald-300">
+                    <input
+                      type="checkbox"
                       checked={Boolean(permissions.canAssignTasks)}
                       onChange={() => togglePermissionFlag('canAssignTasks')}
                       className="mt-0.5 w-4 h-4 accent-emerald-600 cursor-pointer"

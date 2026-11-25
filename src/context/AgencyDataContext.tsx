@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry, ClientAccountNote, ActivityLogType, ClientMonthlyCycleRecord, AgencyExpense, AgencyTeamMember, InvoicePaymentEntry, PaymentChannel, AdWalletRequest, FinancialAuditEntry, MonthlyCloseRecord, MonthCloseStepKey, FinancialSettings } from '../types';
+import { AgencyDataState, CaseStudy, ServicePackage, PromoBanner, SectorType, PortfolioCategoryFilter, Language, PageRoute, Inquiry, PromoCode, CustomPackagePricingRates, CustomPackageConfig, ClientInvoiceRecord, AccountLedgerEntry, ClientAccountNote, ActivityLogType, ClientMonthlyCycleRecord, ClientWorkflowStage, AgencyExpense, AgencyTeamMember, InvoicePaymentEntry, PaymentChannel, AdWalletRequest, FinancialAuditEntry, MonthlyCloseRecord, MonthCloseStepKey, FinancialSettings } from '../types';
 import { INITIAL_AGENCY_DATA } from '../data/initialData';
 import { TRANSLATIONS } from '../translations';
 import { DEFAULT_CUSTOM_PACKAGE_RATES } from '../utils/pricingCalculator';
 import { parseInvoiceAmount, generateUniqueInvoiceNumber } from '../utils/invoicePdfGenerator';
 import { getClientDeliverableTargets } from '../utils/workflowUtils';
-import { formatInvoicePeriodLabel, formatOperationCycleBadge } from '../utils/billingPeriodUtils';
+import { formatInvoicePeriodLabel, formatOperationCycleBadge, getNextOperationCycle } from '../utils/billingPeriodUtils';
+import { buildReelWorkflowStages } from '../components/ClientWorkflowStepper';
 import { normalizeArabicCopy } from '../utils/arabicNumbers';
 import {
   createEmptyMonthCloseRecord,
@@ -157,6 +158,8 @@ interface AgencyContextType {
     options: {
       newStartDate: string;
       newRenewalDate: string;
+      billingCycle?: Inquiry['billingCycle'];
+      carryOverUnfinishedReels?: boolean;
       newPendingAdCredit?: number;
       issueInvoiceNow?: boolean;
       invoiceTargetCycle?: 'closed' | 'new';
@@ -1657,6 +1660,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         ],
       } : {})
     };
+    dataRef.current = {
+      ...dataRef.current,
+      inquiries: [newInquiry, ...(dataRef.current.inquiries || [])],
+    };
     setData((prev) => ({
       ...prev,
       inquiries: [newInquiry, ...(prev.inquiries || [])],
@@ -1677,6 +1684,15 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const updateInquiry = (id: string, updates: Partial<Inquiry>) => {
     const existingItem = (dataRef.current.inquiries || []).find((item) => item.id === id);
     const mergedForSync = existingItem ? buildMergedInquiry(existingItem, updates) : null;
+
+    if (mergedForSync) {
+      dataRef.current = {
+        ...dataRef.current,
+        inquiries: (dataRef.current.inquiries || []).map((item) =>
+          item.id === id ? mergedForSync : item
+        ),
+      };
+    }
 
     setData((prev) => ({
       ...prev,
@@ -1720,6 +1736,12 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (existing) {
       const updatedNotes = [newEntry, ...(existing.clientNotes || [])];
       const merged = { ...existing, clientNotes: updatedNotes };
+      dataRef.current = {
+        ...dataRef.current,
+        inquiries: (dataRef.current.inquiries || []).map((item) =>
+          item.id === id ? merged : item
+        ),
+      };
       setData((prev) => ({
         ...prev,
         inquiries: (prev.inquiries || []).map((item) =>
@@ -1745,6 +1767,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         id: fallbackLead.id || id,
         clientNotes: [newEntry, ...(fallbackLead.clientNotes || [])],
       };
+      dataRef.current = {
+        ...dataRef.current,
+        inquiries: [created, ...(dataRef.current.inquiries || [])],
+      };
       setData((prev) => ({
         ...prev,
         inquiries: [created, ...(prev.inquiries || [])],
@@ -1764,6 +1790,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteInquiry = (id: string) => {
+    dataRef.current = {
+      ...dataRef.current,
+      inquiries: (dataRef.current.inquiries || []).filter((item) => item.id !== id),
+    };
     setData((prev) => ({
       ...prev,
       inquiries: (prev.inquiries || []).filter((item) => item.id !== id),
@@ -1898,6 +1928,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
+    dataRef.current = {
+      ...dataRef.current,
+      invoices: [newInvoice, ...(dataRef.current.invoices || [])],
+    };
     setData((prev) => ({
       ...prev,
       invoices: [newInvoice, ...(prev.invoices || [])],
@@ -1952,6 +1986,13 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const existingInv = (dataRef.current.invoices || []).find((inv) => inv.id === id);
     const updatedInv = existingInv ? { ...existingInv, ...updates } : null;
 
+    if (updatedInv) {
+      dataRef.current = {
+        ...dataRef.current,
+        invoices: (dataRef.current.invoices || []).map((inv) => (inv.id === id ? updatedInv : inv)),
+      };
+    }
+
     setData((prev) => ({
       ...prev,
       invoices: (prev.invoices || []).map((inv) => (inv.id === id ? { ...inv, ...updates } : inv)),
@@ -2003,6 +2044,10 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const deleteInvoice = (id: string, actorName = 'الإدارة المالية') => {
     const resolvedActor = actorName?.trim() || 'الإدارة المالية';
     const existingInv = (dataRef.current.invoices || []).find((inv) => inv.id === id);
+    dataRef.current = {
+      ...dataRef.current,
+      invoices: (dataRef.current.invoices || []).filter((inv) => inv.id !== id),
+    };
     setData((prev) => ({
       ...prev,
       invoices: (prev.invoices || []).filter((inv) => inv.id !== id),
@@ -2760,6 +2805,8 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     options: {
       newStartDate: string;
       newRenewalDate: string;
+      billingCycle?: Inquiry['billingCycle'];
+      carryOverUnfinishedReels?: boolean;
       newPendingAdCredit?: number;
       issueInvoiceNow?: boolean;
       invoiceTargetCycle?: 'closed' | 'new';
@@ -2773,11 +2820,27 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { updatedClient: null, createdInvoice: null };
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const nowIso = new Date().toISOString();
+    const todayStr = nowIso.split('T')[0];
+    const effectiveBillingCycle = options.billingCycle || client.billingCycle || 'monthly';
     const closedStartDate = client.contractStartDate || client.createdAt?.split('T')[0] || todayStr;
     const closedEndDate = client.renewalDate || todayStr;
-    const cycleLabel = formatOperationCycleBadge(closedStartDate, client.billingCycle || 'monthly', true);
-    const nextCycleLabel = formatOperationCycleBadge(options.newStartDate, client.billingCycle || 'monthly', true);
+    const fallbackNextCycle = getNextOperationCycle(closedStartDate, effectiveBillingCycle);
+    const hasDistinctNewStart = Boolean(
+      options.newStartDate &&
+      options.newStartDate.trim() &&
+      options.newStartDate.trim() !== closedStartDate
+    );
+    const resolvedNewStartDate = hasDistinctNewStart
+      ? options.newStartDate.trim()
+      : fallbackNextCycle.startDate;
+    const resolvedNewRenewalDate =
+      hasDistinctNewStart && options.newRenewalDate && options.newRenewalDate.trim()
+        ? options.newRenewalDate.trim()
+        : fallbackNextCycle.endDate;
+
+    const cycleLabel = formatOperationCycleBadge(closedStartDate, effectiveBillingCycle, true);
+    const nextCycleLabel = formatOperationCycleBadge(resolvedNewStartDate, effectiveBillingCycle, true);
 
     const targets = getClientDeliverableTargets(client, dataRef.current.packages || []);
     const postsDelivered = client.postsDelivered ?? 0;
@@ -2788,6 +2851,36 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       targets.totalTarget > 0
         ? Math.min(100, Math.round((totalDelivered / targets.totalTarget) * 100))
         : 0;
+
+    // Identify unfinished videos (both from current cycle's reels and any still-open previous carry-over reels)
+    const normalizedCurrentReels = buildReelWorkflowStages(
+      targets.reelsTarget,
+      client.reelStages,
+      reelsDelivered
+    );
+    const unfinishedCurrentReels = normalizedCurrentReels.filter((r) => r.status !== 'completed');
+    const unfinishedPrevCarryOvers = (client.carriedOverReels || []).filter(
+      (r) => r.status !== 'completed'
+    );
+
+    const nextCarriedOverReels: ClientWorkflowStage[] = options.carryOverUnfinishedReels
+      ? [
+          ...unfinishedPrevCarryOvers.map((r) => ({
+            ...r,
+            track: 'carryover_reel' as const,
+          })),
+          ...unfinishedCurrentReels.map((r, idx) => ({
+            id: `carryover_${Date.now()}_${idx}_${r.id}`,
+            title: r.title,
+            status: r.status === 'in_progress' ? ('in_progress' as const) : ('pending' as const),
+            assignee: r.assignee,
+            notes: r.notes,
+            track: 'carryover_reel' as const,
+            originCycleLabel: cycleLabel,
+            carriedOverAt: nowIso,
+          })),
+        ]
+      : [];
 
     const stages = client.workflowStages || [];
     const workflowTotalStages = stages.length > 0 ? stages.length : 5;
@@ -2808,7 +2901,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       cycleLabel,
       startDate: closedStartDate,
       endDate: closedEndDate,
-      closedAt: new Date().toISOString(),
+      closedAt: nowIso,
       packageName: client.packageName || 'باقة مخصصة',
       retainerAmount,
       postsDelivered,
@@ -2822,6 +2915,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       workflowTotalStages,
       paymentStatus: client.paymentStatus || 'pending',
       adCreditBalanceCarriedOver: client.adCreditBalance || 0,
+      carriedOverReelsCount: nextCarriedOverReels.length,
       invoiceNumber: latestClientInvoice?.invoiceNumber,
       notes: options.cycleNotes?.trim() || undefined,
     };
@@ -2834,12 +2928,24 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       { id: 'publish', title: 'Publish', status: 'pending' as const },
     ];
 
-    const summaryNoteText = `إغلاق «${cycleLabel}» (إنجاز المخرجات: ${totalDelivered}/${targets.totalTarget} بنسبة ${deliverablesCompletionRate}% • مراحل العمل: ${workflowCompletedStages}/${workflowTotalStages} • رصيد إعلاني مرحّل: ${(client.adCreditBalance || 0).toLocaleString()} ج.م) وبدء «${nextCycleLabel}» من ${options.newStartDate} حتى ${options.newRenewalDate}.${options.cycleNotes?.trim() ? ` ملاحظة: ${options.cycleNotes.trim()}` : ''}`;
+    const carryOverSummaryPart =
+      nextCarriedOverReels.length > 0
+        ? ` • تم ترحيل ${nextCarriedOverReels.length} فيديو غير مكتمل إلى قسم منفصل في الدورة الجديدة`
+        : unfinishedCurrentReels.length + unfinishedPrevCarryOvers.length > 0
+        ? ` • لم يتم ترحيل الفيديوهات المتبقية (${unfinishedCurrentReels.length + unfinishedPrevCarryOvers.length})`
+        : '';
 
-    const closingNote = makeActivityNote(summaryNoteText, 'workflow', 'إدارة التشغيل والمالية', {
-      fieldChanged: 'billingCycleClose',
-      cycleRecord,
-    });
+    const summaryNoteText = `إغلاق «${cycleLabel}» (إنجاز المخرجات: ${totalDelivered}/${targets.totalTarget} بنسبة ${deliverablesCompletionRate}% • مراحل العمل: ${workflowCompletedStages}/${workflowTotalStages} • رصيد إعلاني مرحّل: ${(client.adCreditBalance || 0).toLocaleString()} ج.م${carryOverSummaryPart}) وبدء «${nextCycleLabel}» من ${resolvedNewStartDate} حتى ${resolvedNewRenewalDate}.${options.cycleNotes?.trim() ? ` ملاحظة: ${options.cycleNotes.trim()}` : ''}`;
+
+    const closingNote = makeActivityNote(
+      summaryNoteText,
+      'workflow',
+      options.actorName?.trim() || 'إدارة التشغيل والمالية',
+      {
+        fieldChanged: 'billingCycleClose',
+        cycleRecord,
+      }
+    );
 
     const existingHistory = client.cycleHistory || [];
     const nextHistory = [cycleRecord, ...existingHistory];
@@ -2853,8 +2959,9 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
 
     const updatedClientUpdates: Partial<Inquiry> = {
-      contractStartDate: options.newStartDate,
-      renewalDate: options.newRenewalDate,
+      billingCycle: effectiveBillingCycle,
+      contractStartDate: resolvedNewStartDate,
+      renewalDate: resolvedNewRenewalDate,
       contractStatus: 'active',
       paymentStatus: 'pending',
       postsDelivered: 0,
@@ -2862,6 +2969,7 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       storiesDelivered: 0,
       workflowStages: resetStages,
       reelStages: resetReelStages,
+      carriedOverReels: nextCarriedOverReels,
       currentWorkflowDay: 1,
       todayTaskTitle: '',
       pendingInvoiceAdCredit: nextPendingAdCredit,
@@ -2876,13 +2984,13 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const invNumber = generateUniqueInvoiceNumber(client.id, dataRef.current.invoices || []);
       const grandTotal = retainerAmount + nextPendingAdCredit;
       const targetCycle = options.invoiceTargetCycle || 'closed';
-      const resolvedServiceStart = targetCycle === 'closed' ? closedStartDate : options.newStartDate;
-      const resolvedServiceEnd = targetCycle === 'closed' ? closedEndDate : options.newRenewalDate;
+      const resolvedServiceStart = targetCycle === 'closed' ? closedStartDate : resolvedNewStartDate;
+      const resolvedServiceEnd = targetCycle === 'closed' ? closedEndDate : resolvedNewRenewalDate;
       const resolvedInvoicePeriod =
         (options.invoiceContractPeriod || '').trim() ||
         formatInvoicePeriodLabel(
           resolvedServiceStart,
-          client.billingCycle || 'monthly',
+          effectiveBillingCycle,
           true
         );
       createdInvoice = addInvoice(
@@ -2894,14 +3002,14 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           clientPhone: client.phone,
           sector: client.sector,
           issueDate: todayStr,
-          dueDate: options.newRenewalDate,
+          dueDate: resolvedNewRenewalDate,
           serviceStartDate: resolvedServiceStart,
           serviceEndDate: resolvedServiceEnd,
           packageName: client.packageName || 'باقة تسويق رقمي',
           retainerAmount,
           adCreditAmount: nextPendingAdCredit,
           grandTotal,
-          billingCycle: client.billingCycle || 'monthly',
+          billingCycle: effectiveBillingCycle,
           contractPeriod: resolvedInvoicePeriod,
           paymentStatus: 'pending',
           notes: options.cycleNotes?.trim() || undefined,
@@ -2915,12 +3023,13 @@ export const AgencyDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       );
     }
 
-    const updatedClient: Inquiry = {
-      ...client,
-      ...updatedClientUpdates,
-    };
+    const latestClient =
+      (dataRef.current.inquiries || []).find((c) => c.id === client.id) || {
+        ...client,
+        ...updatedClientUpdates,
+      };
 
-    return { updatedClient, createdInvoice };
+    return { updatedClient: latestClient, createdInvoice };
   };
 
   const getClientLedger = (clientId: string, fromDate?: string, toDate?: string) => {

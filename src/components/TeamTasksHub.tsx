@@ -42,10 +42,11 @@ interface TeamTasksHubProps {
 interface FlattenedTaskItem {
   key: string;
   client: Inquiry;
-  track: 'main' | 'reel';
+  track: 'main' | 'reel' | 'carryover_reel';
   stageId: string;
   stageTitle: string;
   displayLabel: string;
+  originCycleLabel?: string;
   status: 'pending' | 'in_progress' | 'completed';
   assignee?: string;
   completedAt?: string;
@@ -84,7 +85,7 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
   const [statusFilter, setStatusFilter] = useState<
     'open' | 'in_progress' | 'overdue' | 'pending' | 'completed' | 'all'
   >('open');
-  const [trackFilter, setTrackFilter] = useState<'all' | 'main' | 'reel'>('all');
+  const [trackFilter, setTrackFilter] = useState<'all' | 'main' | 'reel' | 'carryover_reel'>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Quick Add Team Member form
@@ -151,6 +152,26 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
           seqCheck: checkSequentialStageToggle(reelStages, r.id),
         });
       });
+
+      const carriedOver = client.carriedOverReels || [];
+      carriedOver.forEach((r, idx) => {
+        items.push({
+          key: `${client.id}__carryover__${r.id}`,
+          client,
+          track: 'carryover_reel',
+          stageId: r.id,
+          stageTitle: r.title,
+          displayLabel: formatStageDisplayTitle(r.title, isAr),
+          originCycleLabel: r.originCycleLabel,
+          status: r.status,
+          assignee: r.assignee,
+          completedAt: r.completedAt,
+          isOverdue: overdue.isOverdue && r.status !== 'completed',
+          overdueBadge: isAr ? overdue.badgeTextAr : overdue.badgeTextEn,
+          reelIndex: idx + 1,
+          seqCheck: { allowed: true },
+        });
+      });
     });
 
     // Sort: Overdue first, then in_progress, then pending, then completed
@@ -165,7 +186,7 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
       if (item.track === 'main' && allowedWorkflowStages) {
         return allowedWorkflowStages.includes(item.stageId as any);
       }
-      if (item.track === 'reel' && !canUpdateReelsTrack) {
+      if ((item.track === 'reel' || item.track === 'carryover_reel') && !canUpdateReelsTrack) {
         return false;
       }
       return true;
@@ -193,7 +214,7 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
     const inProgress = allTasks.filter((t) => t.status === 'in_progress').length;
     const overdue = allTasks.filter((t) => t.isOverdue && t.status !== 'completed').length;
     const activeReels = allTasks.filter(
-      (t) => t.track === 'reel' && t.status !== 'completed'
+      (t) => (t.track === 'reel' || t.track === 'carryover_reel') && t.status !== 'completed'
     ).length;
     const completed = allTasks.filter((t) => t.status === 'completed').length;
     return { inProgress, overdue, activeReels, completed, total: allTasks.length };
@@ -247,7 +268,7 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
     if (track === 'main' && allowedWorkflowStages && !allowedWorkflowStages.includes(stageId as any)) {
       return;
     }
-    if (track === 'reel' && !canUpdateReelsTrack) {
+    if ((track === 'reel' || track === 'carryover_reel') && !canUpdateReelsTrack) {
       return;
     }
     if (!task.seqCheck.allowed) {
@@ -303,6 +324,34 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
       };
       updateInquiry(client.id, {
         workflowStages: updatedStages,
+        clientNotes: [note, ...(client.clientNotes || [])],
+      });
+    } else if (track === 'carryover_reel') {
+      const baseCarried = client.carriedOverReels || [];
+      const updatedCarried = baseCarried.map((r) => {
+        if (r.id !== stageId) return r;
+        const nextAssignee =
+          !canAssignTasks && memberStamp
+            ? nextStatus === 'pending'
+              ? undefined
+              : memberStamp
+            : r.assignee || (nextStatus !== 'pending' && memberStamp ? memberStamp : r.assignee);
+        return { ...r, status: nextStatus, completedAt, assignee: nextAssignee };
+      });
+      const completedCount = updatedCarried.filter((r) => r.status === 'completed').length;
+      const originTag = task.originCycleLabel ? ` (${task.originCycleLabel})` : '';
+      const note: ClientAccountNote = {
+        id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        text: isAr
+          ? `تحديث فيديو مرحل «${displayLabel}»${originTag} من شاشة مهام الفريق إلى «${statusLabel}» (${completedCount}/${updatedCarried.length}) بواسطة ${actorLabel}.`
+          : `Updated carried-over video "${displayLabel}"${originTag} to "${statusLabel}" (${completedCount}/${updatedCarried.length}) by ${actorLabel}.`,
+        createdAt: new Date().toISOString(),
+        author: actorLabel,
+        type: 'workflow',
+        meta: { stageTitle: displayLabel, toStatus: statusLabel },
+      };
+      updateInquiry(client.id, {
+        carriedOverReels: updatedCarried,
         clientNotes: [note, ...(client.clientNotes || [])],
       });
     } else {
@@ -361,6 +410,12 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
         s.id === stageId ? { ...s, assignee: cleanAssignee } : s
       );
       updateInquiry(client.id, { workflowStages: updatedStages });
+    } else if (track === 'carryover_reel') {
+      const baseCarried = client.carriedOverReels || [];
+      const updatedCarried = baseCarried.map((r) =>
+        r.id === stageId ? { ...r, assignee: cleanAssignee } : r
+      );
+      updateInquiry(client.id, { carriedOverReels: updatedCarried });
     } else {
       const targets = getClientDeliverableTargets(client, data.packages);
       const baseReels = buildReelWorkflowStages(
@@ -702,9 +757,10 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
               onChange={(e) => setTrackFilter(e.target.value as any)}
               className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 cursor-pointer"
             >
-              <option value="all">{isAr ? 'كل الخطوط (المراحل + الريلز)' : 'All Tracks'}</option>
+              <option value="all">{isAr ? 'كل الخطوط (المراحل + الريلز + المرحّلة)' : 'All Tracks'}</option>
               <option value="main">{isAr ? 'مراحل العمل الأساسية (5)' : 'Main Workflow'}</option>
-              <option value="reel">{isAr ? 'خط إنتاج الريلز' : 'Reels Track'}</option>
+              <option value="reel">{isAr ? 'فيديوهات الشهر الحالي' : 'Current Month Reels'}</option>
+              <option value="carryover_reel">{isAr ? 'فيديوهات مرحلة من الشهر السابق' : 'Carried-Over Videos'}</option>
             </select>
           </div>
         </div>
@@ -777,18 +833,28 @@ export const TeamTasksHub: React.FC<TeamTasksHubProps> = ({
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
                           className={`px-2 py-0.5 rounded-md text-[10px] font-black inline-flex items-center gap-1 border ${
-                            task.track === 'reel'
+                            task.track === 'carryover_reel'
+                              ? 'bg-amber-50 text-amber-900 border-amber-300'
+                              : task.track === 'reel'
                               ? 'bg-purple-50 text-purple-800 border-purple-200'
                               : 'bg-blue-50 text-blue-800 border-blue-200'
                           }`}
                         >
-                          {task.track === 'reel' ? (
+                          {task.track === 'reel' || task.track === 'carryover_reel' ? (
                             <Film className="w-3 h-3" />
                           ) : (
                             <Layers className="w-3 h-3" />
                           )}
                           <span>{task.displayLabel}</span>
                         </span>
+
+                        {task.track === 'carryover_reel' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                            {isAr
+                              ? `مرحل${task.originCycleLabel ? ` • ${task.originCycleLabel}` : ''}`
+                              : `Carried Over${task.originCycleLabel ? ` • ${task.originCycleLabel}` : ''}`}
+                          </span>
+                        )}
 
                         <span className="text-xs font-black text-slate-900 truncate">
                           {task.client.company || task.client.name}

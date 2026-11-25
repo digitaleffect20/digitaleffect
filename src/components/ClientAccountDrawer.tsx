@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAgencyData, DEFAULT_AGENCY_TEAM_MEMBERS } from '../context/AgencyDataContext';
-import { ClientAccountNote, ClientWorkflowStage, Inquiry, ActivityLogType, PortalRole, TeamMemberPermissions } from '../types';
+import { ClientAccountNote, ClientWorkflowStage, Inquiry, ActivityLogType, PortalRole, TeamMemberPermissions, TeamRolePreset } from '../types';
 import { 
   X, 
   Building2, 
@@ -41,7 +41,10 @@ import {
   Package,
   Activity,
   RotateCcw,
-  History
+  History,
+  Film,
+  Lock,
+  CornerDownLeft
 } from 'lucide-react';
 import {
   ClientWorkflowStepper,
@@ -49,6 +52,7 @@ import {
   buildReelWorkflowStages,
   checkSequentialStageToggle,
   formatSequentialBlockMessage,
+  formatStageDisplayTitle,
 } from './ClientWorkflowStepper';
 import { ClientPackageDeliverablesCard } from './ClientPackageDeliverablesCard';
 import { ClientPerformanceSummary } from './ClientPerformanceSummary';
@@ -74,6 +78,7 @@ import { CountryCode } from 'libphonenumber-js';
 import { validateAndFormatPhone } from '../lib/phoneUtils';
 import { deleteInquiryFromDb, isSupabaseConfigured } from '../lib/supabase';
 import { ClientAdWalletPanel } from './ClientAdWalletPanel';
+import { canMemberStartNewCycle } from '../utils/teamAuth';
 
 export type ClientDrawerTab = 'overview' | 'profile' | 'performance' | 'deliverables' | 'ad_wallet' | 'billing' | 'statement' | 'notes';
 
@@ -84,7 +89,9 @@ interface ClientAccountDrawerProps {
   onClientUpdated?: (updated: Inquiry) => void;
   onClientDeleted?: (id: string) => void;
   initialTab?: ClientDrawerTab;
+  autoOpenCloseCycle?: boolean;
   userRole?: PortalRole;
+  rolePreset?: TeamRolePreset;
   permissions?: TeamMemberPermissions;
   currentMemberName?: string;
 }
@@ -98,7 +105,9 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   onClientUpdated,
   onClientDeleted,
   initialTab = 'overview',
+  autoOpenCloseCycle = false,
   userRole = 'admin',
+  rolePreset,
   permissions,
   currentMemberName,
 }) => {
@@ -107,6 +116,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   const canViewFinancials = permissions ? permissions.canViewFinancials : userRole !== 'operations';
   const canEditClients = permissions ? permissions.canEditClients : true;
   const canDeleteRecords = permissions ? permissions.canDeleteRecords : userRole !== 'operations';
+  const canStartNewCycle = canMemberStartNewCycle(permissions, rolePreset, userRole);
   const allowedWorkflowStages = permissions?.allowedWorkflowStages;
   const canUpdateReelsTrack = permissions ? permissions.canUpdateReelsTrack !== false : true;
   const canAssignTasks = permissions ? Boolean(permissions.canAssignTasks) : userRole !== 'operations';
@@ -177,6 +187,9 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   const [reelStages, setReelStages] = useState<ClientWorkflowStage[]>(() =>
     buildReelWorkflowStages(client?.reelsTarget ?? 0, client?.reelStages, client?.reelsDelivered ?? 0)
   );
+  const [carriedOverReels, setCarriedOverReels] = useState<ClientWorkflowStage[]>(
+    () => client?.carriedOverReels || []
+  );
 
   // Today's Task Title
   const [todayTaskTitle, setTodayTaskTitle] = useState<string>(client?.todayTaskTitle || '');
@@ -201,6 +214,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   const [issueNextInvoiceNow, setIssueNextInvoiceNow] = useState<boolean>(false);
   const [closeInvoiceTargetCycle, setCloseInvoiceTargetCycle] = useState<'closed' | 'new'>('closed');
   const [closeCycleNotes, setCloseCycleNotes] = useState<string>('');
+  const [carryOverReelsDecision, setCarryOverReelsDecision] = useState<'carry_over' | 'discard' | null>(null);
+  const [carryOverDecisionError, setCarryOverDecisionError] = useState<boolean>(false);
 
   // Ad Credit & Campaign Wallet States (الرصيد الإعلاني ومحفظة الحملات)
   const [adCreditBalance, setAdCreditBalance] = useState<number>(client?.adCreditBalance ?? 0);
@@ -256,6 +271,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           client.reelsDelivered ?? 0
         )
       );
+      setCarriedOverReels(client.carriedOverReels || []);
       setTodayTaskTitle(client.todayTaskTitle || '');
       setPostsDelivered(client.postsDelivered ?? 0);
       setReelsDelivered(client.reelsDelivered ?? 0);
@@ -268,6 +284,24 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
       setActiveTab(sanitizeTab(initialTab || 'overview'));
     }
   }, [client?.id, isOpen, initialTab]);
+
+  useEffect(() => {
+    if (isOpen && client?.id && autoOpenCloseCycle && canStartNewCycle) {
+      const anchorStart = client.contractStartDate || client.createdAt;
+      const next = getNextOperationCycle(anchorStart, client.billingCycle || 'monthly');
+      setNextCycleYear(next.year);
+      setNextCycleMonth(next.monthIndex);
+      setNextCycleStartDate(next.startDate);
+      setNextCycleRenewalDate(next.endDate);
+      setNextCycleAdCredit(0);
+      setIssueNextInvoiceNow(false);
+      setCloseInvoiceTargetCycle('closed');
+      setCloseCycleNotes('');
+      setCarryOverReelsDecision(null);
+      setCarryOverDecisionError(false);
+      setIsCloseCycleModalOpen(true);
+    }
+  }, [isOpen, client?.id, autoOpenCloseCycle, canStartNewCycle]);
 
   useEffect(() => {
     if (
@@ -699,6 +733,109 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     }
   };
 
+  // Toggle status of a carried-over video (completely separate from current month's reelsDelivered counter)
+  const handleToggleCarriedOverReel = (carryOverId: string) => {
+    if (!client || !canUpdateReelsTrack) return;
+    let targetLabel = '';
+    let nextStatusLabel = '';
+    const memberStamp = currentMemberName?.trim();
+
+    const updatedCarriedOver = carriedOverReels.map((stage) => {
+      if (stage.id === carryOverId) {
+        const nextStatus: 'completed' | 'in_progress' | 'pending' =
+          stage.status === 'pending'
+            ? 'in_progress'
+            : stage.status === 'in_progress'
+            ? 'completed'
+            : 'pending';
+        const completedAt = nextStatus === 'pending' ? undefined : new Date().toISOString();
+        const nextAssignee =
+          !canAssignTasks && memberStamp
+            ? nextStatus === 'pending'
+              ? undefined
+              : memberStamp
+            : stage.assignee || (nextStatus !== 'pending' && memberStamp ? memberStamp : stage.assignee);
+        targetLabel = formatStageDisplayTitle(stage.title, isAr);
+        nextStatusLabel =
+          nextStatus === 'completed'
+            ? (isAr ? 'مكتمل' : 'Completed')
+            : nextStatus === 'in_progress'
+            ? (isAr ? 'قيد التنفيذ' : 'In Progress')
+            : (isAr ? 'مرحّل بالانتظار' : 'Pending');
+        return { ...stage, status: nextStatus, completedAt, assignee: nextAssignee };
+      }
+      return stage;
+    });
+
+    const completedCarriedCount = updatedCarriedOver.filter((r) => r.status === 'completed').length;
+    const carryNote: ClientAccountNote = {
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      text: isAr
+        ? `تحديث فيديو مرحّل من الشهر السابق «${targetLabel}» إلى «${nextStatusLabel}» (${completedCarriedCount}/${updatedCarriedOver.length}) بواسطة ${actorName}.`
+        : `Updated carried-over video "${targetLabel}" to "${nextStatusLabel}" (${completedCarriedCount}/${updatedCarriedOver.length}) by ${actorName}.`,
+      createdAt: new Date().toISOString(),
+      author: actorName,
+      type: 'workflow',
+      meta: { stageTitle: targetLabel },
+    };
+
+    const updatedNotes = [carryNote, ...(client.clientNotes || [])];
+    setCarriedOverReels(updatedCarriedOver);
+    updateInquiry(client.id, {
+      carriedOverReels: updatedCarriedOver,
+      clientNotes: updatedNotes,
+    });
+    if (onClientUpdated) {
+      onClientUpdated({
+        ...client,
+        carriedOverReels: updatedCarriedOver,
+        clientNotes: updatedNotes,
+      });
+    }
+  };
+
+  // Assign team member to a carried-over video
+  const handleAssignCarriedOverReel = (carryOverId: string, assignee: string) => {
+    if (!client) return;
+    let targetLabel = '';
+    const updatedCarriedOver = carriedOverReels.map((stage) => {
+      if (stage.id === carryOverId) {
+        targetLabel = formatStageDisplayTitle(stage.title, isAr);
+        return { ...stage, assignee: assignee || undefined };
+      }
+      return stage;
+    });
+
+    const assignNote: ClientAccountNote = {
+      id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      text: assignee
+        ? isAr
+          ? `تم إسناد الفيديو المرحّل «${targetLabel}» إلى ${assignee}.`
+          : `Assigned carried-over video "${targetLabel}" to ${assignee}.`
+        : isAr
+        ? `تم إلغاء تعيين المسؤول عن الفيديو المرحّل «${targetLabel}».`
+        : `Unassigned carried-over video "${targetLabel}".`,
+      createdAt: new Date().toISOString(),
+      author: actorName,
+      type: 'workflow',
+      meta: { stageTitle: targetLabel },
+    };
+
+    const updatedNotes = [assignNote, ...(client.clientNotes || [])];
+    setCarriedOverReels(updatedCarriedOver);
+    updateInquiry(client.id, {
+      carriedOverReels: updatedCarriedOver,
+      clientNotes: updatedNotes,
+    });
+    if (onClientUpdated) {
+      onClientUpdated({
+        ...client,
+        carriedOverReels: updatedCarriedOver,
+        clientNotes: updatedNotes,
+      });
+    }
+  };
+
   // Set explicit status for a stage
   const handleSetStageStatus = (stageId: string, status: 'completed' | 'in_progress' | 'pending') => {
     setWorkflowStages((prev) =>
@@ -822,7 +959,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
 
   // Open Close Month / Start New Billing Cycle modal with smart calendar month defaults
   const handleOpenCloseCycleModal = () => {
-    const next = getNextOperationCycle(contractStartDate || client?.createdAt, billingCycle);
+    const anchorStart = contractStartDate || client?.contractStartDate || client?.createdAt;
+    const next = getNextOperationCycle(anchorStart, billingCycle);
     setNextCycleYear(next.year);
     setNextCycleMonth(next.monthIndex);
     setNextCycleStartDate(next.startDate);
@@ -831,6 +969,8 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     setIssueNextInvoiceNow(false);
     setCloseInvoiceTargetCycle('closed');
     setCloseCycleNotes('');
+    setCarryOverReelsDecision(null);
+    setCarryOverDecisionError(false);
     setIsCloseCycleModalOpen(true);
   };
 
@@ -842,24 +982,67 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     setNextCycleRenewalDate(endDate);
   };
 
+  // Direct inline active cycle Month/Year switcher (persists immediately without archiving an empty cycle)
+  const handleSwitchActiveCycleMonthYear = (year: number, monthIndex: number) => {
+    if (!client) return;
+    const { startDate, endDate } = buildCycleDatesFromMonth(year, monthIndex, billingCycle);
+    setContractStartDate(startDate);
+    setRenewalDate(endDate);
+    const updates: Partial<Inquiry> = {
+      contractStartDate: startDate,
+      renewalDate: endDate,
+      billingCycle,
+    };
+    updateInquiry(client.id, updates);
+    if (onClientUpdated) {
+      onClientUpdated({ ...client, ...updates });
+    }
+    const updatedLabel = formatOperationCycleBadge(startDate, billingCycle, isAr);
+    showNotification(
+      isAr
+        ? `تم تحديث دورة التشغيل النشطة إلى «${updatedLabel}».`
+        : `Active operating cycle updated to "${updatedLabel}".`
+    );
+  };
+
   // Confirm closing current monthly cycle & starting a fresh month
   const handleConfirmCloseCycle = (e: React.FormEvent) => {
     e.preventDefault();
     if (!client) return;
 
+    const currentUnfinishedReels = buildReelWorkflowStages(
+      targetReels,
+      reelStages,
+      reelsDelivered
+    ).filter((r) => r.status !== 'completed');
+    const prevUnfinishedCarryOvers = carriedOverReels.filter((r) => r.status !== 'completed');
+    const hasUnfinishedReels = currentUnfinishedReels.length + prevUnfinishedCarryOvers.length > 0;
+
+    if (hasUnfinishedReels && carryOverReelsDecision === null) {
+      setCarryOverDecisionError(true);
+      return;
+    }
+
+    const anchorStart = contractStartDate || client.contractStartDate || client.createdAt;
+    const fallbackNext = getNextOperationCycle(anchorStart, billingCycle);
+    const pickerDates = buildCycleDatesFromMonth(nextCycleYear, nextCycleMonth, billingCycle);
+    const effectiveNewStartDate = nextCycleStartDate || pickerDates.startDate || fallbackNext.startDate;
+    const effectiveNewRenewalDate = nextCycleRenewalDate || pickerDates.endDate || fallbackNext.endDate;
+
     const targetPeriodDate =
       closeInvoiceTargetCycle === 'closed'
-        ? contractStartDate || client.contractStartDate || client.createdAt
-        : nextCycleStartDate;
+        ? anchorStart
+        : effectiveNewStartDate;
     const invoicePeriodLabel = formatInvoicePeriodLabel(targetPeriodDate, billingCycle, true);
+    const shouldCarryOver = hasUnfinishedReels && carryOverReelsDecision === 'carry_over';
 
     const { updatedClient, createdInvoice } = closeClientBillingCycle(client.id, {
-      newStartDate: nextCycleStartDate || new Date().toISOString().split('T')[0],
-      newRenewalDate:
-        nextCycleRenewalDate ||
-        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      newPendingAdCredit: nextCycleAdCredit,
-      issueInvoiceNow: issueNextInvoiceNow,
+      newStartDate: effectiveNewStartDate,
+      newRenewalDate: effectiveNewRenewalDate,
+      billingCycle,
+      carryOverUnfinishedReels: shouldCarryOver,
+      newPendingAdCredit: canViewFinancials ? nextCycleAdCredit : 0,
+      issueInvoiceNow: canViewFinancials ? issueNextInvoiceNow : false,
       invoiceTargetCycle: closeInvoiceTargetCycle,
       invoiceContractPeriod: invoicePeriodLabel,
       cycleNotes: closeCycleNotes,
@@ -867,39 +1050,49 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
     });
 
     if (updatedClient) {
+      const finalStartDate = updatedClient.contractStartDate || effectiveNewStartDate;
+      const finalRenewalDate = updatedClient.renewalDate || effectiveNewRenewalDate;
+
       setPostsDelivered(0);
       setReelsDelivered(0);
       setStoriesDelivered(0);
       setWorkflowStages(DEFAULT_STAGES);
       setReelStages(buildReelWorkflowStages(targetReels, [], 0));
+      setCarriedOverReels(updatedClient.carriedOverReels || []);
       setTodayTaskTitle('');
-      setContractStartDate(updatedClient.contractStartDate || nextCycleStartDate);
-      setRenewalDate(updatedClient.renewalDate || nextCycleRenewalDate);
+      setContractStartDate(finalStartDate);
+      setRenewalDate(finalRenewalDate);
       setContractStatus('active');
       setPaymentStatus('pending');
-      setInvoiceAdCredit(Math.max(0, nextCycleAdCredit || 0));
+      setInvoiceAdCredit(canViewFinancials ? Math.max(0, nextCycleAdCredit || 0) : 0);
 
       if (onClientUpdated) {
         onClientUpdated(updatedClient);
       }
 
       const nextCycleName = formatOperationCycleBadge(
-        updatedClient.contractStartDate || nextCycleStartDate,
-        billingCycle,
+        finalStartDate,
+        updatedClient.billingCycle || billingCycle,
         isAr
       );
+      const carriedCount = (updatedClient.carriedOverReels || []).length;
 
       showNotification(
         createdInvoice
           ? isAr
             ? `تم إغلاق الدورة وبدء «${nextCycleName}» وإصدار الفاتورة (${createdInvoice.invoiceNumber} — ${invoicePeriodLabel})!`
             : `Cycle closed, started "${nextCycleName}", and issued invoice ${createdInvoice.invoiceNumber}!`
+          : carriedCount > 0
+          ? isAr
+            ? `تم بدء «${nextCycleName}» وترحيل ${carriedCount} فيديو غير مكتمل في قسم منفصل بنجاح.`
+            : `Started "${nextCycleName}" and carried over ${carriedCount} unfinished video(s) separately.`
           : isAr
           ? `تم إغلاق الدورة وأرشفتها وتصفير المهام لبدء «${nextCycleName}» بنجاح.`
           : `Cycle closed & archived! Operational tasks reset for "${nextCycleName}".`
       );
     }
 
+    setCarryOverDecisionError(false);
     setIsCloseCycleModalOpen(false);
   };
 
@@ -924,6 +1117,18 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
   // Calculate workflow stats
   const completedStagesCount = workflowStages.filter((s) => s.status === 'completed').length;
   const remainingStagesCount = workflowStages.filter((s) => s.status !== 'completed').length;
+  const allMainTasksCompleted =
+    workflowStages.length > 0 && workflowStages.every((s) => s.status === 'completed');
+  const isContentCreatorCycleMode = canStartNewCycle && !canViewFinancials && !canEditClients;
+  const canTriggerNewCycleNow =
+    canStartNewCycle && (canViewFinancials || canEditClients || allMainTasksCompleted);
+
+  // Unfinished reels in current cycle & any still-open previous carry-overs
+  const normalizedCurrentReels = buildReelWorkflowStages(targetReels, reelStages, reelsDelivered);
+  const unfinishedCurrentReels = normalizedCurrentReels.filter((r) => r.status !== 'completed');
+  const unfinishedPrevCarryOverReels = carriedOverReels.filter((r) => r.status !== 'completed');
+  const totalUnfinishedReelsCount =
+    unfinishedCurrentReels.length + unfinishedPrevCarryOverReels.length;
 
   // Calculate deliverables completion percentage
   const totalTargetAssets = Math.max(1, targetPosts + targetReels + targetStories);
@@ -1056,28 +1261,45 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 </button>
               )}
 
-              {canViewFinancials && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleOpenCloseCycleModal}
-                    className="px-3 py-1.5 text-xs font-black text-emerald-200 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-500/40 rounded-xl transition-all inline-flex items-center gap-1.5 cursor-pointer"
-                    title={isAr ? 'إغلاق الشهر الحالي وأرشفته وبدء دورة جديدة' : 'Close Month & Start New Cycle'}
-                  >
+              {canStartNewCycle && (
+                <button
+                  type="button"
+                  disabled={!canTriggerNewCycleNow}
+                  onClick={handleOpenCloseCycleModal}
+                  className={`px-3 py-1.5 text-xs font-black rounded-xl transition-all inline-flex items-center gap-1.5 border ${
+                    canTriggerNewCycleNow
+                      ? 'text-emerald-200 bg-emerald-950/70 hover:bg-emerald-900/80 border-emerald-500/40 cursor-pointer'
+                      : 'text-slate-400 bg-slate-800/70 border-slate-700 cursor-not-allowed opacity-75'
+                  }`}
+                  title={
+                    canTriggerNewCycleNow
+                      ? isAr
+                        ? 'إغلاق الشهر الحالي وأرشفته وبدء دورة جديدة'
+                        : 'Close Month & Start New Cycle'
+                      : isAr
+                      ? `متاح فور اكتمال جميع مراحل مهام الشهر (${completedStagesCount}/${workflowStages.length})`
+                      : `Available once all monthly stages complete (${completedStagesCount}/${workflowStages.length})`
+                  }
+                >
+                  {canTriggerNewCycleNow ? (
                     <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>{isAr ? 'إغلاق الشهر / دورة جديدة' : 'New Cycle'}</span>
-                  </button>
+                  ) : (
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                  )}
+                  <span>{isAr ? 'إغلاق الشهر / دورة جديدة' : 'New Cycle'}</span>
+                </button>
+              )}
 
-                  <button
-                    type="button"
-                    onClick={() => setIsInvoiceModalOpen(true)}
-                    className="px-3.5 py-1.5 text-xs font-black text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer border border-blue-400/30"
-                    title={isAr ? 'إصدار الفاتورة وبيان الحساب PDF' : 'Issue Invoice PDF'}
-                  >
-                    <FileText className="w-3.5 h-3.5 text-blue-200" />
-                    <span>{isAr ? 'إصدار الفاتورة' : 'Invoice'}</span>
-                  </button>
-                </>
+              {canViewFinancials && (
+                <button
+                  type="button"
+                  onClick={() => setIsInvoiceModalOpen(true)}
+                  className="px-3.5 py-1.5 text-xs font-black text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl transition-all shadow-md inline-flex items-center gap-1.5 cursor-pointer border border-blue-400/30"
+                  title={isAr ? 'إصدار الفاتورة وبيان الحساب PDF' : 'Issue Invoice PDF'}
+                >
+                  <FileText className="w-3.5 h-3.5 text-blue-200" />
+                  <span>{isAr ? 'إصدار الفاتورة' : 'Invoice'}</span>
+                </button>
               )}
 
               <a
@@ -1430,7 +1652,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   </div>
                 </div>
 
-                {/* Stepper Pipeline with Timestamps + Package Reels Timeline + Role-Scoped Assignees */}
+                {/* Stepper Pipeline with Timestamps + Package Reels Timeline + Carried-Over Videos + Role-Scoped Assignees */}
                 <ClientWorkflowStepper
                   stages={workflowStages}
                   onToggleStage={handleToggleStageStatus}
@@ -1438,6 +1660,10 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   reelStages={reelStages}
                   reelsDelivered={reelsDelivered}
                   onToggleReelStage={handleToggleReelStageStatus}
+                  carriedOverReels={carriedOverReels}
+                  onToggleCarriedOverReel={handleToggleCarriedOverReel}
+                  onAssignCarriedOverReel={canAssignTasks ? handleAssignCarriedOverReel : undefined}
+                  currentCycleLabel={currentCycleBadge}
                   teamMembers={teamMembers}
                   onAssignStage={canAssignTasks ? handleAssignStage : undefined}
                   onAssignReelStage={canAssignTasks ? handleAssignReelStage : undefined}
@@ -1448,6 +1674,48 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   size="lg"
                   isAr={isAr}
                 />
+
+                {/* Content Creator / Delivery Cycle Completion Banner */}
+                {canStartNewCycle && allMainTasksCompleted && (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-start sm:items-center gap-2 text-xs text-emerald-950">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
+                      <div>
+                        <span className="font-black block">
+                          {isAr
+                            ? 'اكتملت جميع مهام الشهر الأساسية (5/5) — جاهز لبدء دورة جديدة!'
+                            : 'All monthly workflow tasks are completed (5/5) — ready for a new cycle!'}
+                        </span>
+                        {totalUnfinishedReelsCount > 0 && (
+                          <span className="text-[11px] font-bold text-amber-800 block mt-0.5">
+                            {isAr
+                              ? `ملاحظة: يوجد ${totalUnfinishedReelsCount} فيديو لم يكتمل بعد؛ عند الضغط سيسألك النظام هل تريد ترحيلهم للشهر القادم في قسم منفصل.`
+                              : `Note: ${totalUnfinishedReelsCount} unfinished video(s) remain — you will be asked whether to carry them over separately.`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleOpenCloseCycleModal}
+                      className="px-3.5 py-2 text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>{isAr ? 'بدء دورة الشهر القادم' : 'Start Next Cycle'}</span>
+                    </button>
+                  </div>
+                )}
+
+                {isContentCreatorCycleMode && !allMainTasksCompleted && (
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>
+                      {isAr
+                        ? `عند اكتمال مراحل مهام الشهر الخمس (${completedStagesCount}/${workflowStages.length} مكتمل) سيُتاح لك زر بدء دورة الشهر الجديد تلقائياً.`
+                        : `Once all 5 monthly stages are complete (${completedStagesCount}/${workflowStages.length} done), you can start the next monthly cycle.`}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* ------------------------------------------------------------- */}
@@ -1951,24 +2219,39 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
           {/* TAB 2: DELIVERABLES TRACKER */}
           {activeTab === 'deliverables' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">{isAr ? 'تسجيل ومتابعة مخرجات الشهر' : 'Monthly Deliverables Tracker'}</h4>
                   <p className="text-xs text-slate-500">{isAr ? 'سجل المخرجات التي تم تسليمها أو نشرها للعميل خلال دورة الاشتراك الحالية.' : 'Track completed posts, reels, and stories for this billing cycle.'}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPostsDelivered(0);
-                    setReelsDelivered(0);
-                    setStoriesDelivered(0);
-                    setReelStages(buildReelWorkflowStages(targetReels, [], 0));
-                    showNotification(isAr ? 'تم تصفير العدادات لبدء شهر تعاقدي جديد.' : 'Reset for new monthly cycle.');
-                  }}
-                  className="px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200 cursor-pointer"
-                >
-                  {isAr ? 'تصفير لشهر جديد' : 'New Month Cycle'}
-                </button>
+                {canStartNewCycle && (
+                  <button
+                    type="button"
+                    disabled={!canTriggerNewCycleNow}
+                    onClick={handleOpenCloseCycleModal}
+                    title={
+                      canTriggerNewCycleNow
+                        ? isAr
+                          ? 'إغلاق الشهر الحالي وبدء دورة جديدة'
+                          : 'Close Month & Start New Cycle'
+                        : isAr
+                        ? `متاح فور اكتمال مهام الشهر الأساسية (${completedStagesCount}/${workflowStages.length})`
+                        : `Available once all monthly stages complete (${completedStagesCount}/${workflowStages.length})`
+                    }
+                    className={`px-3 py-1.5 text-[11px] font-bold rounded-xl transition-colors border inline-flex items-center gap-1.5 ${
+                      canTriggerNewCycleNow
+                        ? 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 cursor-pointer'
+                        : 'text-slate-400 bg-slate-100 border-slate-200 cursor-not-allowed'
+                    }`}
+                  >
+                    {canTriggerNewCycleNow ? (
+                      <RotateCcw className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    )}
+                    <span>{isAr ? 'إغلاق الشهر وبدء دورة جديدة' : 'Close Month & New Cycle'}</span>
+                  </button>
+                )}
               </div>
 
               {/* Deliverable Counters */}
@@ -2006,7 +2289,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 {/* Reels counter */}
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800">{isAr ? 'فيديوهات الريلز' : 'Video Reels'}</span>
+                    <span className="text-xs font-bold text-slate-800">{isAr ? 'فيديوهات الدورة الحالية' : 'Current Cycle Reels'}</span>
                     <span className="text-xs font-mono font-black text-purple-800">{reelsDelivered} / {targetReels}</span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -2063,6 +2346,87 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Separate Carried-Over Videos Card (Never Mixed with Current Month's Reels Counter) */}
+              {carriedOverReels.length > 0 && (
+                <div className="p-4 rounded-2xl bg-amber-50/80 border-2 border-dashed border-amber-300 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <CornerDownLeft className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div>
+                        <h5 className="text-xs font-black text-amber-950">
+                          {isAr
+                            ? 'فيديوهات مرحلة من الشهر السابق (منفصلة عن عداد الشهر الحالي)'
+                            : 'Carried-Over Videos from Previous Cycle (Separate from Current Month)'}
+                        </h5>
+                        <p className="text-[11px] text-amber-800">
+                          {isAr
+                            ? 'اضغط على أي فيديو مرحّل لتحديث حالته بشكل مستقل دون التأثير على عداد فيديوهات الباقة الحالية.'
+                            : 'Click any carried-over video to update its status independently without affecting this month’s reel count.'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-950 border border-amber-300 text-[11px] font-black tabular-nums">
+                      {carriedOverReels.filter((r) => r.status === 'completed').length} / {carriedOverReels.length}{' '}
+                      {isAr ? 'مكتمل' : 'Done'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {carriedOverReels.map((reel) => {
+                      const isDone = reel.status === 'completed';
+                      const isActive = reel.status === 'in_progress';
+                      return (
+                        <button
+                          key={reel.id}
+                          type="button"
+                          disabled={!canUpdateReelsTrack}
+                          onClick={() => handleToggleCarriedOverReel(reel.id)}
+                          className={`p-2.5 rounded-xl border text-start transition-all flex items-center justify-between gap-2 ${
+                            isDone
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                              : isActive
+                              ? 'bg-white border-amber-400 text-amber-950 shadow-2xs'
+                              : 'bg-white border-amber-200 text-slate-800 hover:border-amber-400'
+                          } ${canUpdateReelsTrack ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                        >
+                          <div className="min-w-0">
+                            <span className={`text-xs font-black block truncate ${isDone ? 'line-through' : ''}`}>
+                              {formatStageDisplayTitle(reel.title, isAr)}
+                            </span>
+                            {reel.originCycleLabel && (
+                              <span className="text-[10px] font-bold text-amber-700 block truncate">
+                                {reel.originCycleLabel}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                              isDone
+                                ? 'bg-emerald-600 text-white'
+                                : isActive
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-amber-100 text-amber-900'
+                            }`}
+                          >
+                            {isDone
+                              ? isAr
+                                ? 'مكتمل'
+                                : 'Done'
+                              : isActive
+                              ? isAr
+                                ? 'قيد التنفيذ'
+                                : 'Active'
+                              : isAr
+                              ? 'مرحّل'
+                              : 'Pending'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2187,22 +2551,68 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                   </div>
                 </div>
 
-                {/* Active Cycle & Invoice Period Live Preview Banner */}
-                <div className="p-3 rounded-xl bg-indigo-50/80 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-bold text-indigo-600 block">
-                        {isAr ? 'دورة التشغيل النشطة حالياً:' : 'Active Operating Cycle:'}
-                      </span>
-                      <span className="font-black text-indigo-950">{currentCycleBadge}</span>
+                {/* Active Cycle & Invoice Period Live Preview Banner + Direct Month/Year Switcher */}
+                {(() => {
+                  const activeYM = parseYearMonth(contractStartDate || client.contractStartDate || client.createdAt);
+                  const yearOptions = Array.from(
+                    new Set([...selectableYears, activeYM.year])
+                  ).sort((a, b) => a - b);
+                  return (
+                    <div className="p-3 rounded-xl bg-indigo-50/80 border border-indigo-200 space-y-2.5 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <div>
+                            <span className="text-[10px] font-bold text-indigo-600 block">
+                              {isAr ? 'دورة التشغيل النشطة حالياً:' : 'Active Operating Cycle:'}
+                            </span>
+                            <span className="font-black text-indigo-950">{currentCycleBadge}</span>
+                          </div>
+                        </div>
+                        <div className="bg-white px-2.5 py-1.5 rounded-lg border border-indigo-200/90 text-[11px]">
+                          <span className="text-slate-500 font-bold">{isAr ? 'يظهر في الفاتورة: ' : 'On Invoice: '}</span>
+                          <span className="font-black text-blue-700">{currentInvoicePeriodLabel}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-indigo-200/70 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-indigo-900">
+                          {isAr ? 'تعديل شهر الدورة النشطة مباشرة:' : 'Switch Active Cycle Month Directly:'}
+                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <select
+                            aria-label={isAr ? 'شهر الدورة النشطة' : 'Active Cycle Month'}
+                            value={activeYM.monthIndex}
+                            onChange={(e) =>
+                              handleSwitchActiveCycleMonthYear(activeYM.year, parseInt(e.target.value, 10))
+                            }
+                            className="text-[11px] font-black px-2.5 py-1.5 bg-white border border-indigo-300 rounded-lg text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            {monthNamesList.map((mName, idx) => (
+                              <option key={mName} value={idx}>
+                                {mName}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            aria-label={isAr ? 'سنة الدورة النشطة' : 'Active Cycle Year'}
+                            value={activeYM.year}
+                            onChange={(e) =>
+                              handleSwitchActiveCycleMonthYear(parseInt(e.target.value, 10), activeYM.monthIndex)
+                            }
+                            className="text-[11px] font-black font-mono px-2.5 py-1.5 bg-white border border-indigo-300 rounded-lg text-slate-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            {yearOptions.map((y) => (
+                              <option key={y} value={y}>
+                                {y}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-white px-2.5 py-1.5 rounded-lg border border-indigo-200/90 text-[11px]">
-                    <span className="text-slate-500 font-bold">{isAr ? 'يظهر في الفاتورة: ' : 'On Invoice: '}</span>
-                    <span className="font-black text-blue-700">{currentInvoicePeriodLabel}</span>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* Ad Spend Credit Input for Invoicing */}
                 <div className="pt-3 border-t border-slate-200">
@@ -3008,7 +3418,7 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                     <span>{currentCycleBadge}</span>
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className={`grid ${canViewFinancials ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center text-xs`}>
                   <div className="p-2 rounded-xl bg-white border border-slate-200/80">
                     <span className="text-[10px] text-slate-500 block font-bold">
                       {isAr ? 'المخرجات المسلمة' : 'Deliverables'}
@@ -3025,21 +3435,135 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                       {completedStagesCount} / {workflowStages.length}
                     </span>
                   </div>
-                  <div className="p-2 rounded-xl bg-white border border-slate-200/80">
-                    <span className="text-[10px] text-slate-500 block font-bold">
-                      {isAr ? 'رصيد إعلاني مرحّل' : 'Ad Credit Kept'}
-                    </span>
-                    <span className="font-black text-emerald-700 tabular-nums">
-                      {adCreditBalance.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
-                    </span>
-                  </div>
+                  {canViewFinancials && (
+                    <div className="p-2 rounded-xl bg-white border border-slate-200/80">
+                      <span className="text-[10px] text-slate-500 block font-bold">
+                        {isAr ? 'رصيد إعلاني مرحّل' : 'Ad Credit Kept'}
+                      </span>
+                      <span className="font-black text-emerald-700 tabular-nums">
+                        {adCreditBalance.toLocaleString()} {isAr ? 'ج.م' : 'EGP'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
                   {isAr
-                    ? '• سيتم حفظ هذا التقرير في «سجل الدورات الشهرية»، وتصفير عدادات البوستات والريلز ومراحل التايم لاين للدورة الجديدة، مع الإبقاء على الرصيد الإعلاني المتبقي كما هو.'
-                    : '• This snapshot is saved permanently, operational deliverables & workflow stages reset to 0/pending, and remaining ad credit carries over untouched.'}
+                    ? '• سيتم حفظ هذا التقرير في «سجل الدورات الشهرية»، وتصفير مهام الباقة الجديدة لبدء الشهر القادم.'
+                    : '• This snapshot is saved permanently, and operational stages reset cleanly for the new cycle.'}
                 </p>
               </div>
+
+              {/* Mandatory Question When Unfinished Videos Exist */}
+              {totalUnfinishedReelsCount > 0 && (
+                <div
+                  className={`p-3.5 rounded-2xl border-2 space-y-2.5 transition-colors ${
+                    carryOverDecisionError
+                      ? 'bg-rose-50/90 border-rose-400'
+                      : 'bg-amber-50/90 border-amber-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <Film className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <span className="text-xs font-black text-amber-950 block">
+                        {isAr
+                          ? `يوجد ${totalUnfinishedReelsCount} فيديو (ريلز) لم يكتمل بعد في ${currentCycleBadge}`
+                          : `${totalUnfinishedReelsCount} unfinished video(s) remain in ${currentCycleBadge}`}
+                      </span>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {unfinishedCurrentReels.map((r) => (
+                          <span
+                            key={r.id}
+                            className="px-2 py-0.5 rounded-md bg-white text-amber-900 border border-amber-200 text-[10px] font-black"
+                          >
+                            {formatStageDisplayTitle(r.title, isAr)}
+                          </span>
+                        ))}
+                        {unfinishedPrevCarryOverReels.map((r) => (
+                          <span
+                            key={r.id}
+                            className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-950 border border-amber-300 text-[10px] font-black"
+                          >
+                            {formatStageDisplayTitle(r.title, isAr)} ({r.originCycleLabel || (isAr ? 'مرحّل سابقاً' : 'Previous')})
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-[11px] font-black text-slate-900 pt-1">
+                        {isAr
+                          ? `هل تريد ترحيل الفيديوهات المتبقية إلى «${nextCyclePreviewBadge}» في قسم منفصل؟`
+                          : `Do you want to carry over unfinished videos into "${nextCyclePreviewBadge}" in a separate section?`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCarryOverReelsDecision('carry_over');
+                        setCarryOverDecisionError(false);
+                      }}
+                      className={`p-2.5 rounded-xl border-2 text-start transition-all cursor-pointer ${
+                        carryOverReelsDecision === 'carry_over'
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                          : 'bg-white text-slate-800 border-amber-200 hover:border-amber-400'
+                      }`}
+                    >
+                      <span className="text-xs font-black block">
+                        {isAr
+                          ? `نعم، رحّل (${totalUnfinishedReelsCount}) للشهر القادم`
+                          : `Yes, carry over (${totalUnfinishedReelsCount})`}
+                      </span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-snug ${
+                          carryOverReelsDecision === 'carry_over' ? 'text-amber-50' : 'text-slate-500'
+                        }`}
+                      >
+                        {isAr
+                          ? 'تظهر في قسم منفصل تماماً عن فيديوهات باقة الشهر الجديد.'
+                          : 'Kept completely separate from next month’s package videos.'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCarryOverReelsDecision('discard');
+                        setCarryOverDecisionError(false);
+                      }}
+                      className={`p-2.5 rounded-xl border-2 text-start transition-all cursor-pointer ${
+                        carryOverReelsDecision === 'discard'
+                          ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
+                          : 'bg-white text-slate-800 border-slate-200 hover:border-slate-400'
+                      }`}
+                    >
+                      <span className="text-xs font-black block">
+                        {isAr ? 'لا، ابدأ الشهر بدون ترحيل' : 'No, start fresh without carry-over'}
+                      </span>
+                      <span
+                        className={`text-[10px] block mt-0.5 leading-snug ${
+                          carryOverReelsDecision === 'discard' ? 'text-slate-200' : 'text-slate-500'
+                        }`}
+                      >
+                        {isAr
+                          ? 'تُحفظ في أرشيف الدورة فقط وتبدأ الدورة الجديدة بدون متأخرات.'
+                          : 'Recorded in cycle archive only; next cycle starts clean.'}
+                      </span>
+                    </button>
+                  </div>
+
+                  {carryOverDecisionError && (
+                    <p className="text-[11px] font-black text-rose-700 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        {isAr
+                          ? 'يرجى اختيار أحد الخيارين أعلاه قبل تأكيد بدء الدورة الجديدة.'
+                          : 'Please select whether to carry over unfinished videos before confirming.'}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Next Operating Cycle Month & Year Picker */}
               <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-2.5">
@@ -3102,12 +3626,14 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                     </span>
                     <span className="font-black text-indigo-900">{nextCyclePreviewBadge}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-slate-500 font-bold">
-                      {isAr ? 'سيُكتب في فاتورة هذه الدورة:' : 'Invoice Period Label:'}
-                    </span>
-                    <span className="font-black text-blue-700">{nextCycleInvoicePeriodPreview}</span>
-                  </div>
+                  {canViewFinancials && (
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-slate-500 font-bold">
+                        {isAr ? 'سيُكتب في فاتورة هذه الدورة:' : 'Invoice Period Label:'}
+                      </span>
+                      <span className="font-black text-blue-700">{nextCycleInvoicePeriodPreview}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -3146,21 +3672,23 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Optional Ad Credit for Upcoming Month */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-700 block">
-                  {isAr ? 'رصيد إعلاني إضافي مخطط للدورة الجديدة (اختياري):' : 'Planned Ad Credit for New Cycle (Optional):'}
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="500"
-                  value={nextCycleAdCredit || ''}
-                  onChange={(e) => setNextCycleAdCredit(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  placeholder="0"
-                  className="w-full text-xs font-mono font-bold p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {/* Optional Ad Credit for Upcoming Month (Finance/Admin Only) */}
+              {canViewFinancials && (
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    {isAr ? 'رصيد إعلاني إضافي مخطط للدورة الجديدة (اختياري):' : 'Planned Ad Credit for New Cycle (Optional):'}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    value={nextCycleAdCredit || ''}
+                    onChange={(e) => setNextCycleAdCredit(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    placeholder="0"
+                    className="w-full text-xs font-mono font-bold p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
 
               {/* Optional Closing Note */}
               <div className="space-y-1">
@@ -3176,66 +3704,68 @@ export const ClientAccountDrawer: React.FC<ClientAccountDrawerProps> = ({
                 />
               </div>
 
-              {/* Flexible Invoicing Option */}
-              <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 space-y-2.5">
-                <label className="flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={issueNextInvoiceNow}
-                    onChange={(e) => setIssueNextInvoiceNow(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded accent-blue-600 cursor-pointer"
-                  />
-                  <div className="space-y-0.5 text-xs">
-                    <span className="font-black text-blue-950 block">
-                      {isAr ? 'إصدار فاتورة وإدراجها في الأرشيف الآن' : 'Issue and archive invoice right now'}
-                    </span>
-                    <span className="text-[11px] text-blue-700 block leading-relaxed">
-                      {isAr
-                        ? 'اترك هذا الخيار غير محدد إذا كنت تفضل إصدار الفاتورة لاحقاً في أي وقت.'
-                        : 'Leave unchecked to issue the invoice whenever you are ready.'}
-                    </span>
-                  </div>
-                </label>
-
-                {issueNextInvoiceNow && (
-                  <div className="pt-2 border-t border-blue-200/80 space-y-1.5">
-                    <span className="text-[11px] font-bold text-blue-900 block">
-                      {isAr ? 'الفاتورة الصادرة الآن عن أي دورة؟ (ستُكتب تحت تاريخ الإصدار):' : 'Invoice billing period:'}
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCloseInvoiceTargetCycle('closed')}
-                        className={`p-2 rounded-xl border text-start text-[11px] transition-all cursor-pointer ${
-                          closeInvoiceTargetCycle === 'closed'
-                            ? 'bg-blue-600 text-white border-blue-600 font-black shadow-xs'
-                            : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-50 font-bold'
-                        }`}
-                      >
-                        <span className="block text-[10px] opacity-80">
-                          {isAr ? 'الدورة المنتهية للتو:' : 'Just Finished Cycle:'}
-                        </span>
-                        <span>{currentInvoicePeriodLabel}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setCloseInvoiceTargetCycle('new')}
-                        className={`p-2 rounded-xl border text-start text-[11px] transition-all cursor-pointer ${
-                          closeInvoiceTargetCycle === 'new'
-                            ? 'bg-blue-600 text-white border-blue-600 font-black shadow-xs'
-                            : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-50 font-bold'
-                        }`}
-                      >
-                        <span className="block text-[10px] opacity-80">
-                          {isAr ? 'الدورة الجديدة (مقدماً):' : 'Upcoming Cycle:'}
-                        </span>
-                        <span>{nextCycleInvoicePeriodPreview}</span>
-                      </button>
+              {/* Flexible Invoicing Option (Finance/Admin Only) */}
+              {canViewFinancials && (
+                <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 space-y-2.5">
+                  <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={issueNextInvoiceNow}
+                      onChange={(e) => setIssueNextInvoiceNow(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 rounded accent-blue-600 cursor-pointer"
+                    />
+                    <div className="space-y-0.5 text-xs">
+                      <span className="font-black text-blue-950 block">
+                        {isAr ? 'إصدار فاتورة وإدراجها في الأرشيف الآن' : 'Issue and archive invoice right now'}
+                      </span>
+                      <span className="text-[11px] text-blue-700 block leading-relaxed">
+                        {isAr
+                          ? 'اترك هذا الخيار غير محدد إذا كنت تفضل إصدار الفاتورة لاحقاً في أي وقت.'
+                          : 'Leave unchecked to issue the invoice whenever you are ready.'}
+                      </span>
                     </div>
-                  </div>
-                )}
-              </div>
+                  </label>
+
+                  {issueNextInvoiceNow && (
+                    <div className="pt-2 border-t border-blue-200/80 space-y-1.5">
+                      <span className="text-[11px] font-bold text-blue-900 block">
+                        {isAr ? 'الفاتورة الصادرة الآن عن أي دورة؟ (ستُكتب تحت تاريخ الإصدار):' : 'Invoice billing period:'}
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCloseInvoiceTargetCycle('closed')}
+                          className={`p-2 rounded-xl border text-start text-[11px] transition-all cursor-pointer ${
+                            closeInvoiceTargetCycle === 'closed'
+                              ? 'bg-blue-600 text-white border-blue-600 font-black shadow-xs'
+                              : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-50 font-bold'
+                          }`}
+                        >
+                          <span className="block text-[10px] opacity-80">
+                            {isAr ? 'الدورة المنتهية للتو:' : 'Just Finished Cycle:'}
+                          </span>
+                          <span>{currentInvoicePeriodLabel}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setCloseInvoiceTargetCycle('new')}
+                          className={`p-2 rounded-xl border text-start text-[11px] transition-all cursor-pointer ${
+                            closeInvoiceTargetCycle === 'new'
+                              ? 'bg-blue-600 text-white border-blue-600 font-black shadow-xs'
+                              : 'bg-white text-slate-700 border-blue-200 hover:bg-blue-50 font-bold'
+                          }`}
+                        >
+                          <span className="block text-[10px] opacity-80">
+                            {isAr ? 'الدورة الجديدة (مقدماً):' : 'Upcoming Cycle:'}
+                          </span>
+                          <span>{nextCycleInvoicePeriodPreview}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Footer Actions */}
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AgencyTeamMember, ClientWorkflowStage } from '../types';
-import { Check, Clock, Calendar, Film, User, Lock } from 'lucide-react';
+import { Check, Clock, Calendar, Film, User, Lock, CornerDownLeft } from 'lucide-react';
 
 export const DEFAULT_WORKFLOW_STAGES: ClientWorkflowStage[] = [
   {
@@ -149,6 +149,10 @@ interface ClientWorkflowStepperProps {
   reelsDelivered?: number;
   onToggleReelStage?: (reelStageId: string) => void;
   onAssignReelStage?: (reelStageId: string, assignee: string) => void;
+  carriedOverReels?: ClientWorkflowStage[];
+  onToggleCarriedOverReel?: (carryOverId: string) => void;
+  onAssignCarriedOverReel?: (carryOverId: string, assignee: string) => void;
+  currentCycleLabel?: string;
   teamMembers?: AgencyTeamMember[];
   allowedStageIds?: string[];
   canToggleReels?: boolean;
@@ -167,6 +171,10 @@ export const ClientWorkflowStepper: React.FC<ClientWorkflowStepperProps> = ({
   reelsDelivered = 0,
   onToggleReelStage,
   onAssignReelStage,
+  carriedOverReels = [],
+  onToggleCarriedOverReel,
+  onAssignCarriedOverReel,
+  currentCycleLabel,
   teamMembers = [],
   allowedStageIds,
   canToggleReels = true,
@@ -180,6 +188,7 @@ export const ClientWorkflowStepper: React.FC<ClientWorkflowStepperProps> = ({
 
   const currentReelStages = buildReelWorkflowStages(reelsTarget, reelStages, reelsDelivered);
   const completedReelsCount = currentReelStages.filter((s) => s.status === 'completed').length;
+  const completedCarriedOverCount = carriedOverReels.filter((s) => s.status === 'completed').length;
 
   const formatStageTime = (isoString?: string) => {
     if (!isoString) return null;
@@ -386,10 +395,19 @@ export const ClientWorkflowStepper: React.FC<ClientWorkflowStepperProps> = ({
       {currentReelStages.length > 0 && (
         <div className="pt-2.5 mt-1 border-t border-slate-200/80 space-y-2">
           {/* Reels Track Header */}
-          <div className="flex items-center justify-between gap-2 text-[11px]">
-            <span className="font-bold text-purple-900 flex items-center gap-1.5">
+          <div className="flex items-center justify-between gap-2 text-[11px] flex-wrap">
+            <span className="font-bold text-purple-900 flex items-center gap-1.5 flex-wrap">
               <Film className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-              <span>{isAr ? 'تايم لاين الريلز (حسب الباقة):' : 'Reels Production Timeline:'}</span>
+              <span>
+                {isAr
+                  ? 'تايم لاين فيديوهات الدورة الحالية:'
+                  : 'Current Cycle Reels Timeline:'}
+              </span>
+              {currentCycleLabel && (
+                <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200/80 text-[10px] font-black">
+                  {currentCycleLabel}
+                </span>
+              )}
             </span>
             <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-black tabular-nums">
               {completedReelsCount} / {currentReelStages.length} {isAr ? 'ريلز مكتمل' : 'Reels Done'}
@@ -567,6 +585,179 @@ export const ClientWorkflowStepper: React.FC<ClientWorkflowStepperProps> = ({
                       ) : reel.assignee ? (
                         <span className="mt-1 px-1.5 py-0.5 rounded bg-purple-50 border border-purple-200/80 text-[9px] font-bold text-purple-800 inline-flex items-center gap-0.5 max-w-[90px] truncate">
                           <User className="w-2.5 h-2.5 shrink-0 text-purple-500" />
+                          <span className="truncate">{reel.assignee}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* TRACK 3: CARRIED-OVER VIDEOS FROM PREVIOUS CYCLE(S) (SEPARATE)   */}
+      {/* ================================================================ */}
+      {carriedOverReels.length > 0 && (
+        <div className="pt-2.5 mt-1.5 border-t-2 border-dashed border-amber-300/90">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-amber-50/75 border border-amber-200/90 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 text-[11px] flex-wrap">
+              <span className="font-black text-amber-950 flex items-center gap-1.5">
+                <CornerDownLeft className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>
+                  {isAr
+                    ? 'فيديوهات مرحلة من الدورة السابقة (منفصلة عن فيديوهات الشهر الحالي):'
+                    : 'Carried-Over Videos from Previous Cycle (Separate from Current Month):'}
+                </span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black tabular-nums">
+                {completedCarriedOverCount} / {carriedOverReels.length}{' '}
+                {isAr ? 'مكتمل' : 'Done'}
+              </span>
+            </div>
+
+            <div className={carriedOverReels.length > 5 ? 'overflow-x-auto pb-1' : ''}>
+              <div
+                className={`flex items-start gap-2 ${
+                  carriedOverReels.length > 5 ? 'min-w-max px-1' : 'flex-wrap sm:flex-nowrap'
+                }`}
+              >
+                {carriedOverReels.map((reel) => {
+                  const isCompleted = reel.status === 'completed';
+                  const isInProgress = reel.status === 'in_progress';
+                  const isPending = reel.status === 'pending';
+                  const formattedTime = formatStageTime(reel.completedAt);
+                  const reelLabel = formatStageDisplayTitle(reel.title, isAr);
+                  const canToggle =
+                    interactive && canToggleReels && Boolean(onToggleCarriedOverReel);
+
+                  return (
+                    <div
+                      key={reel.id}
+                      className={`flex flex-col items-center text-center p-2 rounded-xl bg-white/90 border transition-all min-w-[92px] flex-1 ${
+                        isCompleted
+                          ? 'border-emerald-200 bg-emerald-50/40'
+                          : isInProgress
+                          ? 'border-amber-400 shadow-2xs'
+                          : 'border-amber-200/90'
+                      } ${
+                        canToggle
+                          ? 'cursor-pointer group hover:border-amber-400'
+                          : interactive && !canToggleReels
+                          ? 'cursor-not-allowed opacity-60'
+                          : ''
+                      }`}
+                      onClick={(e) => {
+                        if (canToggle && onToggleCarriedOverReel) {
+                          e.stopPropagation();
+                          onToggleCarriedOverReel(reel.id);
+                        }
+                      }}
+                      title={
+                        canToggle
+                          ? isAr
+                            ? `تحديث حالة الفيديو المرحّل (${reelLabel})`
+                            : `Toggle carried-over video (${reelLabel})`
+                          : reelLabel
+                      }
+                    >
+                      <div className={`mb-1 transition-transform ${canToggle ? 'group-hover:scale-105' : ''}`}>
+                        {isCompleted && (
+                          <div className={`${isSmall ? 'w-6 h-6' : 'w-7 h-7 sm:w-8 sm:h-8'} rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs border-2 border-white ring-2 ring-emerald-400/40`}>
+                            <Check className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'} stroke-[2.5]`} />
+                          </div>
+                        )}
+                        {isInProgress && (
+                          <div className={`${isSmall ? 'w-6 h-6' : 'w-7 h-7 sm:w-8 sm:h-8'} rounded-full bg-white border-[3px] border-amber-500 flex items-center justify-center shadow-xs ring-4 ring-amber-100`}>
+                            <div className={`${isSmall ? 'w-2 h-2' : 'w-2.5 h-2.5'} rounded-full bg-amber-500 animate-pulse`} />
+                          </div>
+                        )}
+                        {isPending && (
+                          <div className={`${isSmall ? 'w-6 h-6' : 'w-7 h-7 sm:w-8 sm:h-8'} rounded-full bg-amber-100/80 border-2 border-amber-300 text-amber-700 flex items-center justify-center`}>
+                            {!canToggleReels ? (
+                              <Lock className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-amber-400`} />
+                            ) : (
+                              <Film className={`${isSmall ? 'w-3 h-3' : 'w-3.5 h-3.5'} stroke-[2]`} />
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <span
+                        className={`text-[10px] sm:text-[11px] leading-tight font-black ${
+                          isCompleted
+                            ? 'text-emerald-800 line-through'
+                            : isInProgress
+                            ? 'text-amber-950'
+                            : 'text-amber-900'
+                        }`}
+                      >
+                        {reelLabel}
+                      </span>
+
+                      {reel.originCycleLabel && (
+                        <span className="mt-0.5 px-1.5 py-0.2 rounded bg-amber-100/90 text-amber-900 border border-amber-200/80 text-[8.5px] font-bold max-w-[115px] truncate">
+                          {reel.originCycleLabel}
+                        </span>
+                      )}
+
+                      <span
+                        className={`mt-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 ${
+                          isCompleted
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            : isInProgress
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        {isCompleted
+                          ? isAr
+                            ? 'مكتمل'
+                            : 'Done'
+                          : isInProgress
+                          ? isAr
+                            ? 'قيد التنفيذ'
+                            : 'Active'
+                          : isAr
+                          ? 'مرحّل'
+                          : 'Carried'}
+                      </span>
+
+                      {formattedTime && (isCompleted || isInProgress) && (
+                        <div className="mt-1 px-1 py-0.2 rounded bg-amber-50 border border-amber-200/70 text-[8.5px] font-mono text-amber-800 flex items-center gap-0.5">
+                          <Calendar className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                          <span dir="ltr">{formattedTime}</span>
+                        </div>
+                      )}
+
+                      {canAssignTasks && onAssignCarriedOverReel && teamMembers.length > 0 ? (
+                        <div
+                          className="mt-1 w-full max-w-[96px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <select
+                            value={reel.assignee || ''}
+                            onChange={(e) => onAssignCarriedOverReel(reel.id, e.target.value)}
+                            aria-label={isAr ? `تعيين مسؤول لـ ${reelLabel}` : `Assign ${reelLabel}`}
+                            className={`w-full text-[9px] font-bold py-0.5 px-1 rounded-md border text-center cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+                              reel.assignee
+                                ? 'bg-amber-100/80 text-amber-900 border-amber-300'
+                                : 'bg-white text-slate-400 border-slate-200 hover:border-amber-300'
+                            }`}
+                          >
+                            <option value="">{isAr ? '+ مسؤول' : '+ Assign'}</option>
+                            {teamMembers.map((m) => (
+                              <option key={m.id} value={m.name}>
+                                {m.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : reel.assignee ? (
+                        <span className="mt-1 px-1.5 py-0.5 rounded bg-amber-100/80 border border-amber-200 text-[9px] font-bold text-amber-900 inline-flex items-center gap-0.5 max-w-[90px] truncate">
+                          <User className="w-2.5 h-2.5 shrink-0 text-amber-600" />
                           <span className="truncate">{reel.assignee}</span>
                         </span>
                       ) : null}

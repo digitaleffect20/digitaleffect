@@ -84,10 +84,10 @@ export const PORTAL_TAB_CATALOG: PortalTabDescriptor[] = [
   },
   {
     key: 'expenses',
-    labelAr: 'المصروفات وصافي الربح',
-    labelEn: 'Expenses & Net Profit',
-    descAr: 'تسجيل مصروفات الوكالة ومتابعة صافي الأرباح',
-    descEn: 'Agency expenses and realized net profit',
+    labelAr: 'الإدارة المالية والأرباح والخسائر',
+    labelEn: 'Finance & Monthly P&L',
+    descAr: 'قائمة الدخل، التدفقات النقدية، المصروفات، ربحية العملاء، وإقفال الشهر',
+    descEn: 'Monthly P&L, cash flow, expenses, client profitability, and month-end close',
     category: 'finance',
     isFinancial: true,
   },
@@ -148,7 +148,27 @@ export const FULL_ADMIN_PERMISSIONS: TeamMemberPermissions = {
   canAssignTasks: true,
   canManageAdWallet: true,
   canApproveAdWallet: true,
+  canStartNewCycle: true,
 };
+
+/**
+ * Checks whether a portal user or team member is allowed to close a completed cycle and start a new one.
+ * Backward-compatible with existing saved Content Creator accounts whose stored permissions predate canStartNewCycle.
+ */
+export function canMemberStartNewCycle(
+  permissions?: TeamMemberPermissions,
+  rolePreset?: TeamRolePreset,
+  userRole: 'admin' | 'operations' = 'admin'
+): boolean {
+  if (userRole === 'admin') return true;
+  if (!permissions) return false;
+  if (permissions.canStartNewCycle === true) return true;
+  if (permissions.canViewFinancials || permissions.canEditClients) return true;
+  if (permissions.canStartNewCycle === false) return false;
+  if (rolePreset === 'content_creator') return true;
+  const stages = permissions.allowedWorkflowStages || [];
+  return stages.includes('content_creator') && stages.includes('client_approve');
+}
 
 export interface TeamRolePresetConfig {
   key: TeamRolePreset;
@@ -180,6 +200,7 @@ export const TEAM_ROLE_PRESETS: TeamRolePresetConfig[] = [
       canAssignTasks: false,
       canManageAdWallet: false,
       canApproveAdWallet: false,
+      canStartNewCycle: true,
     },
   },
   {
@@ -201,6 +222,7 @@ export const TEAM_ROLE_PRESETS: TeamRolePresetConfig[] = [
       canAssignTasks: false,
       canManageAdWallet: false,
       canApproveAdWallet: false,
+      canStartNewCycle: false,
     },
   },
   {
@@ -222,6 +244,7 @@ export const TEAM_ROLE_PRESETS: TeamRolePresetConfig[] = [
       canAssignTasks: true,
       canManageAdWallet: true,
       canApproveAdWallet: false,
+      canStartNewCycle: true,
     },
   },
   {
@@ -243,6 +266,7 @@ export const TEAM_ROLE_PRESETS: TeamRolePresetConfig[] = [
       canAssignTasks: false,
       canManageAdWallet: true,
       canApproveAdWallet: false,
+      canStartNewCycle: false,
     },
   },
   {
@@ -258,6 +282,7 @@ export const TEAM_ROLE_PRESETS: TeamRolePresetConfig[] = [
       canEditClients: false,
       canDeleteRecords: false,
       canManageTeam: false,
+      canStartNewCycle: true,
       onlyAssignedTasks: false,
       allowedWorkflowStages: [],
       canUpdateReelsTrack: false,

@@ -200,6 +200,7 @@ export interface ClientMonthlyCycleRecord {
   workflowTotalStages: number;
   paymentStatus: 'paid' | 'pending' | 'partially_paid' | 'overdue';
   adCreditBalanceCarriedOver: number;
+  carriedOverReelsCount?: number;
   invoiceNumber?: string;
   notes?: string;
 }
@@ -228,7 +229,9 @@ export interface ClientWorkflowStage {
   assignee?: string;
   notes?: string;
   completedAt?: string;
-  track?: 'main' | 'reel';
+  track?: 'main' | 'reel' | 'carryover_reel';
+  originCycleLabel?: string;
+  carriedOverAt?: string;
 }
 
 export interface Inquiry {
@@ -266,6 +269,7 @@ export interface Inquiry {
   clientNotes?: ClientAccountNote[];
   workflowStages?: ClientWorkflowStage[];
   reelStages?: ClientWorkflowStage[];
+  carriedOverReels?: ClientWorkflowStage[];
   currentWorkflowDay?: number;
   todayTaskTitle?: string;
   // Ad Credit & Campaign Wallet (الرصيد الإعلاني وميزانية الحملات)
@@ -337,6 +341,7 @@ export interface TeamMemberPermissions {
   canAssignTasks?: boolean;
   canManageAdWallet?: boolean;
   canApproveAdWallet?: boolean;
+  canStartNewCycle?: boolean;
 }
 
 export interface AgencyTeamMember {
